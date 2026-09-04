@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "subjects": ["Rust crate", "merchant UI", "events API", "watch app", "services repository"],
+  "cases": [
+    {"id":"act-01","template":"Conduct a go/no-go review of the {project}","release":true},
+    {"id":"act-02","template":"Put the {project} through release readiness","release":true},
+    {"id":"act-03","template":"Check the {project} before it goes live","release":true},
+    {"id":"act-04","template":"Prepare the {project} to be released","release":true},
+    {"id":"act-05","template":"Make the launch decision for this {project}","release":true},
+    {"id":"act-06","template":"Run final QA before shipping the {project}","release":true},
+    {"id":"act-07","template":"Determine if the {project} is ready to ship","release":true},
+    {"id":"act-08","template":"Review the {project} for a production rollout","release":true},
+    {"id":"act-09","template":"Publish this {project} after checking it","release":true},
+    {"id":"act-10","template":"Give me a release decision on the {project}","release":true},
+    {"id":"ref-01","template":"Search for go/no-go review text in the {project}","release":false},
+    {"id":"ref-02","template":"Describe release readiness states in the {project}","release":false},
+    {"id":"ref-03","template":"Style the before it goes live message in the {project}","release":false},
+    {"id":"ref-04","template":"Delete obsolete released records from the {project}","release":false},
+    {"id":"ref-05","template":"Read the launch decision from the {project}","release":false},
+    {"id":"ref-06","template":"Change final QA wording in the {project}","release":false},
+    {"id":"ref-07","template":"Localize ready to ship copy in the {project}","release":false},
+    {"id":"ref-08","template":"Diagram the production rollout flow for the {project}","release":false},
+    {"id":"ref-09","template":"Disable the publish-this button in the {project}","release":false},
+    {"id":"ref-10","template":"Persist a release decision in the {project}","release":false}
+  ]
+}
