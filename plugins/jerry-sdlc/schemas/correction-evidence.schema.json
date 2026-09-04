@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Jerry SDLC completed correction evidence",
+  "type": "object",
+  "required": ["schemaVersion", "authorizationDigest", "previousRunId", "newRunId", "repository", "previousCandidateLabel", "newCandidateLabel", "previousRepositoryDigest", "newRepositoryDigest", "findingIds", "changedPaths", "correctionCycle", "completedAt"],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "authorizationDigest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "previousRunId": {"type": "string", "minLength": 1},
+    "newRunId": {"type": "string", "minLength": 1},
+    "repository": {"type": "string", "minLength": 1},
+    "previousCandidateLabel": {"type": "string", "minLength": 1},
+    "newCandidateLabel": {"type": "string", "minLength": 1},
+    "previousRepositoryDigest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "newRepositoryDigest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "findingIds": {"type": "array", "minItems": 1, "maxItems": 128, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "changedPaths": {"type": "array", "minItems": 1, "maxItems": 100000, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "correctionCycle": {"type": "integer", "minimum": 1, "maximum": 2},
+    "completedAt": {"type": "string", "format": "date-time"}
+  },
+  "additionalProperties": false
+}

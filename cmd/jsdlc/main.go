@@ -26,7 +26,7 @@ type result map[string]any
 
 func main() {
 	if len(os.Args) < 2 {
-		fail(errors.New("usage: jsdlc <adapters|packs|doctor|classify|eval-triggers|eval-quality|roles|start|status|transition|upgrade-state|rollback-state|check|recover-check|worker|team|adjudicate|verify>"))
+		fail(errors.New("usage: jsdlc <adapters|packs|doctor|classify|eval-triggers|eval-quality|roles|start|status|transition|upgrade-state|rollback-state|check|recover-check|worker|team|adjudicate|authorize-correction|finish-correction|verify>"))
 	}
 	var out result
 	var err error
@@ -65,6 +65,10 @@ func main() {
 		out, err = team(os.Args[2:])
 	case "adjudicate":
 		out, err = adjudicate(os.Args[2:])
+	case "authorize-correction":
+		out, err = authorizeCorrection(os.Args[2:])
+	case "finish-correction":
+		out, err = finishCorrection(os.Args[2:])
 	case "verify":
 		out, err = verify(os.Args[2:])
 	default:
@@ -267,6 +271,8 @@ type runState struct {
 	MigrationID           string `json:"migrationId,omitempty"`
 	MigratedAt            string `json:"migratedAt,omitempty"`
 	MigrationBackupDigest string `json:"migrationBackupDigest,omitempty"`
+	ParentRunID           string `json:"parentRunId,omitempty"`
+	CorrectionCycle       int    `json:"correctionCycle,omitempty"`
 	CreatedAt             string `json:"createdAt"`
 	UpdatedAt             string `json:"updatedAt"`
 }
@@ -615,8 +621,11 @@ func decodeRunState(b []byte) (runState, error) {
 	if s.SchemaVersion == 2 && s.ContentDigest == "" {
 		return runState{}, errors.New("state schema 2 requires a candidate content digest")
 	}
-	if s.SchemaVersion == 1 && (s.MigrationID != "" || s.MigratedAt != "" || s.MigrationBackupDigest != "") {
+	if s.SchemaVersion == 1 && (s.MigrationID != "" || s.MigratedAt != "" || s.MigrationBackupDigest != "" || s.ParentRunID != "" || s.CorrectionCycle != 0) {
 		return runState{}, errors.New("state schema 1 cannot contain migration metadata")
+	}
+	if s.CorrectionCycle < 0 || s.CorrectionCycle > 2 || (s.CorrectionCycle == 0) != (s.ParentRunID == "") || (s.ParentRunID != "" && !validMigrationID(s.ParentRunID)) {
+		return runState{}, errors.New("persisted correction lineage is invalid")
 	}
 	hasMigration := s.MigrationID != "" || s.MigratedAt != "" || s.MigrationBackupDigest != ""
 	if hasMigration && (!validMigrationID(s.MigrationID) || !validSHA256(s.MigrationBackupDigest) || parseRFC3339(s.MigratedAt) != nil) {

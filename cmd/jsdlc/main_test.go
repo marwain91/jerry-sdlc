@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -1310,6 +1311,211 @@ func TestAdjudicationValidatesFindingIdentityAndRejectionEvidence(t *testing.T) 
 	bundle.Roles = append(bundle.Roles, teamRoleEvidence{Role: "specialist-reviewer", Report: report("F-1")})
 	if err := validateAdjudicationDecisions([]adjudicationDecision{decision}, bundle, checks); err == nil {
 		t.Fatal("finding IDs duplicated across roles were accepted")
+	}
+}
+
+func TestCorrectionManifestEnforcesExactAndDirectoryScopes(t *testing.T) {
+	repo := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(repo, "src"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(repo, "src", "a.txt"), []byte("before"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	before, err := repositoryManifest(repo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(repo, "src", "a.txt"), []byte("after"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(repo, "outside.txt"), []byte("new"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	after, err := repositoryManifest(repo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	changed := changedManifestPaths(before, after)
+	if len(changed) != 2 || changed[0] != "outside.txt" || changed[1] != "src/a.txt" {
+		t.Fatalf("unexpected changed paths: %#v", changed)
+	}
+	if !pathAllowed("src/a.txt", []string{"src/"}) || pathAllowed("src/a.txt", []string{"src"}) || !pathAllowed("src", []string{"src"}) {
+		t.Fatal("allowed-path exact/prefix semantics changed")
+	}
+	for _, invalid := range []string{"", ".", "../x", "/tmp/x", "src/../x"} {
+		if validAllowedPath(invalid) {
+			t.Fatalf("invalid correction path accepted: %q", invalid)
+		}
+	}
+	external := t.TempDir()
+	if err := os.Symlink(filepath.Join(external, "target"), filepath.Join(repo, "link-file")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := repositoryManifest(repo); err == nil || !strings.Contains(err.Error(), "symlinks") {
+		t.Fatalf("file symlink was accepted: %v", err)
+	}
+	if err := os.Remove(filepath.Join(repo, "link-file")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(external, filepath.Join(repo, "link-dir")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := repositoryManifest(repo); err == nil || !strings.Contains(err.Error(), "symlinks") {
+		t.Fatalf("directory symlink was accepted: %v", err)
+	}
+	base := runState{SchemaVersion: 2, ID: "run", Workflow: "release-readiness", State: "BASELINED", Assurance: "MANAGED_SEPARATE_PASSES", Repository: "/repo", Candidate: "candidate", ContentDigest: strings.Repeat("a", 64), CreatedAt: "2026-01-01T00:00:00Z", UpdatedAt: "2026-01-01T00:00:00Z"}
+	for _, mutate := range []func(*runState){func(s *runState) { s.CorrectionCycle = 1 }, func(s *runState) { s.ParentRunID = "parent" }, func(s *runState) { s.ParentRunID, s.CorrectionCycle = "parent", 3 }} {
+		invalid := base
+		mutate(&invalid)
+		encoded, _ := json.Marshal(invalid)
+		if _, err := decodeRunState(encoded); err == nil {
+			t.Fatal("invalid correction lineage was accepted")
+		}
+	}
+}
+
+func TestAuthorizedCorrectionCreatesFreshBoundedRun(t *testing.T) {
+	t.Setenv("XDG_STATE_HOME", t.TempDir())
+	repo := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(repo, "src"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	allowedFile := filepath.Join(repo, "src", "a.txt")
+	if err := os.WriteFile(allowedFile, []byte("before"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	started, err := start([]string{"--repo", repo, "--candidate", "candidate-a"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	state := started["run"].(runState)
+	abs, key, root, err := stateLocation(repo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	report := func(role string) json.RawMessage {
+		findings, disposition := []workerFinding{}, "CLEAN"
+		if role == "qa-executor" {
+			disposition = "FINDINGS"
+			findings = []workerFinding{{ID: "F-1", Severity: "HIGH", Confidence: "HIGH", Requirement: "correct", Location: "src/a.txt", Evidence: "broken", Recommendation: "fix"}}
+		}
+		b, marshalErr := json.Marshal(workerReport{Disposition: disposition, Evidence: []string{"reviewed"}, Findings: findings, Limitations: []string{}, Domains: []domainResult{}})
+		if marshalErr != nil {
+			t.Fatal(marshalErr)
+		}
+		return b
+	}
+	roles := []teamRoleEvidence{}
+	for index, role := range []string{"qa-architect", "qa-executor", "specialist-reviewer", "independent-verifier"} {
+		raw := report(role)
+		reportDigest, digestErr := canonicalJSONDigest(raw)
+		if digestErr != nil {
+			t.Fatal(digestErr)
+		}
+		receipt := workerReceipt{SchemaVersion: 1, RunID: state.ID, Repository: abs, Candidate: state.Candidate, RepositoryDigest: state.ContentDigest, Role: role, RoleContractDigest: strings.Repeat("a", 64), WorkflowDigest: strings.Repeat("b", 64), SchemaDigest: strings.Repeat("c", 64), ThreadID: fmt.Sprintf("thread-%d", index), SandboxModeRequested: "read-only", PromptDigest: strings.Repeat("d", 64), OutputDigest: strings.Repeat("e", 64), ReportDigest: reportDigest, StartedAt: "2026-01-01T00:00:00Z", CompletedAt: "2026-01-01T00:00:01Z", Command: []string{"codex"}, ExitStatus: 0}
+		roles = append(roles, teamRoleEvidence{Role: role, Receipt: receipt, Report: raw})
+	}
+	checksBytes, _ := json.Marshal(map[string]checkEvidence{})
+	checksDigest := sha256.Sum256(checksBytes)
+	bundle := teamEvidence{SchemaVersion: 1, RunID: state.ID, Repository: abs, Candidate: state.Candidate, RepositoryDigest: state.ContentDigest, ContractSetDigest: strings.Repeat("f", 64), ChecksDigest: fmt.Sprintf("%x", checksDigest), Workflow: "release-readiness", Roles: roles, Assurance: state.Assurance, Verdict: "NOT_READY", Reason: "finding requires correction", CompletedAt: "2026-01-01T00:00:02Z"}
+	_, teamDigest, err := persistTeamEvidence(root, key, bundle)
+	if err != nil {
+		t.Fatal(err)
+	}
+	adjudication := adjudicationEvidence{SchemaVersion: 1, RunID: state.ID, Repository: abs, Candidate: state.Candidate, RepositoryDigest: state.ContentDigest, TeamDigest: teamDigest, Trust: "LOCAL_USER_AUTHORIZED", Decisions: []adjudicationDecision{{Kind: "FINDING", ID: "F-1", Disposition: "ACCEPTED", Rationale: "confirmed", EvidenceIDs: []string{}}}, RecordedAt: "2026-01-01T00:00:03Z"}
+	adjudicationBytes, _ := json.MarshalIndent(adjudication, "", "  ")
+	adjudicationHash := sha256.Sum256(adjudicationBytes)
+	adjudicationDigest := fmt.Sprintf("%x", adjudicationHash)
+	adjudicationDir := filepath.Join(root, key, "adjudications", state.ID, teamDigest)
+	if err := os.MkdirAll(adjudicationDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := writeExclusiveFile(filepath.Join(root, key, "adjudications", state.ID, teamDigest+".digest"), []byte(adjudicationDigest+"\n"), 0o400); err != nil {
+		t.Fatal(err)
+	}
+	if err := writeAtomic(filepath.Join(adjudicationDir, adjudicationDigest+".json"), adjudicationBytes); err != nil {
+		t.Fatal(err)
+	}
+	input := correctionInput{SchemaVersion: 1, TeamDigest: teamDigest, FindingIDs: []string{"F-1"}, AllowedPaths: []string{"src/a.txt"}}
+	inputBytes, _ := json.Marshal(input)
+	inputPath := filepath.Join(t.TempDir(), "correction.json")
+	if err := os.WriteFile(inputPath, inputBytes, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	authorized, err := authorizeCorrection([]string{"--repo", repo, "--candidate", "candidate-a", "--file", inputPath, "--authorized"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	recoveredAuthorization, err := authorizeCorrection([]string{"--repo", repo, "--candidate", "candidate-a", "--file", inputPath, "--authorized"})
+	if err != nil || recoveredAuthorization["recovered"] != true || recoveredAuthorization["authorizationDigest"] != authorized["authorizationDigest"] {
+		t.Fatalf("identical authorization was not recoverable: %#v %v", recoveredAuthorization, err)
+	}
+	authorizationPath := authorized["path"].(string)
+	originalAuthorization, err := os.ReadFile(authorizationPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tamperedAuthorization := authorized["authorization"].(correctionAuthorization)
+	tamperedAuthorization.Candidate = "different-candidate"
+	tamperedBytes, _ := json.MarshalIndent(tamperedAuthorization, "", "  ")
+	if err := os.Chmod(authorizationPath, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(authorizationPath, tamperedBytes, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := authorizeCorrection([]string{"--repo", repo, "--candidate", "candidate-a", "--file", inputPath, "--authorized"}); err == nil || !strings.Contains(err.Error(), "different or invalid") {
+		t.Fatalf("mismatched authorization recovered: %v", err)
+	}
+	if err := os.WriteFile(authorizationPath, originalAuthorization, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(authorizationPath, 0o400); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := finishCorrection([]string{"--repo", repo, "--candidate", "candidate-a", "--new-candidate", "candidate-b", "--authorization", authorized["authorizationDigest"].(string), "--authorized"}); err == nil || !strings.Contains(err.Error(), "no repository changes") {
+		t.Fatalf("empty correction was not refused: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(repo, "outside.txt"), []byte("no"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := finishCorrection([]string{"--repo", repo, "--candidate", "candidate-a", "--new-candidate", "candidate-b", "--authorization", authorized["authorizationDigest"].(string), "--authorized"}); err == nil || !strings.Contains(err.Error(), "unauthorized path") {
+		t.Fatalf("out-of-scope correction was not refused: %v", err)
+	}
+	if err := os.Remove(filepath.Join(repo, "outside.txt")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(allowedFile, []byte("after"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	finishCorrectionBeforeStateWriteHook = func() error { return errors.New("injected pre-state-write failure") }
+	if _, err := finishCorrection([]string{"--repo", repo, "--candidate", "candidate-a", "--new-candidate", "candidate-b", "--authorization", authorized["authorizationDigest"].(string), "--authorized"}); err == nil || !strings.Contains(err.Error(), "injected") {
+		t.Fatalf("completion fault was not injected: %v", err)
+	}
+	finishCorrectionBeforeStateWriteHook = nil
+	t.Cleanup(func() { finishCorrectionBeforeStateWriteHook = nil })
+	stillOld, _, err := readState(root, key)
+	if err != nil || stillOld.ID != state.ID {
+		t.Fatalf("failed completion advanced active state: %#v %v", stillOld, err)
+	}
+	finished, err := finishCorrection([]string{"--repo", repo, "--candidate", "candidate-a", "--new-candidate", "candidate-b", "--authorization", authorized["authorizationDigest"].(string), "--authorized"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	newState := finished["run"].(runState)
+	if newState.ParentRunID != state.ID || newState.CorrectionCycle != 1 || newState.Candidate != "candidate-b" || newState.State != "BASELINED" || finished["requiresFreshChecksAndTeam"] != true {
+		t.Fatalf("correction did not create a fresh bound run: %#v", finished)
+	}
+	if _, err := finishCorrection([]string{"--repo", repo, "--candidate", "candidate-a", "--new-candidate", "candidate-b", "--authorization", authorized["authorizationDigest"].(string), "--authorized"}); err == nil {
+		t.Fatal("completed correction authorization was replayed")
+	}
+	newState.CorrectionCycle, newState.ParentRunID = 2, state.ID
+	if err := writeState(filepath.Join(root, key, "active.json"), newState); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := authorizeCorrection([]string{"--repo", repo, "--candidate", "candidate-b", "--file", inputPath, "--authorized"}); err == nil || !strings.Contains(err.Error(), "maximum") {
+		t.Fatalf("third correction cycle was not refused: %v", err)
 	}
 }
 

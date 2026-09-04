@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Jerry SDLC correction authorization input",
+  "type": "object",
+  "required": ["schemaVersion", "teamEvidenceDigest", "findingIds", "allowedPaths"],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "teamEvidenceDigest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "findingIds": {"type": "array", "minItems": 1, "maxItems": 128, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "allowedPaths": {"type": "array", "minItems": 1, "maxItems": 256, "uniqueItems": true, "items": {"type": "string", "minLength": 1}}
+  },
+  "additionalProperties": false
+}
