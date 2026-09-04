@@ -10,7 +10,7 @@ Select the smallest workflow that provides credible evidence for the requested o
 ## Start
 
 1. Read repository instructions and inspect relevant project structure without changing it.
-2. Run `../../scripts/jsdlc doctor` relative to this skill directory. The wrapper verifies the bundled binary. Report its assurance outcome; never imply stronger isolation than it proves.
+2. Run `../../scripts/jsdlc doctor` relative to this skill directory. The wrapper verifies the bundled binary. Phase 1 does not yet accept independent-worker attestations, so report the returned assurance outcome and never upgrade it based on judgment alone.
 3. Classify the request and changed surface. Prefer the higher risk between deterministic triggers and reasoned judgment.
 4. Briefly tell the user the workflow, risk, assurance mode, and roles being used.
 
@@ -37,4 +37,4 @@ Read [references/control-contract.md](references/control-contract.md) before any
 
 ## Completion
 
-Report the exact candidate, checks executed, findings and dispositions, assurance mode, limitations, and one terminal status: `READY`, `NOT_READY`, `INCONCLUSIVE`, `CANCELLED`, or `BLOCKED`.
+Report the exact candidate, checks executed, findings and dispositions, assurance mode, limitations, and one terminal status. In Phase 1, never report `READY`: even a completed review ends `INCONCLUSIVE` because evidence-backed approval is not implemented. Only a future successful `jsdlc verify` contract may authorize `READY`. The currently valid terminal statuses are `NOT_READY`, `INCONCLUSIVE`, `CANCELLED`, and `BLOCKED`.

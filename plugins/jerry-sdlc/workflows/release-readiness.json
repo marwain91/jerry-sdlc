@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "name": "release-readiness",
-  "terminalStates": ["READY", "NOT_READY", "INCONCLUSIVE", "CANCELLED", "BLOCKED"],
+  "terminalStates": ["NOT_READY", "INCONCLUSIVE", "CANCELLED", "BLOCKED"],
   "roles": ["orchestrator", "qa-architect", "qa-executor", "specialist-reviewer", "independent-verifier"],
   "states": ["BASELINED", "STRATEGY_READY", "EVIDENCE_COLLECTED", "REVIEWED", "ADJUDICATED", "VERIFIED"],
   "requiredDomains": ["functional", "security", "supply-chain", "api-compatibility", "data-migration", "reliability", "observability", "documentation", "candidate-identity"],

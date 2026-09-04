@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -11,6 +12,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -20,13 +22,13 @@ type result map[string]any
 
 func main() {
 	if len(os.Args) < 2 {
-		fail(errors.New("usage: jsdlc <doctor|classify|roles|start|status>"))
+		fail(errors.New("usage: jsdlc <doctor|classify|roles|start|status|transition|verify>"))
 	}
 	var out result
 	var err error
 	switch os.Args[1] {
 	case "doctor":
-		out, err = doctor()
+		out, err = doctor(os.Args[2:])
 	case "classify":
 		out, err = classify(os.Args[2:])
 	case "roles":
@@ -35,6 +37,10 @@ func main() {
 		out, err = start(os.Args[2:])
 	case "status":
 		out, err = status(os.Args[2:])
+	case "transition":
+		out, err = transition(os.Args[2:])
+	case "verify":
+		out, err = verify(os.Args[2:])
 	default:
 		err = fmt.Errorf("unknown command %q", os.Args[1])
 	}
@@ -71,7 +77,11 @@ func stateRoot() (string, error) {
 	return filepath.Join(home, ".local", "state", "jsdlc"), nil
 }
 
-func doctor() (result, error) {
+func doctor(args []string) (result, error) {
+	fs := flag.NewFlagSet("doctor", flag.ContinueOnError)
+	if err := fs.Parse(args); err != nil {
+		return nil, err
+	}
 	root, err := stateRoot()
 	if err != nil {
 		return nil, err
@@ -84,7 +94,7 @@ func doctor() (result, error) {
 		return result{"version": version, "outcome": "ADVISORY_ONLY", "statePath": root, "reason": err.Error()}, nil
 	}
 	_ = os.Remove(probe)
-	return result{"version": version, "outcome": "MANAGED_SEPARATE_PASSES", "statePath": root, "platform": runtime.GOOS + "/" + runtime.GOARCH, "independentWorkers": false, "note": "runtime isolation must be confirmed by the Codex adapter"}, nil
+	return result{"version": version, "outcome": "MANAGED_SEPARATE_PASSES", "statePath": root, "platform": runtime.GOOS + "/" + runtime.GOARCH, "independentWorkers": false, "readOnlyIsolation": false, "reason": "independent adapter attestation is not implemented in Phase 1"}, nil
 }
 
 func classify(args []string) (result, error) {
@@ -141,58 +151,307 @@ func start(args []string) (result, error) {
 	repo := fs.String("repo", ".", "repository path")
 	wf := fs.String("workflow", "release-readiness", "workflow")
 	candidate := fs.String("candidate", "working-tree", "candidate digest")
+	assurance := fs.String("assurance", "MANAGED_SEPARATE_PASSES", "assurance established by doctor")
 	if err := fs.Parse(args); err != nil {
 		return nil, err
 	}
-	abs, err := filepath.Abs(*repo)
+	abs, key, root, err := stateLocation(*repo)
 	if err != nil {
 		return nil, err
 	}
-	h := sha256.Sum256([]byte(abs))
-	key := hex.EncodeToString(h[:8])
 	now := time.Now().UTC().Format(time.RFC3339)
-	id := fmt.Sprintf("%s-%d", key, time.Now().Unix())
-	s := runState{1, id, *wf, "BASELINED", "MANAGED_SEPARATE_PASSES", abs, *candidate, now, now}
-	root, err := stateRoot()
+	id, err := newRunID(key)
 	if err != nil {
 		return nil, err
 	}
+	if !validAssurance(*assurance) {
+		return nil, fmt.Errorf("invalid assurance %q", *assurance)
+	}
+	if *assurance == "MANAGED_INDEPENDENT" {
+		return nil, errors.New("MANAGED_INDEPENDENT requires adapter attestation, which is not implemented")
+	}
+	s := runState{1, id, *wf, "BASELINED", *assurance, abs, *candidate, now, now}
 	dir := filepath.Join(root, key)
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return nil, err
 	}
-	b, _ := json.MarshalIndent(s, "", "  ")
-	if err := os.WriteFile(filepath.Join(dir, "active.json"), b, 0o600); err != nil {
+	path := filepath.Join(dir, "active.json")
+	unlock, err := acquireLock(path)
+	if err != nil {
 		return nil, err
 	}
-	return result{"run": s, "path": filepath.Join(dir, "active.json")}, nil
+	defer unlock()
+	if _, err := os.Stat(path); err == nil {
+		previous, _, readErr := readState(root, key)
+		if readErr != nil {
+			return nil, fmt.Errorf("cannot safely inspect existing run: %w", readErr)
+		}
+		if !isTerminalState(previous.State) {
+			return nil, errors.New("an active run already exists; inspect it with status instead of replacing it")
+		}
+		if err := archiveState(dir, previous); err != nil {
+			return nil, fmt.Errorf("cannot archive terminal run: %w", err)
+		}
+	} else if !os.IsNotExist(err) {
+		return nil, err
+	}
+	if err := writeState(path, s); err != nil {
+		return nil, err
+	}
+	return result{"run": s, "path": path}, nil
+}
+
+func newRunID(key string) (string, error) {
+	random := make([]byte, 8)
+	if _, err := rand.Read(random); err != nil {
+		return "", fmt.Errorf("generate run ID: %w", err)
+	}
+	return fmt.Sprintf("%s-%d-%s", key, time.Now().UnixNano(), hex.EncodeToString(random)), nil
 }
 
 func status(args []string) (result, error) {
 	fs := flag.NewFlagSet("status", flag.ContinueOnError)
 	repo := fs.String("repo", ".", "repository path")
+	candidate := fs.String("candidate", "", "current candidate digest")
 	if err := fs.Parse(args); err != nil {
 		return nil, err
 	}
-	abs, err := filepath.Abs(*repo)
+	_, key, root, err := stateLocation(*repo)
 	if err != nil {
 		return nil, err
 	}
+	s, path, err := readState(root, key)
+	if err != nil {
+		return nil, err
+	}
+	unlock, err := acquireLock(path)
+	if err != nil {
+		return nil, err
+	}
+	defer unlock()
+	s, _, err = readState(root, key)
+	if err != nil {
+		return nil, err
+	}
+	stale := *candidate != "" && *candidate != s.Candidate
+	return result{"run": s, "path": path, "stale": stale}, nil
+}
+
+var allowedTransitions = map[string][]string{
+	"BASELINED":          {"STRATEGY_READY", "CANCELLED", "BLOCKED"},
+	"STRATEGY_READY":     {"EVIDENCE_COLLECTED", "CANCELLED", "BLOCKED"},
+	"EVIDENCE_COLLECTED": {"REVIEWED", "INCONCLUSIVE", "NOT_READY", "CANCELLED", "BLOCKED"},
+	"REVIEWED":           {"ADJUDICATED", "INCONCLUSIVE", "NOT_READY", "CANCELLED", "BLOCKED"},
+	"ADJUDICATED":        {"VERIFIED", "INCONCLUSIVE", "NOT_READY", "CANCELLED", "BLOCKED"},
+	"VERIFIED":           {"NOT_READY", "INCONCLUSIVE"},
+}
+
+func transition(args []string) (result, error) {
+	fs := flag.NewFlagSet("transition", flag.ContinueOnError)
+	repo := fs.String("repo", ".", "repository path")
+	to := fs.String("to", "", "target state")
+	candidate := fs.String("candidate", "", "current candidate digest")
+	if err := fs.Parse(args); err != nil {
+		return nil, err
+	}
+	if *to == "" || *candidate == "" {
+		return nil, errors.New("--to and --candidate are required")
+	}
+	abs, key, root, err := stateLocation(*repo)
+	if err != nil {
+		return nil, err
+	}
+	path := filepath.Join(root, key, "active.json")
+	unlock, err := acquireLock(path)
+	if err != nil {
+		return nil, err
+	}
+	defer unlock()
+	s, _, err := readState(root, key)
+	if err != nil {
+		return nil, err
+	}
+	if s.Repository != abs {
+		return nil, errors.New("repository identity mismatch")
+	}
+	if s.Candidate != *candidate {
+		return nil, fmt.Errorf("candidate drift: recorded %q, current %q", s.Candidate, *candidate)
+	}
+	if !contains(allowedTransitions[s.State], *to) {
+		return nil, fmt.Errorf("forbidden transition %s -> %s", s.State, *to)
+	}
+	s.State = *to
+	s.UpdatedAt = time.Now().UTC().Format(time.RFC3339)
+	if err := writeState(path, s); err != nil {
+		return nil, err
+	}
+	return result{"run": s}, nil
+}
+
+func verify(args []string) (result, error) {
+	fs := flag.NewFlagSet("verify", flag.ContinueOnError)
+	repo := fs.String("repo", ".", "repository path")
+	candidate := fs.String("candidate", "", "current candidate digest")
+	if err := fs.Parse(args); err != nil {
+		return nil, err
+	}
+	abs, key, root, err := stateLocation(*repo)
+	if err != nil {
+		return nil, err
+	}
+	s, _, err := readState(root, key)
+	if err != nil {
+		return nil, err
+	}
+	if s.Repository != abs || *candidate == "" || s.Candidate != *candidate {
+		return result{"verdict": "BLOCKED", "reason": "candidate drift or identity mismatch", "run": s}, nil
+	}
+	return result{"verdict": "INCONCLUSIVE", "reason": "Phase 1 does not implement evidence-backed READY verdicts", "run": s}, nil
+}
+
+func stateLocation(repo string) (string, string, string, error) {
+	abs, err := filepath.Abs(repo)
+	if err != nil {
+		return "", "", "", err
+	}
+	canonical, evalErr := filepath.EvalSymlinks(abs)
+	if evalErr != nil {
+		return "", "", "", fmt.Errorf("cannot canonicalize repository: %w", evalErr)
+	}
+	abs = canonical
 	h := sha256.Sum256([]byte(abs))
 	key := hex.EncodeToString(h[:8])
 	root, err := stateRoot()
 	if err != nil {
-		return nil, err
+		return "", "", "", err
 	}
-	b, err := os.ReadFile(filepath.Join(root, key, "active.json"))
+	return abs, key, root, nil
+}
+
+func readState(root, key string) (runState, string, error) {
+	path := filepath.Join(root, key, "active.json")
+	b, err := os.ReadFile(path)
 	if err != nil {
-		return nil, err
+		return runState{}, path, err
 	}
 	var s runState
 	if err := json.Unmarshal(b, &s); err != nil {
+		return runState{}, path, err
+	}
+	if s.SchemaVersion != 1 {
+		return runState{}, path, fmt.Errorf("unsupported state schema %d", s.SchemaVersion)
+	}
+	if !validAssurance(s.Assurance) {
+		return runState{}, path, fmt.Errorf("invalid persisted assurance %q", s.Assurance)
+	}
+	if s.Assurance == "MANAGED_INDEPENDENT" {
+		return runState{}, path, errors.New("persisted MANAGED_INDEPENDENT lacks adapter attestation")
+	}
+	if s.ID == "" || s.Workflow == "" || s.State == "" || s.Repository == "" || s.Candidate == "" {
+		return runState{}, path, errors.New("persisted state is missing required fields")
+	}
+	if !validPersistedState(s.State) {
+		return runState{}, path, fmt.Errorf("invalid persisted state %q", s.State)
+	}
+	return s, path, nil
+}
+
+func validPersistedState(state string) bool {
+	if _, ok := allowedTransitions[state]; ok {
+		return true
+	}
+	return isTerminalState(state)
+}
+
+func isTerminalState(state string) bool {
+	return state == "NOT_READY" || state == "INCONCLUSIVE" || state == "CANCELLED" || state == "BLOCKED"
+}
+
+func archiveState(dir string, s runState) error {
+	b, err := json.MarshalIndent(s, "", "  ")
+	if err != nil {
+		return err
+	}
+	historyDir := filepath.Join(dir, "history")
+	if err := os.MkdirAll(historyDir, 0o700); err != nil {
+		return err
+	}
+	digest := sha256.Sum256(b)
+	return writeAtomic(filepath.Join(historyDir, hex.EncodeToString(digest[:])+".json"), b)
+}
+
+func writeState(path string, s runState) error {
+	b, err := json.MarshalIndent(s, "", "  ")
+	if err != nil {
+		return err
+	}
+	if _, err := os.Stat(path); err == nil {
+		old, readErr := os.ReadFile(path)
+		if readErr != nil {
+			return readErr
+		}
+		if err := writeAtomic(path+".bak", old); err != nil {
+			return err
+		}
+	}
+	return writeAtomic(path, b)
+}
+
+func writeAtomic(path string, b []byte) error {
+	tmpFile, err := os.CreateTemp(filepath.Dir(path), ".jsdlc-*.tmp")
+	if err != nil {
+		return err
+	}
+	tmp := tmpFile.Name()
+	defer os.Remove(tmp)
+	if err := tmpFile.Chmod(0o600); err != nil {
+		tmpFile.Close()
+		return err
+	}
+	if _, err := tmpFile.Write(b); err != nil {
+		tmpFile.Close()
+		return err
+	}
+	if err := tmpFile.Sync(); err != nil {
+		tmpFile.Close()
+		return err
+	}
+	if err := tmpFile.Close(); err != nil {
+		return err
+	}
+	if err := os.Rename(tmp, path); err != nil {
+		return err
+	}
+	dir, err := os.Open(filepath.Dir(path))
+	if err != nil {
+		return err
+	}
+	defer dir.Close()
+	return dir.Sync()
+}
+
+func acquireLock(path string) (func(), error) {
+	lock := path + ".lock"
+	f, err := os.OpenFile(lock, os.O_CREATE|os.O_RDWR, 0o600)
+	if err != nil {
 		return nil, err
 	}
-	return result{"run": s}, nil
+	if err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
+		f.Close()
+		return nil, fmt.Errorf("state is locked: %w", err)
+	}
+	return func() { _ = syscall.Flock(int(f.Fd()), syscall.LOCK_UN); _ = f.Close() }, nil
+}
+func contains(values []string, value string) bool {
+	for _, v := range values {
+		if v == value {
+			return true
+		}
+	}
+	return false
+}
+func validAssurance(v string) bool {
+	return contains([]string{"MANAGED_INDEPENDENT", "MANAGED_SEPARATE_PASSES", "ADVISORY_ONLY"}, v)
 }
 
 func hasAny(s string, terms ...string) bool {
