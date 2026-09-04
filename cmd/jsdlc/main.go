@@ -207,15 +207,23 @@ func classify(args []string) (result, error) {
 }
 
 func releaseIntent(text string) bool {
-	nonAction := hasAny(text, "do not release", "don't release", "never release", "cannot ship", "can't ship", "release process", "release notes", "what was published", "summarize the tag", "compare publishing", "old release tags", "list release tags", "explain release readiness", "document the launch decision", "preflight check history", "labelled ready to ship")
-	strong := hasAny(text, "release readiness", "ready to ship", "before publishing", "before deploying", "can go live", "preflight check", "launch decision", "release candidate") || (strings.Contains(text, "prepare") && strings.Contains(text, "release"))
+	text = strings.TrimSpace(text)
+	nonActionPrefix := []string{"add ", "build ", "compare ", "create ", "deserialize ", "display ", "document ", "explain ", "fix ", "handle ", "investigate ", "list ", "mock ", "parse ", "refactor ", "rename ", "render ", "show ", "store ", "summarize ", "test ", "translate ", "update ", "what ", "why ", "write "}
+	nonAction := hasAny(text, "do not release", "don't release", "never release", "cannot ship", "can't ship")
+	for _, prefix := range nonActionPrefix {
+		if strings.HasPrefix(text, prefix) {
+			nonAction = true
+			break
+		}
+	}
+	strong := hasAny(text, "release readiness", "ready to ship", "before publishing", "before deploying", "before shipping", "before it goes live", "can go live", "go live today", "preflight check", "launch decision", "final launch qa", "go or no-go review", "go/no-go review", "production rollout", "release candidate", "release decision") || (strings.Contains(text, "prepare") && hasAny(text, "release", "published"))
 	if nonAction {
 		return false
 	}
 	if strong {
 		return true
 	}
-	return hasAny(text, "release the ", "ship the ", "publish the ", "tag the ")
+	return hasAny(text, "release the ", "ship the ", "publish the ", "tag the ", "publish this ", "publish now")
 }
 
 func roles(args []string) (result, error) {
