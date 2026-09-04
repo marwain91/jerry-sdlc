@@ -39,4 +39,4 @@ Read [references/control-contract.md](references/control-contract.md) before any
 
 ## Completion
 
-Report the exact candidate, checks executed, findings and dispositions, assurance mode, limitations, and one terminal status. In Phase 1, never report `READY`: even a completed review ends `INCONCLUSIVE` because evidence-backed approval is not implemented. Only a future successful `jsdlc verify` contract may authorize `READY`. The currently valid terminal statuses are `NOT_READY`, `INCONCLUSIVE`, `CANCELLED`, and `BLOCKED`.
+Report the exact candidate, checks executed, findings and dispositions, assurance mode, limitations, and one terminal status. Accept a `READY` result only from the live `team` aggregation when all four required roles are clean and the Independent Verifier supplies nonblank `PASS` evidence for every release-risk domain. `NOT_APPLICABLE` remains `INCONCLUSIVE` until adjudication exists. Any finding produces `NOT_READY`; missing or blocked evidence produces `INCONCLUSIVE`. A readiness verdict never authorizes deployment, publishing, tagging, or release.

@@ -44,7 +44,16 @@ type workerReport struct {
 	Evidence    []string        `json:"evidence"`
 	Findings    []workerFinding `json:"findings"`
 	Limitations []string        `json:"limitations"`
+	Domains     []domainResult  `json:"domains"`
 }
+
+type domainResult struct {
+	Domain   string `json:"domain"`
+	Status   string `json:"status"`
+	Evidence string `json:"evidence"`
+}
+
+var requiredReleaseDomains = []string{"functional", "security", "supply-chain", "api-compatibility", "data-migration", "reliability", "observability", "documentation", "candidate-identity"}
 
 type workerFinding struct {
 	ID             string `json:"id"`
@@ -271,7 +280,53 @@ func team(args []string) (result, error) {
 	if stateErr != nil || current.ID != s.ID || current.Candidate != s.Candidate || isTerminalState(current.State) {
 		return nil, errors.New("active run changed during team execution")
 	}
-	return result{"runId": s.ID, "candidateLabel": s.Candidate, "repositoryDigest": frozen, "contractSetDigest": contracts.setDigest, "workflow": s.Workflow, "roles": outputs, "assurance": "MANAGED_SEPARATE_PASSES", "workerObservation": "OBSERVED_DISTINCT_SUBPROCESSES", "scope": "THIS_COMMAND_ONLY", "persistence": "RECEIPTS_ARE_EVIDENCE_ONLY", "verdict": "INCONCLUSIVE", "reason": "the CLI stream cannot attest worker identity; Phase 1 does not issue READY"}, nil
+	verdict, verdictReason := aggregateTeamVerdict(outputs)
+	return result{"runId": s.ID, "candidateLabel": s.Candidate, "repositoryDigest": frozen, "contractSetDigest": contracts.setDigest, "workflow": s.Workflow, "roles": outputs, "assurance": "MANAGED_SEPARATE_PASSES", "workerObservation": "OBSERVED_DISTINCT_SUBPROCESSES", "scope": "THIS_COMMAND_ONLY", "persistence": "RECEIPTS_ARE_EVIDENCE_ONLY", "verdict": verdict, "reason": verdictReason}, nil
+}
+
+func aggregateTeamVerdict(outputs []result) (string, string) {
+	expectedRoles := []string{"qa-architect", "qa-executor", "specialist-reviewer", "independent-verifier"}
+	seenRoles := map[string]bool{}
+	verifierPass := map[string]bool{}
+	for _, output := range outputs {
+		role, ok := output["role"].(string)
+		if !ok || !contains(expectedRoles, role) || seenRoles[role] {
+			return "INCONCLUSIVE", "required review roles are missing, duplicated, or invalid"
+		}
+		seenRoles[role] = true
+		var report workerReport
+		if err := json.Unmarshal(output["report"].(json.RawMessage), &report); err != nil {
+			return "INCONCLUSIVE", "a worker report could not be aggregated"
+		}
+		if report.Disposition == "FINDINGS" {
+			return "NOT_READY", "one or more review workers reported findings"
+		}
+		if report.Disposition == "BLOCKED" || report.Disposition == "INCONCLUSIVE" {
+			return "INCONCLUSIVE", "one or more review workers could not reach a conclusion"
+		}
+		for _, domain := range report.Domains {
+			if domain.Status == "BLOCKED" {
+				return "INCONCLUSIVE", "an applicable release-risk domain is blocked"
+			}
+			if domain.Status == "NOT_APPLICABLE" {
+				return "INCONCLUSIVE", "NOT_APPLICABLE requires adjudication not implemented in this phase"
+			}
+			if role == "independent-verifier" && domain.Status == "PASS" {
+				verifierPass[domain.Domain] = true
+			}
+		}
+	}
+	for _, role := range expectedRoles {
+		if !seenRoles[role] {
+			return "INCONCLUSIVE", "required review roles are missing, duplicated, or invalid"
+		}
+	}
+	for _, domain := range requiredReleaseDomains {
+		if !verifierPass[domain] {
+			return "INCONCLUSIVE", "independent verifier did not confirm every required release-risk domain"
+		}
+	}
+	return "READY", "all required roles were clean and the independent verifier confirmed every release-risk domain"
 }
 
 func loadContractSnapshot(root, workflow string, roles []string) (*workerContractSnapshot, func(), error) {
@@ -382,8 +437,8 @@ func validateWorkerReport(message string) error {
 	if err := dec.Decode(&trailing); err != io.EOF {
 		return errors.New("worker result contains trailing JSON")
 	}
-	if !contains([]string{"CLEAN", "FINDINGS", "INCONCLUSIVE", "BLOCKED"}, report.Disposition) || report.Evidence == nil || report.Findings == nil || report.Limitations == nil {
-		return errors.New("missing or invalid disposition, evidence, findings, or limitations")
+	if !contains([]string{"CLEAN", "FINDINGS", "INCONCLUSIVE", "BLOCKED"}, report.Disposition) || report.Evidence == nil || report.Findings == nil || report.Limitations == nil || report.Domains == nil {
+		return errors.New("missing or invalid disposition, evidence, findings, limitations, or domains")
 	}
 	if report.Disposition == "CLEAN" && (len(report.Evidence) == 0 || len(report.Findings) != 0) {
 		return errors.New("CLEAN requires evidence and no findings")
@@ -398,6 +453,13 @@ func validateWorkerReport(message string) error {
 		if strings.TrimSpace(value) == "" {
 			return errors.New("evidence and limitations must not contain blank entries")
 		}
+	}
+	seenDomains := map[string]bool{}
+	for _, domain := range report.Domains {
+		if !contains(requiredReleaseDomains, domain.Domain) || !contains([]string{"PASS", "NOT_APPLICABLE", "BLOCKED"}, domain.Status) || strings.TrimSpace(domain.Evidence) == "" || seenDomains[domain.Domain] {
+			return errors.New("domain result is invalid, blank, or duplicated")
+		}
+		seenDomains[domain.Domain] = true
 	}
 	for _, finding := range report.Findings {
 		if finding.ID == "" || finding.Requirement == "" || finding.Location == "" || finding.Evidence == "" || finding.Recommendation == "" || !contains([]string{"CRITICAL", "HIGH", "MEDIUM", "LOW"}, finding.Severity) || !contains([]string{"HIGH", "MEDIUM", "LOW"}, finding.Confidence) {

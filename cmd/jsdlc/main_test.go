@@ -150,7 +150,7 @@ if [ "$1" = "--version" ]; then
   exit 0
 fi
 cat >/dev/null
-printf '%s\n' '{"type":"thread.started","thread_id":"thread-worker-a"}' '{"type":"item.completed","item":{"type":"agent_message","text":"{\"disposition\":\"CLEAN\",\"evidence\":[\"checked\"],\"findings\":[],\"limitations\":[]}"}}'
+printf '%s\n' '{"type":"thread.started","thread_id":"thread-worker-a"}' '{"type":"item.completed","item":{"type":"agent_message","text":"{\"disposition\":\"CLEAN\",\"evidence\":[\"checked\"],\"findings\":[],\"limitations\":[],\"domains\":[]}"}}'
 `
 	if err := os.WriteFile(fakeCodex, []byte(script), 0o700); err != nil {
 		t.Fatal(err)
@@ -212,7 +212,7 @@ func TestTeamRunsDistinctFrozenWorkers(t *testing.T) {
 if [ "$1" = "--version" ]; then echo "codex-test 1.0"; exit 0; fi
 while IFS= read -r line; do :; done
 id=thread-$$
-printf '%s\n' "{\"type\":\"thread.started\",\"thread_id\":\"$id\"}" '{"type":"item.completed","item":{"type":"agent_message","text":"{\"disposition\":\"CLEAN\",\"evidence\":[\"checked\"],\"findings\":[],\"limitations\":[]}"}}'
+printf '%s\n' "{\"type\":\"thread.started\",\"thread_id\":\"$id\"}" '{"type":"item.completed","item":{"type":"agent_message","text":"{\"disposition\":\"CLEAN\",\"evidence\":[\"checked\"],\"findings\":[],\"limitations\":[],\"domains\":[]}"}}'
 `
 	if err := os.WriteFile(fakeCodex, []byte(script), 0o700); err != nil {
 		t.Fatal(err)
@@ -263,11 +263,11 @@ func TestRoleWorkerRejectsDifferentExpectedRun(t *testing.T) {
 }
 
 func TestWorkerReportRequiresCompleteFindingContract(t *testing.T) {
-	valid := `{"disposition":"FINDINGS","evidence":[],"findings":[{"id":"F-1","severity":"HIGH","confidence":"HIGH","requirement":"No traversal","location":"main.go:1","evidence":"observed","recommendation":"validate"}],"limitations":[]}`
+	valid := `{"disposition":"FINDINGS","evidence":[],"findings":[{"id":"F-1","severity":"HIGH","confidence":"HIGH","requirement":"No traversal","location":"main.go:1","evidence":"observed","recommendation":"validate"}],"limitations":[],"domains":[]}`
 	if err := validateWorkerReport(valid); err != nil {
 		t.Fatal(err)
 	}
-	missingConfidence := `{"disposition":"FINDINGS","evidence":[],"findings":[{"id":"F-1","severity":"HIGH","requirement":"No traversal","location":"main.go:1","evidence":"observed","recommendation":"validate"}],"limitations":[]}`
+	missingConfidence := `{"disposition":"FINDINGS","evidence":[],"findings":[{"id":"F-1","severity":"HIGH","requirement":"No traversal","location":"main.go:1","evidence":"observed","recommendation":"validate"}],"limitations":[],"domains":[]}`
 	if err := validateWorkerReport(missingConfidence); err == nil {
 		t.Fatal("finding without confidence must be rejected")
 	}
@@ -285,6 +285,78 @@ func TestWorkerReportRequiresSemanticDisposition(t *testing.T) {
 	for _, report := range invalid {
 		if err := validateWorkerReport(report); err == nil {
 			t.Fatalf("accepted inconsistent report: %s", report)
+		}
+	}
+}
+
+func TestAggregateTeamVerdictRequiresEveryDomain(t *testing.T) {
+	domains := make([]domainResult, 0, len(requiredReleaseDomains))
+	for _, domain := range requiredReleaseDomains {
+		domains = append(domains, domainResult{Domain: domain, Status: "PASS", Evidence: "verified"})
+	}
+	report, err := json.Marshal(workerReport{Disposition: "CLEAN", Evidence: []string{"checked"}, Findings: []workerFinding{}, Limitations: []string{}, Domains: domains})
+	if err != nil {
+		t.Fatal(err)
+	}
+	cleanEmpty, err := json.Marshal(workerReport{Disposition: "CLEAN", Evidence: []string{"checked"}, Findings: []workerFinding{}, Limitations: []string{}, Domains: []domainResult{}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	outputs := []result{{"role": "qa-architect", "report": json.RawMessage(cleanEmpty)}, {"role": "qa-executor", "report": json.RawMessage(cleanEmpty)}, {"role": "specialist-reviewer", "report": json.RawMessage(cleanEmpty)}, {"role": "independent-verifier", "report": json.RawMessage(report)}}
+	verdict, _ := aggregateTeamVerdict(outputs)
+	if verdict != "READY" {
+		t.Fatalf("expected READY, got %s", verdict)
+	}
+	report, err = json.Marshal(workerReport{Disposition: "CLEAN", Evidence: []string{"checked"}, Findings: []workerFinding{}, Limitations: []string{}, Domains: domains[:len(domains)-1]})
+	if err != nil {
+		t.Fatal(err)
+	}
+	outputs[3]["report"] = json.RawMessage(report)
+	verdict, _ = aggregateTeamVerdict(outputs)
+	if verdict != "INCONCLUSIVE" {
+		t.Fatalf("missing domain must be inconclusive, got %s", verdict)
+	}
+	verdict, _ = aggregateTeamVerdict(outputs[:3])
+	if verdict != "INCONCLUSIVE" {
+		t.Fatalf("missing role must be inconclusive, got %s", verdict)
+	}
+}
+
+func TestAggregateTeamVerdictFailsClosed(t *testing.T) {
+	clean := func(disposition string, domains []domainResult) json.RawMessage {
+		findings := []workerFinding{}
+		if disposition == "FINDINGS" {
+			findings = append(findings, workerFinding{ID: "F-1", Severity: "HIGH", Confidence: "HIGH", Requirement: "safe", Location: "x", Evidence: "broken", Recommendation: "fix"})
+		}
+		b, err := json.Marshal(workerReport{Disposition: disposition, Evidence: []string{"checked"}, Findings: findings, Limitations: []string{}, Domains: domains})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return b
+	}
+	passes := make([]domainResult, 0, len(requiredReleaseDomains))
+	for _, domain := range requiredReleaseDomains {
+		passes = append(passes, domainResult{Domain: domain, Status: "PASS", Evidence: "verified"})
+	}
+	base := func() []result {
+		return []result{{"role": "qa-architect", "report": clean("CLEAN", nil)}, {"role": "qa-executor", "report": clean("CLEAN", nil)}, {"role": "specialist-reviewer", "report": clean("CLEAN", nil)}, {"role": "independent-verifier", "report": clean("CLEAN", passes)}}
+	}
+	duplicate := base()
+	duplicate[3]["role"] = "specialist-reviewer"
+	finding := base()
+	finding[1] = result{"role": "qa-executor", "report": clean("FINDINGS", nil)}
+	blocked := base()
+	blocked[1] = result{"role": "qa-executor", "report": clean("BLOCKED", nil)}
+	naDomains := append([]domainResult{}, passes...)
+	naDomains[0] = domainResult{Domain: requiredReleaseDomains[0], Status: "NOT_APPLICABLE", Evidence: "claimed n/a"}
+	notApplicable := base()
+	notApplicable[3] = result{"role": "independent-verifier", "report": clean("CLEAN", naDomains)}
+	for name, tc := range map[string]struct {
+		outputs []result
+		want    string
+	}{"duplicate": {duplicate, "INCONCLUSIVE"}, "finding": {finding, "NOT_READY"}, "blocked": {blocked, "INCONCLUSIVE"}, "not-applicable": {notApplicable, "INCONCLUSIVE"}} {
+		if got, _ := aggregateTeamVerdict(tc.outputs); got != tc.want {
+			t.Fatalf("%s: got %s want %s", name, got, tc.want)
 		}
 	}
 }
