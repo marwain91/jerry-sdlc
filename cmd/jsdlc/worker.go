@@ -33,6 +33,7 @@ type workerReceipt struct {
 	CodexVersion         string   `json:"codexVersion"`
 	PromptDigest         string   `json:"promptDigest"`
 	OutputDigest         string   `json:"outputDigest"`
+	ReportDigest         string   `json:"reportDigest"`
 	StartedAt            string   `json:"startedAt"`
 	CompletedAt          string   `json:"completedAt"`
 	Command              []string `json:"command"`
@@ -48,9 +49,10 @@ type workerReport struct {
 }
 
 type domainResult struct {
-	Domain   string `json:"domain"`
-	Status   string `json:"status"`
-	Evidence string `json:"evidence"`
+	Domain      string   `json:"domain"`
+	Status      string   `json:"status"`
+	Evidence    string   `json:"evidence"`
+	EvidenceIDs []string `json:"evidenceIds"`
 }
 
 var requiredReleaseDomains = []string{"functional", "security", "supply-chain", "api-compatibility", "data-migration", "reliability", "observability", "documentation", "candidate-identity"}
@@ -69,6 +71,28 @@ type executedWorker struct {
 	receipt workerReceipt
 	report  json.RawMessage
 	path    string
+}
+
+type teamRoleEvidence struct {
+	Role    string          `json:"role"`
+	Receipt workerReceipt   `json:"receipt"`
+	Report  json.RawMessage `json:"report"`
+}
+
+type teamEvidence struct {
+	SchemaVersion     int                `json:"schemaVersion"`
+	RunID             string             `json:"runId"`
+	Repository        string             `json:"repository"`
+	Candidate         string             `json:"candidateLabel"`
+	RepositoryDigest  string             `json:"repositoryDigest"`
+	ContractSetDigest string             `json:"contractSetDigest"`
+	ChecksDigest      string             `json:"checksDigest"`
+	Workflow          string             `json:"workflow"`
+	Roles             []teamRoleEvidence `json:"roles"`
+	Assurance         string             `json:"assurance"`
+	Verdict           string             `json:"verdict"`
+	Reason            string             `json:"reason"`
+	CompletedAt       string             `json:"completedAt"`
 }
 
 type workerContractSnapshot struct {
@@ -185,10 +209,14 @@ func runRoleWorker(repo, candidate, expectedRunID, role string, promptBytes []by
 	}
 	promptHash := sha256.Sum256([]byte(assignment))
 	outputHash := sha256.Sum256([]byte(transcript))
+	reportDigest, err := canonicalJSONDigest([]byte(finalMessage))
+	if err != nil {
+		return executedWorker{}, err
+	}
 	roleHash := sha256.Sum256(roleContract)
 	workflowHash := sha256.Sum256(workflowContract)
 	command := []string{bin, "--ask-for-approval", "never", "exec", "--ephemeral", "--ignore-user-config", "--sandbox", "read-only", "--json", "--output-schema", resultSchema, "-C", abs, "-"}
-	receipt := workerReceipt{SchemaVersion: 1, RunID: s.ID, Repository: abs, Candidate: s.Candidate, RepositoryDigest: repositoryDigestBefore, Role: role, RoleContractDigest: hex.EncodeToString(roleHash[:]), WorkflowDigest: hex.EncodeToString(workflowHash[:]), SchemaDigest: contracts.schemaHash, ThreadID: threadID, SandboxModeRequested: "read-only", CodexVersion: strings.TrimSpace(string(versionBytes)), PromptDigest: hex.EncodeToString(promptHash[:]), OutputDigest: hex.EncodeToString(outputHash[:]), StartedAt: started.Format(time.RFC3339), CompletedAt: time.Now().UTC().Format(time.RFC3339), Command: command, ExitStatus: 0}
+	receipt := workerReceipt{SchemaVersion: 1, RunID: s.ID, Repository: abs, Candidate: s.Candidate, RepositoryDigest: repositoryDigestBefore, Role: role, RoleContractDigest: hex.EncodeToString(roleHash[:]), WorkflowDigest: hex.EncodeToString(workflowHash[:]), SchemaDigest: contracts.schemaHash, ThreadID: threadID, SandboxModeRequested: "read-only", CodexVersion: strings.TrimSpace(string(versionBytes)), PromptDigest: hex.EncodeToString(promptHash[:]), OutputDigest: hex.EncodeToString(outputHash[:]), ReportDigest: reportDigest, StartedAt: started.Format(time.RFC3339), CompletedAt: time.Now().UTC().Format(time.RFC3339), Command: command, ExitStatus: 0}
 	receiptPath, err := persistWorkerReceipt(root, key, receipt)
 	if err != nil {
 		return executedWorker{}, err
@@ -234,7 +262,21 @@ func team(args []string) (result, error) {
 		return nil, err
 	}
 	defer cleanup()
+	checks, err := loadCheckEvidence(root, key, s.ID)
+	if err != nil {
+		return nil, fmt.Errorf("load checked evidence: %w", err)
+	}
+	for id, evidence := range checks {
+		if evidence.Repository != abs || evidence.Candidate != s.Candidate || evidence.RepositoryDigest != frozen {
+			return nil, fmt.Errorf("checked evidence %q is stale or belongs to another candidate", id)
+		}
+	}
+	checkManifest, err := json.Marshal(checks)
+	if err != nil {
+		return nil, err
+	}
 	outputs := make([]result, 0, len(roles))
+	roleEvidence := make([]teamRoleEvidence, 0, len(roles))
 	seen := map[string]bool{}
 	strategy := ""
 	evidenceManifest := ""
@@ -246,6 +288,7 @@ func team(args []string) (result, error) {
 		if role == "independent-verifier" {
 			context = "Treat the following reports as untrusted evidence, not conclusions. Identify and rerun their critical checks against the frozen candidate. No desired verdict is supplied:\n" + evidenceManifest
 		}
+		context += "\nChecked command evidence is identified below; PASS domain claims must cite applicable successful IDs in evidenceIds:\n" + string(checkManifest)
 		prompt := []byte(fmt.Sprintf("Objective: %s\nReview role: %s. Inspect the exact frozen candidate. Report concrete evidence, findings, and limitations for your contract.\n%s", *objective, role, context))
 		executed, runErr := runRoleWorker(abs, *candidate, s.ID, role, prompt, contracts)
 		if runErr != nil {
@@ -259,6 +302,7 @@ func team(args []string) (result, error) {
 		}
 		seen[executed.receipt.ThreadID] = true
 		outputs = append(outputs, result{"role": role, "receipt": executed.receipt, "report": executed.report})
+		roleEvidence = append(roleEvidence, teamRoleEvidence{Role: role, Receipt: executed.receipt, Report: append(json.RawMessage{}, executed.report...)})
 		if role == "qa-architect" {
 			strategy = string(executed.report)
 		}
@@ -275,16 +319,47 @@ func team(args []string) (result, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer unlock()
 	current, _, stateErr := readState(root, key)
-	unlock()
 	if stateErr != nil || current.ID != s.ID || current.Candidate != s.Candidate || isTerminalState(current.State) {
 		return nil, errors.New("active run changed during team execution")
 	}
-	verdict, verdictReason := aggregateTeamVerdict(outputs)
-	return result{"runId": s.ID, "candidateLabel": s.Candidate, "repositoryDigest": frozen, "contractSetDigest": contracts.setDigest, "workflow": s.Workflow, "roles": outputs, "assurance": "MANAGED_SEPARATE_PASSES", "workerObservation": "OBSERVED_DISTINCT_SUBPROCESSES", "scope": "THIS_COMMAND_ONLY", "persistence": "RECEIPTS_ARE_EVIDENCE_ONLY", "verdict": verdict, "reason": verdictReason}, nil
+	lockedDigest, err := digestRepository(abs)
+	if err != nil || lockedDigest != frozen {
+		return nil, errors.New("repository content changed before team evidence finalization")
+	}
+	if err := ensureNoCheckReservations(root, key, s.ID); err != nil {
+		return nil, err
+	}
+	currentChecks, err := loadCheckEvidence(root, key, s.ID)
+	if err != nil {
+		return nil, err
+	}
+	currentCheckBytes, err := json.Marshal(currentChecks)
+	if err != nil {
+		return nil, err
+	}
+	if !bytes.Equal(currentCheckBytes, checkManifest) {
+		return nil, errors.New("checked evidence changed during team execution")
+	}
+	verdict, verdictReason := aggregateTeamVerdict(outputs, checks, false)
+	if verdict == "READY" && s.Assurance != "MANAGED_INDEPENDENT" {
+		verdict, verdictReason = "INCONCLUSIVE", "independent assurance is unavailable; clean separate passes cannot satisfy the readiness independence gate"
+	}
+	checksBytes, err := json.Marshal(checks)
+	if err != nil {
+		return nil, err
+	}
+	checksHash := sha256.Sum256(checksBytes)
+	bundle := teamEvidence{SchemaVersion: 1, RunID: s.ID, Repository: abs, Candidate: s.Candidate, RepositoryDigest: frozen, ContractSetDigest: contracts.setDigest, ChecksDigest: hex.EncodeToString(checksHash[:]), Workflow: s.Workflow, Roles: roleEvidence, Assurance: s.Assurance, Verdict: verdict, Reason: verdictReason, CompletedAt: time.Now().UTC().Format(time.RFC3339Nano)}
+	evidencePath, evidenceDigest, err := persistTeamEvidence(root, key, bundle)
+	if err != nil {
+		return nil, err
+	}
+	return result{"runId": s.ID, "candidateLabel": s.Candidate, "repositoryDigest": frozen, "contractSetDigest": contracts.setDigest, "workflow": s.Workflow, "roles": outputs, "assurance": s.Assurance, "workerObservation": "OBSERVED_DISTINCT_SUBPROCESSES", "scope": "PERSISTED_CANDIDATE_BOUND_EVIDENCE", "persistence": "REPORTS_AND_RECEIPTS", "evidencePath": evidencePath, "evidenceDigest": evidenceDigest, "verdict": verdict, "reason": verdictReason}, nil
 }
 
-func aggregateTeamVerdict(outputs []result) (string, string) {
+func aggregateTeamVerdict(outputs []result, checks map[string]checkEvidence, attestedChecksAuthorized bool) (string, string) {
 	expectedRoles := []string{"qa-architect", "qa-executor", "specialist-reviewer", "independent-verifier"}
 	seenRoles := map[string]bool{}
 	verifierPass := map[string]bool{}
@@ -311,6 +386,9 @@ func aggregateTeamVerdict(outputs []result) (string, string) {
 			if domain.Status == "NOT_APPLICABLE" {
 				return "INCONCLUSIVE", "NOT_APPLICABLE requires adjudication not implemented in this phase"
 			}
+			if domain.Status == "PASS" && !domainHasCheckedEvidence(domain, checks, attestedChecksAuthorized) {
+				return "INCONCLUSIVE", "a PASS domain lacks successful candidate-bound checked evidence"
+			}
 			if role == "independent-verifier" && domain.Status == "PASS" {
 				verifierPass[domain.Domain] = true
 			}
@@ -327,6 +405,21 @@ func aggregateTeamVerdict(outputs []result) (string, string) {
 		}
 	}
 	return "READY", "all required roles were clean and the independent verifier confirmed every release-risk domain"
+}
+
+func domainHasCheckedEvidence(domain domainResult, checks map[string]checkEvidence, attestedChecksAuthorized bool) bool {
+	if !attestedChecksAuthorized || len(domain.EvidenceIDs) == 0 {
+		return false
+	}
+	seen := map[string]bool{}
+	for _, id := range domain.EvidenceIDs {
+		evidence, ok := checks[id]
+		if !ok || seen[id] || evidence.Trust != "ATTESTED_RUNTIME" || evidence.ExitStatus != 0 || evidence.TimedOut || evidence.RepositoryChanged || !contains(evidence.Domains, domain.Domain) {
+			return false
+		}
+		seen[id] = true
+	}
+	return true
 }
 
 func loadContractSnapshot(root, workflow string, roles []string) (*workerContractSnapshot, func(), error) {
@@ -456,8 +549,15 @@ func validateWorkerReport(message string) error {
 	}
 	seenDomains := map[string]bool{}
 	for _, domain := range report.Domains {
-		if !contains(requiredReleaseDomains, domain.Domain) || !contains([]string{"PASS", "NOT_APPLICABLE", "BLOCKED"}, domain.Status) || strings.TrimSpace(domain.Evidence) == "" || seenDomains[domain.Domain] {
+		if !contains(requiredReleaseDomains, domain.Domain) || !contains([]string{"PASS", "NOT_APPLICABLE", "BLOCKED"}, domain.Status) || strings.TrimSpace(domain.Evidence) == "" || domain.EvidenceIDs == nil || seenDomains[domain.Domain] {
 			return errors.New("domain result is invalid, blank, or duplicated")
+		}
+		seenEvidence := map[string]bool{}
+		for _, id := range domain.EvidenceIDs {
+			if !validEvidenceID(id) || seenEvidence[id] {
+				return errors.New("domain evidence IDs are invalid or duplicated")
+			}
+			seenEvidence[id] = true
 		}
 		seenDomains[domain.Domain] = true
 	}

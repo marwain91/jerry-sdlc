@@ -26,7 +26,7 @@ type result map[string]any
 
 func main() {
 	if len(os.Args) < 2 {
-		fail(errors.New("usage: jsdlc <adapters|packs|doctor|classify|eval-triggers|eval-quality|roles|start|status|transition|upgrade-state|rollback-state|worker|team|verify>"))
+		fail(errors.New("usage: jsdlc <adapters|packs|doctor|classify|eval-triggers|eval-quality|roles|start|status|transition|upgrade-state|rollback-state|check|recover-check|worker|team|verify>"))
 	}
 	var out result
 	var err error
@@ -55,6 +55,10 @@ func main() {
 		out, err = upgradeState(os.Args[2:])
 	case "rollback-state":
 		out, err = rollbackState(os.Args[2:])
+	case "check":
+		out, err = check(os.Args[2:])
+	case "recover-check":
+		out, err = recoverCheck(os.Args[2:])
 	case "worker":
 		out, err = worker(os.Args[2:])
 	case "team":
@@ -545,18 +549,7 @@ func verify(args []string) (result, error) {
 	if err := fs.Parse(args); err != nil {
 		return nil, err
 	}
-	abs, key, root, err := stateLocation(*repo)
-	if err != nil {
-		return nil, err
-	}
-	s, _, err := readState(root, key)
-	if err != nil {
-		return nil, err
-	}
-	if s.Repository != abs || *candidate == "" || s.Candidate != *candidate {
-		return result{"verdict": "BLOCKED", "reason": "candidate drift or identity mismatch", "run": s}, nil
-	}
-	return result{"verdict": "INCONCLUSIVE", "reason": "Phase 1 does not implement evidence-backed READY verdicts", "run": s}, nil
+	return verifyEvidence(*repo, *candidate)
 }
 
 func stateLocation(repo string) (string, string, string, error) {

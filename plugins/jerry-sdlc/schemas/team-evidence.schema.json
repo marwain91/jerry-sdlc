@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Jerry SDLC persisted team evidence",
+  "type": "object",
+  "required": ["schemaVersion", "runId", "repository", "candidateLabel", "repositoryDigest", "contractSetDigest", "checksDigest", "workflow", "roles", "assurance", "verdict", "reason", "completedAt"],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "runId": {"type": "string", "minLength": 1},
+    "repository": {"type": "string", "minLength": 1},
+    "candidateLabel": {"type": "string", "minLength": 1},
+    "repositoryDigest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "contractSetDigest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "checksDigest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "workflow": {"const": "release-readiness"},
+    "roles": {
+      "type": "array", "minItems": 4, "maxItems": 4,
+      "items": {
+        "type": "object", "required": ["role", "receipt", "report"],
+        "properties": {
+          "role": {"enum": ["qa-architect", "qa-executor", "specialist-reviewer", "independent-verifier"]},
+          "receipt": {"$ref": "worker-receipt.schema.json"},
+          "report": {"$ref": "worker-result.schema.json"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "assurance": {"enum": ["MANAGED_INDEPENDENT", "MANAGED_SEPARATE_PASSES", "ADVISORY_ONLY"]},
+    "verdict": {"enum": ["READY", "NOT_READY", "INCONCLUSIVE"]},
+    "reason": {"type": "string", "minLength": 1},
+    "completedAt": {"type": "string", "format": "date-time"}
+  },
+  "additionalProperties": false
+}

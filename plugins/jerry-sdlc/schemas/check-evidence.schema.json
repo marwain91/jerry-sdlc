@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Jerry SDLC checked command evidence",
+  "type": "object",
+  "required": ["schemaVersion", "id", "runId", "repository", "candidateLabel", "repositoryDigest", "domains", "command", "workingDirectory", "exitStatus", "timedOut", "repositoryChanged", "trust", "stdoutDigest", "stderrDigest", "startedAt", "completedAt"],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "id": {"type": "string", "pattern": "^[a-z0-9_-]{1,80}$"},
+    "runId": {"type": "string", "minLength": 1},
+    "repository": {"type": "string", "minLength": 1},
+    "candidateLabel": {"type": "string", "minLength": 1},
+    "repositoryDigest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "domains": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"enum": ["functional", "security", "supply-chain", "api-compatibility", "data-migration", "reliability", "observability", "documentation", "candidate-identity"]}},
+    "command": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+    "workingDirectory": {"type": "string", "minLength": 1},
+    "exitStatus": {"type": "integer"},
+    "timedOut": {"type": "boolean"},
+    "repositoryChanged": {"type": "boolean"},
+    "trust": {"const": "LOCAL_UNATTESTED_FULLY_PRIVILEGED"},
+    "stdoutDigest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "stderrDigest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "startedAt": {"type": "string", "format": "date-time"},
+    "completedAt": {"type": "string", "format": "date-time"}
+  },
+  "additionalProperties": false
+}

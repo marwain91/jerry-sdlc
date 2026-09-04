@@ -7,7 +7,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"testing"
 	"time"
@@ -527,6 +529,320 @@ func TestReleaseRoles(t *testing.T) {
 	}
 }
 
+func TestCheckCapturesCandidateBoundCommandEvidence(t *testing.T) {
+	t.Setenv("XDG_STATE_HOME", t.TempDir())
+	repo := t.TempDir()
+	started, err := start([]string{"--repo", repo, "--candidate", "candidate-a"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := check([]string{"--repo", repo, "--candidate", "candidate-a", "--id", "unit-tests", "--domains", "functional,reliability", "--authorized", "--", "/bin/true"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got["reportedPass"] != true || got["readinessEffect"] != "NONE_UNATTESTED" || got["execution"] != "FULLY_PRIVILEGED_LOCAL_COMMAND" {
+		t.Fatalf("successful check did not pass: %#v", got)
+	}
+	_, key, root, err := stateLocation(repo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := loadCheckEvidence(root, key, started["run"].(runState).ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	evidence := loaded["unit-tests"]
+	if evidence.RunID != started["run"].(runState).ID || evidence.Candidate != "candidate-a" || evidence.RepositoryDigest != started["run"].(runState).ContentDigest || evidence.ExitStatus != 0 {
+		t.Fatalf("evidence was not candidate-bound: %#v", evidence)
+	}
+	failed, err := check([]string{"--repo", repo, "--candidate", "candidate-a", "--id", "failing-test", "--domains", "functional", "--authorized", "--", "/bin/false"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if failed["reportedPass"] != false {
+		t.Fatalf("failed command must not pass: %#v", failed)
+	}
+	if _, err := check([]string{"--repo", repo, "--candidate", "candidate-a", "--id", "not-authorized", "--domains", "functional", "--", "/bin/true"}); err == nil {
+		t.Fatal("fully privileged check must require explicit authorization acknowledgement")
+	}
+}
+
+func TestCheckRecordsRepositoryMutationAsFailure(t *testing.T) {
+	t.Setenv("XDG_STATE_HOME", t.TempDir())
+	repo := t.TempDir()
+	if _, err := start([]string{"--repo", repo, "--candidate", "candidate-a"}); err != nil {
+		t.Fatal(err)
+	}
+	got, err := check([]string{"--repo", repo, "--candidate", "candidate-a", "--id", "mutating", "--domains", "functional", "--authorized", "--", "/bin/sh", "-c", "printf changed > changed.txt"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got["reportedPass"] != false || got["evidence"].(checkEvidence).RepositoryChanged != true {
+		t.Fatalf("mutating check must be recorded as failed: %#v", got)
+	}
+}
+
+func TestCheckedEvidenceCannotBeReusedOrTampered(t *testing.T) {
+	t.Setenv("XDG_STATE_HOME", t.TempDir())
+	repo := t.TempDir()
+	started, err := start([]string{"--repo", repo, "--candidate", "candidate-a"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := check([]string{"--repo", repo, "--candidate", "candidate-a", "--id", "unit-tests", "--domains", "functional", "--authorized", "--", "/bin/true"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := check([]string{"--repo", repo, "--candidate", "candidate-a", "--id", "unit-tests", "--domains", "functional", "--authorized", "--", "/bin/true"}); err == nil {
+		t.Fatal("evidence ID reuse must fail")
+	}
+	path := got["path"].(string)
+	if err := os.WriteFile(path, []byte(`{"schemaVersion":1}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	_, key, root, err := stateLocation(repo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := loadCheckEvidence(root, key, started["run"].(runState).ID); err == nil {
+		t.Fatal("tampered evidence must fail")
+	}
+}
+
+func TestConcurrentCheckIDIsReservedBeforeExecution(t *testing.T) {
+	t.Setenv("XDG_STATE_HOME", t.TempDir())
+	repo := t.TempDir()
+	if _, err := start([]string{"--repo", repo, "--candidate", "candidate-a"}); err != nil {
+		t.Fatal(err)
+	}
+	args := []string{"--repo", repo, "--candidate", "candidate-a", "--id", "same-id", "--domains", "functional", "--authorized", "--", "/bin/sh", "-c", "sleep 0.1"}
+	startGate := make(chan struct{})
+	errs := make(chan error, 2)
+	var ready sync.WaitGroup
+	ready.Add(2)
+	for i := 0; i < 2; i++ {
+		go func() { ready.Done(); <-startGate; _, err := check(args); errs <- err }()
+	}
+	ready.Wait()
+	close(startGate)
+	successes := 0
+	for i := 0; i < 2; i++ {
+		if <-errs == nil {
+			successes++
+		}
+	}
+	if successes != 1 {
+		t.Fatalf("exactly one reserved check must execute successfully, got %d", successes)
+	}
+}
+
+func TestCheckRejectsRunTransitionDuringExecution(t *testing.T) {
+	t.Setenv("XDG_STATE_HOME", t.TempDir())
+	repo := t.TempDir()
+	if _, err := start([]string{"--repo", repo, "--candidate", "candidate-a"}); err != nil {
+		t.Fatal(err)
+	}
+	marker := filepath.Join(t.TempDir(), "started")
+	done := make(chan error, 1)
+	go func() {
+		_, err := check([]string{"--repo", repo, "--candidate", "candidate-a", "--id", "slow", "--domains", "functional", "--authorized", "--", "/bin/sh", "-c", "touch \"$1\"; sleep 0.2", "sh", marker})
+		done <- err
+	}()
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		if _, err := os.Stat(marker); err == nil {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("check command did not start")
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	if _, err := transition([]string{"--repo", repo, "--candidate", "candidate-a", "--to", "CANCELLED"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := <-done; err == nil || !strings.Contains(err.Error(), "active run changed") {
+		t.Fatalf("transitioned run accepted check evidence: %v", err)
+	}
+}
+
+func TestCheckTerminatesBackgroundDescendantsBeforeDigest(t *testing.T) {
+	t.Setenv("XDG_STATE_HOME", t.TempDir())
+	repo := t.TempDir()
+	if _, err := start([]string{"--repo", repo, "--candidate", "candidate-a"}); err != nil {
+		t.Fatal(err)
+	}
+	late := filepath.Join(repo, "late.txt")
+	childReady := filepath.Join(t.TempDir(), "child-ready")
+	command := fmt.Sprintf("(touch %q; sleep 0.2; printf late > %q) >/dev/null 2>&1 & while [ ! -e %q ]; do :; done", childReady, late, childReady)
+	got, err := check([]string{"--repo", repo, "--candidate", "candidate-a", "--id", "background", "--domains", "functional", "--authorized", "--", "/bin/sh", "-c", command})
+	if err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(300 * time.Millisecond)
+	if _, err := os.Stat(late); !os.IsNotExist(err) {
+		t.Fatalf("background descendant survived process-group containment: %v", err)
+	}
+	if got["reportedPass"] != true || got["evidence"].(checkEvidence).RepositoryChanged {
+		t.Fatalf("contained check was recorded incorrectly: %#v", got)
+	}
+}
+
+func TestHelperCheckStartGap(t *testing.T) {
+	if os.Getenv("JSDLC_HELPER_CHECK_START_GAP") != "1" {
+		return
+	}
+	checkAfterStartHook = func() {
+		_ = os.WriteFile(os.Getenv("JSDLC_HELPER_MARKER"), []byte("started"), 0o600)
+		for {
+			time.Sleep(time.Hour)
+		}
+	}
+	_, _ = check([]string{"--repo", os.Getenv("JSDLC_HELPER_REPO"), "--candidate", "candidate-a", "--id", "start-gap", "--domains", "functional", "--authorized", "--", "/bin/sh", "-c", "echo $$ > \"$1\"; sleep 30", "sh", os.Getenv("JSDLC_HELPER_CHILD_PID")})
+	os.Exit(4)
+}
+
+func TestStartGapReservationCannotBeUnsafelyRecovered(t *testing.T) {
+	t.Setenv("XDG_STATE_HOME", t.TempDir())
+	repo := t.TempDir()
+	started, err := start([]string{"--repo", repo, "--candidate", "candidate-a"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	executable, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	tmp := t.TempDir()
+	marker, childPIDPath := filepath.Join(tmp, "hook"), filepath.Join(tmp, "child-pid")
+	cmd := exec.Command(executable, "-test.run=^TestHelperCheckStartGap$")
+	cmd.Env = append(os.Environ(), "JSDLC_HELPER_CHECK_START_GAP=1", "JSDLC_HELPER_REPO="+repo, "JSDLC_HELPER_MARKER="+marker, "JSDLC_HELPER_CHILD_PID="+childPIDPath)
+	if err := cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		_, markerErr := os.Stat(marker)
+		pidBytes, pidErr := os.ReadFile(childPIDPath)
+		if markerErr == nil && pidErr == nil && len(pidBytes) > 0 {
+			break
+		}
+		if time.Now().After(deadline) {
+			_ = cmd.Process.Kill()
+			t.Fatal("helper did not reach post-start gap")
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	pidBytes, err := os.ReadFile(childPIDPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	childPID, err := strconv.Atoi(strings.TrimSpace(string(pidBytes)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer terminateProcessGroup(childPID)
+	if err := cmd.Process.Kill(); err != nil {
+		t.Fatal(err)
+	}
+	_ = cmd.Wait()
+	if _, err := recoverCheck([]string{"--repo", repo, "--candidate", "candidate-a", "--id", "start-gap", "--authorized"}); err == nil || !strings.Contains(err.Error(), "recovery is unsafe") {
+		t.Fatalf("indeterminate reservation was recovered: %v", err)
+	}
+	_, key, root, err := stateLocation(repo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	reservationPath := filepath.Join(root, key, "check-reservations", started["run"].(runState).ID, "start-gap.json")
+	if err := terminateProcessGroup(childPID); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(reservationPath); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestHelperInterruptedCheck(t *testing.T) {
+	if os.Getenv("JSDLC_HELPER_INTERRUPTED_CHECK") != "1" {
+		return
+	}
+	_, _ = check([]string{"--repo", os.Getenv("JSDLC_HELPER_REPO"), "--candidate", "candidate-a", "--id", "interrupted", "--domains", "functional", "--authorized", "--", "/bin/sh", "-c", "touch \"$1\"; sleep 30", "sh", os.Getenv("JSDLC_HELPER_MARKER")})
+	os.Exit(4)
+}
+
+func TestKilledCheckReservationCanBeSafelyRecovered(t *testing.T) {
+	t.Setenv("XDG_STATE_HOME", t.TempDir())
+	repo := t.TempDir()
+	started, err := start([]string{"--repo", repo, "--candidate", "candidate-a"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	executable, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	marker := filepath.Join(t.TempDir(), "started")
+	cmd := exec.Command(executable, "-test.run=^TestHelperInterruptedCheck$")
+	cmd.Env = append(os.Environ(), "JSDLC_HELPER_INTERRUPTED_CHECK=1", "JSDLC_HELPER_REPO="+repo, "JSDLC_HELPER_MARKER="+marker)
+	if err := cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		if _, err := os.Stat(marker); err == nil {
+			break
+		}
+		if time.Now().After(deadline) {
+			_ = cmd.Process.Kill()
+			t.Fatal("interrupted check did not start")
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	_, key, root, err := stateLocation(repo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	reservationPath := filepath.Join(root, key, "check-reservations", started["run"].(runState).ID, "interrupted.json")
+	deadline = time.Now().Add(5 * time.Second)
+	var reservation checkReservation
+	for {
+		reservation, err = readCheckReservation(reservationPath)
+		if err == nil && reservation.ProcessGroupID > 0 && processGroupRunning(reservation.ProcessGroupID) {
+			break
+		}
+		if time.Now().After(deadline) {
+			_ = cmd.Process.Kill()
+			t.Fatalf("check process group identity did not become durable: %#v %v", reservation, err)
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	defer terminateProcessGroup(reservation.ProcessGroupID)
+	if err := cmd.Process.Kill(); err != nil {
+		t.Fatal(err)
+	}
+	_ = cmd.Wait()
+	if _, err := recoverCheck([]string{"--repo", repo, "--candidate", "candidate-a", "--id", "interrupted", "--authorized"}); err == nil {
+		t.Fatal("live command group must prevent recovery")
+	}
+	if err := terminateProcessGroup(reservation.ProcessGroupID); err != nil {
+		t.Fatal(err)
+	}
+	deadline = time.Now().Add(5 * time.Second)
+	for processOrGroupExists(reservation.OwnerPID, reservation.ProcessGroupID) && time.Now().Before(deadline) {
+		time.Sleep(10 * time.Millisecond)
+	}
+	got, err := recoverCheck([]string{"--repo", repo, "--candidate", "candidate-a", "--id", "interrupted", "--authorized"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got["recovered"] != true {
+		t.Fatalf("reservation was not recovered: %#v", got)
+	}
+	if _, err := check([]string{"--repo", repo, "--candidate", "candidate-a", "--id", "interrupted", "--domains", "functional", "--authorized", "--", "/bin/true"}); err != nil {
+		t.Fatalf("recovered ID could not be retried: %v", err)
+	}
+}
+
 func TestAdapterCatalogFailsClosed(t *testing.T) {
 	workingDir, err := os.Getwd()
 	if err != nil {
@@ -590,7 +906,7 @@ printf '%s\n' '{"type":"thread.started","thread_id":"thread-worker-a"}' '{"type"
 		t.Fatal(err)
 	}
 	receipt := got["receipt"].(workerReceipt)
-	if receipt.RunID != started["run"].(runState).ID || receipt.Candidate != "candidate-a" || receipt.ThreadID != "thread-worker-a" || len(receipt.SchemaDigest) != 64 || got["assuranceEffect"] != "EVIDENCE_ONLY" {
+	if receipt.RunID != started["run"].(runState).ID || receipt.Candidate != "candidate-a" || receipt.ThreadID != "thread-worker-a" || len(receipt.SchemaDigest) != 64 || len(receipt.ReportDigest) != 64 || got["assuranceEffect"] != "EVIDENCE_ONLY" {
 		t.Fatalf("receipt is not bound correctly: %#v", got)
 	}
 	if _, err := os.Stat(got["path"].(string)); err != nil {
@@ -646,7 +962,7 @@ printf '%s\n' "{\"type\":\"thread.started\",\"thread_id\":\"$id\"}" '{"type":"it
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got["assurance"] != "MANAGED_SEPARATE_PASSES" || got["workerObservation"] != "OBSERVED_DISTINCT_SUBPROCESSES" || got["scope"] != "THIS_COMMAND_ONLY" || got["verdict"] != "INCONCLUSIVE" {
+	if got["assurance"] != "MANAGED_SEPARATE_PASSES" || got["workerObservation"] != "OBSERVED_DISTINCT_SUBPROCESSES" || got["scope"] != "PERSISTED_CANDIDATE_BOUND_EVIDENCE" || got["persistence"] != "REPORTS_AND_RECEIPTS" || got["verdict"] != "INCONCLUSIVE" {
 		t.Fatalf("unexpected team result: %#v", got)
 	}
 	if len(got["roles"].([]result)) != 4 {
@@ -654,6 +970,68 @@ printf '%s\n' "{\"type\":\"thread.started\",\"thread_id\":\"$id\"}" '{"type":"it
 	}
 	if digest, ok := got["contractSetDigest"].(string); !ok || len(digest) != 64 {
 		t.Fatalf("missing frozen contract-set digest: %#v", got)
+	}
+	verified, err := verify([]string{"--repo", repo, "--candidate", "candidate-a"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if verified["verdict"] != "INCONCLUSIVE" || verified["reproduced"] != true {
+		t.Fatalf("persisted verdict did not reproduce: %#v", verified)
+	}
+}
+
+func TestTeamLocalCheckedEvidencePersistsButCannotClaimReadiness(t *testing.T) {
+	t.Setenv("XDG_STATE_HOME", t.TempDir())
+	workingDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("JSDLC_PLUGIN_ROOT", filepath.Clean(filepath.Join(workingDir, "..", "..", "plugins", "jerry-sdlc")))
+	domains := make([]domainResult, 0, len(requiredReleaseDomains))
+	for _, domain := range requiredReleaseDomains {
+		domains = append(domains, domainResult{Domain: domain, Status: "PASS", Evidence: "checked command and repository evidence", EvidenceIDs: []string{"all-checks"}})
+	}
+	reportBytes, err := json.Marshal(workerReport{Disposition: "CLEAN", Evidence: []string{"checked"}, Findings: []workerFinding{}, Limitations: []string{}, Domains: domains})
+	if err != nil {
+		t.Fatal(err)
+	}
+	binDir := t.TempDir()
+	fakeCodex := filepath.Join(binDir, "codex")
+	script := fmt.Sprintf("#!/bin/sh\nif [ \"$1\" = \"--version\" ]; then echo 'codex-test 1.0'; exit 0; fi\ncat >/dev/null\nprintf '%%s\\n' \"{\\\"type\\\":\\\"thread.started\\\",\\\"thread_id\\\":\\\"thread-$$\\\"}\" '%s'\n", `{"type":"item.completed","item":{"type":"agent_message","text":`+strconv.Quote(string(reportBytes))+`}}`)
+	if err := os.WriteFile(fakeCodex, []byte(script), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", binDir)
+	repo := t.TempDir()
+	if _, err := start([]string{"--repo", repo, "--candidate", "candidate-a"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := check([]string{"--repo", repo, "--candidate", "candidate-a", "--id", "all-checks", "--domains", strings.Join(requiredReleaseDomains, ","), "--authorized", "--", "/bin/true"}); err != nil {
+		t.Fatal(err)
+	}
+	got, err := team([]string{"--repo", repo, "--candidate", "candidate-a"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got["verdict"] != "INCONCLUSIVE" || !strings.Contains(got["reason"].(string), "lacks successful") {
+		t.Fatalf("unattested local evidence claimed readiness: %#v", got)
+	}
+	verified, err := verify([]string{"--repo", repo, "--candidate", "candidate-a"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if verified["verdict"] != "INCONCLUSIVE" || verified["reproduced"] != true {
+		t.Fatalf("clean persisted result did not reproduce: %#v", verified)
+	}
+	if _, err := check([]string{"--repo", repo, "--candidate", "candidate-a", "--id", "late-check", "--domains", "functional", "--authorized", "--", "/bin/true"}); err != nil {
+		t.Fatal(err)
+	}
+	verified, err = verify([]string{"--repo", repo, "--candidate", "candidate-a"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if verified["verdict"] != "BLOCKED" || !strings.Contains(verified["reason"].(string), "changed after") {
+		t.Fatalf("post-assessment evidence change must block: %#v", verified)
 	}
 }
 
@@ -711,8 +1089,11 @@ func TestWorkerReportRequiresSemanticDisposition(t *testing.T) {
 
 func TestAggregateTeamVerdictRequiresEveryDomain(t *testing.T) {
 	domains := make([]domainResult, 0, len(requiredReleaseDomains))
+	checks := map[string]checkEvidence{}
 	for _, domain := range requiredReleaseDomains {
-		domains = append(domains, domainResult{Domain: domain, Status: "PASS", Evidence: "verified"})
+		id := "check-" + domain
+		domains = append(domains, domainResult{Domain: domain, Status: "PASS", Evidence: "verified", EvidenceIDs: []string{id}})
+		checks[id] = checkEvidence{ID: id, Domains: []string{domain}, ExitStatus: 0, Trust: "ATTESTED_RUNTIME"}
 	}
 	report, err := json.Marshal(workerReport{Disposition: "CLEAN", Evidence: []string{"checked"}, Findings: []workerFinding{}, Limitations: []string{}, Domains: domains})
 	if err != nil {
@@ -723,26 +1104,30 @@ func TestAggregateTeamVerdictRequiresEveryDomain(t *testing.T) {
 		t.Fatal(err)
 	}
 	outputs := []result{{"role": "qa-architect", "report": json.RawMessage(cleanEmpty)}, {"role": "qa-executor", "report": json.RawMessage(cleanEmpty)}, {"role": "specialist-reviewer", "report": json.RawMessage(cleanEmpty)}, {"role": "independent-verifier", "report": json.RawMessage(report)}}
-	verdict, _ := aggregateTeamVerdict(outputs)
+	verdict, _ := aggregateTeamVerdict(outputs, checks, true)
 	if verdict != "READY" {
 		t.Fatalf("expected READY, got %s", verdict)
+	}
+	if verdict, _ := aggregateTeamVerdict(outputs, checks, false); verdict != "INCONCLUSIVE" {
+		t.Fatalf("unattested execution path must not accept even synthetic attested records, got %s", verdict)
 	}
 	report, err = json.Marshal(workerReport{Disposition: "CLEAN", Evidence: []string{"checked"}, Findings: []workerFinding{}, Limitations: []string{}, Domains: domains[:len(domains)-1]})
 	if err != nil {
 		t.Fatal(err)
 	}
 	outputs[3]["report"] = json.RawMessage(report)
-	verdict, _ = aggregateTeamVerdict(outputs)
+	verdict, _ = aggregateTeamVerdict(outputs, checks, true)
 	if verdict != "INCONCLUSIVE" {
 		t.Fatalf("missing domain must be inconclusive, got %s", verdict)
 	}
-	verdict, _ = aggregateTeamVerdict(outputs[:3])
+	verdict, _ = aggregateTeamVerdict(outputs[:3], checks, true)
 	if verdict != "INCONCLUSIVE" {
 		t.Fatalf("missing role must be inconclusive, got %s", verdict)
 	}
 }
 
 func TestAggregateTeamVerdictFailsClosed(t *testing.T) {
+	checks := map[string]checkEvidence{}
 	clean := func(disposition string, domains []domainResult) json.RawMessage {
 		findings := []workerFinding{}
 		if disposition == "FINDINGS" {
@@ -756,7 +1141,9 @@ func TestAggregateTeamVerdictFailsClosed(t *testing.T) {
 	}
 	passes := make([]domainResult, 0, len(requiredReleaseDomains))
 	for _, domain := range requiredReleaseDomains {
-		passes = append(passes, domainResult{Domain: domain, Status: "PASS", Evidence: "verified"})
+		id := "check-" + domain
+		passes = append(passes, domainResult{Domain: domain, Status: "PASS", Evidence: "verified", EvidenceIDs: []string{id}})
+		checks[id] = checkEvidence{ID: id, Domains: []string{domain}, ExitStatus: 0, Trust: "ATTESTED_RUNTIME"}
 	}
 	base := func() []result {
 		return []result{{"role": "qa-architect", "report": clean("CLEAN", nil)}, {"role": "qa-executor", "report": clean("CLEAN", nil)}, {"role": "specialist-reviewer", "report": clean("CLEAN", nil)}, {"role": "independent-verifier", "report": clean("CLEAN", passes)}}
@@ -768,14 +1155,14 @@ func TestAggregateTeamVerdictFailsClosed(t *testing.T) {
 	blocked := base()
 	blocked[1] = result{"role": "qa-executor", "report": clean("BLOCKED", nil)}
 	naDomains := append([]domainResult{}, passes...)
-	naDomains[0] = domainResult{Domain: requiredReleaseDomains[0], Status: "NOT_APPLICABLE", Evidence: "claimed n/a"}
+	naDomains[0] = domainResult{Domain: requiredReleaseDomains[0], Status: "NOT_APPLICABLE", Evidence: "claimed n/a", EvidenceIDs: []string{}}
 	notApplicable := base()
 	notApplicable[3] = result{"role": "independent-verifier", "report": clean("CLEAN", naDomains)}
 	for name, tc := range map[string]struct {
 		outputs []result
 		want    string
 	}{"duplicate": {duplicate, "INCONCLUSIVE"}, "finding": {finding, "NOT_READY"}, "blocked": {blocked, "INCONCLUSIVE"}, "not-applicable": {notApplicable, "INCONCLUSIVE"}} {
-		if got, _ := aggregateTeamVerdict(tc.outputs); got != tc.want {
+		if got, _ := aggregateTeamVerdict(tc.outputs, checks, true); got != tc.want {
 			t.Fatalf("%s: got %s want %s", name, got, tc.want)
 		}
 	}
