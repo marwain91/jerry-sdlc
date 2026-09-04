@@ -701,6 +701,7 @@ func writeState(path string, s runState) error {
 }
 
 var writeAtomicBeforeRenameHook func(string)
+var writeAtomicAfterRenameHook func(string)
 
 func writeAtomic(path string, b []byte) error {
 	tmpFile, err := os.CreateTemp(filepath.Dir(path), ".jsdlc-*.tmp")
@@ -729,6 +730,9 @@ func writeAtomic(path string, b []byte) error {
 	}
 	if err := os.Rename(tmp, path); err != nil {
 		return err
+	}
+	if writeAtomicAfterRenameHook != nil {
+		writeAtomicAfterRenameHook(path)
 	}
 	dir, err := os.Open(filepath.Dir(path))
 	if err != nil {

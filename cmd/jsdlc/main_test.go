@@ -181,7 +181,7 @@ func TestHelperProcessAtomicWrite(t *testing.T) {
 	if os.Getenv("JSDLC_HELPER_ATOMIC_WRITE") != "1" {
 		return
 	}
-	writeAtomicBeforeRenameHook = func(string) {
+	pause := func(string) {
 		if err := os.WriteFile(os.Getenv("JSDLC_HELPER_MARKER"), []byte("ready"), 0o600); err != nil {
 			os.Exit(3)
 		}
@@ -189,11 +189,72 @@ func TestHelperProcessAtomicWrite(t *testing.T) {
 			time.Sleep(time.Hour)
 		}
 	}
+	if os.Getenv("JSDLC_HELPER_BOUNDARY") == "after" {
+		writeAtomicAfterRenameHook = pause
+	} else {
+		writeAtomicBeforeRenameHook = pause
+	}
 	if err := writeAtomic(os.Getenv("JSDLC_HELPER_TARGET"), []byte(os.Getenv("JSDLC_HELPER_PAYLOAD"))); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
 	}
 	os.Exit(0)
+}
+
+func TestProcessKillAfterRenameLeavesCompletePublishedState(t *testing.T) {
+	executable, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	base := runState{SchemaVersion: 2, ID: "run", Workflow: "release-readiness", State: "BASELINED", Assurance: "MANAGED_SEPARATE_PASSES", Repository: "/repo", Candidate: "candidate", ContentDigest: strings.Repeat("a", 64), CreatedAt: "2026-01-01T00:00:00Z", UpdatedAt: "2026-01-01T00:00:00Z"}
+	next := base
+	next.State = "STRATEGY_READY"
+	newBytes, _ := json.Marshal(next)
+	for _, old := range [][]byte{nil, mustJSON(t, base)} {
+		dir := t.TempDir()
+		target, marker := filepath.Join(dir, "active.json"), filepath.Join(dir, "marker")
+		if old != nil {
+			if err := os.WriteFile(target, old, 0o600); err != nil {
+				t.Fatal(err)
+			}
+		}
+		cmd := exec.Command(executable, "-test.run=^TestHelperProcessAtomicWrite$")
+		cmd.Env = append(os.Environ(), "JSDLC_HELPER_ATOMIC_WRITE=1", "JSDLC_HELPER_BOUNDARY=after", "JSDLC_HELPER_TARGET="+target, "JSDLC_HELPER_MARKER="+marker, "JSDLC_HELPER_PAYLOAD="+string(newBytes))
+		if err := cmd.Start(); err != nil {
+			t.Fatal(err)
+		}
+		deadline := time.Now().Add(5 * time.Second)
+		for {
+			if _, err := os.Stat(marker); err == nil {
+				break
+			}
+			if time.Now().After(deadline) {
+				_ = cmd.Process.Kill()
+				t.Fatal("helper never reached post-rename boundary")
+			}
+			time.Sleep(5 * time.Millisecond)
+		}
+		if err := cmd.Process.Kill(); err != nil {
+			t.Fatal(err)
+		}
+		_ = cmd.Wait()
+		published, err := os.ReadFile(target)
+		if err != nil || !bytes.Equal(published, newBytes) {
+			t.Fatalf("post-rename state was partial or absent: %q %v", published, err)
+		}
+		if got, err := decodeRunState(published); err != nil || got.State != "STRATEGY_READY" {
+			t.Fatalf("post-rename state invalid: %#v %v", got, err)
+		}
+	}
+}
+
+func mustJSON(t *testing.T, value any) []byte {
+	t.Helper()
+	b, err := json.Marshal(value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return b
 }
 
 func TestProcessKillAtRenameBoundaryPreservesAtomicState(t *testing.T) {
