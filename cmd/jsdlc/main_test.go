@@ -135,6 +135,81 @@ func TestReleaseRoles(t *testing.T) {
 	}
 }
 
+func TestWorkerReceiptBindsActiveRun(t *testing.T) {
+	t.Setenv("XDG_STATE_HOME", t.TempDir())
+	workingDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("JSDLC_PLUGIN_ROOT", filepath.Clean(filepath.Join(workingDir, "..", "..", "plugins", "jerry-sdlc")))
+	binDir := t.TempDir()
+	fakeCodex := filepath.Join(binDir, "codex")
+	script := `#!/bin/sh
+if [ "$1" = "--version" ]; then
+  echo "codex-test 1.0"
+  exit 0
+fi
+cat >/dev/null
+printf '%s\n' '{"type":"thread.started","thread_id":"thread-worker-a"}' '{"type":"item.completed","item":{"type":"agent_message","text":"{\"disposition\":\"CLEAN\",\"evidence\":[],\"findings\":[],\"limitations\":[]}"}}'
+`
+	if err := os.WriteFile(fakeCodex, []byte(script), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", binDir)
+	repo := t.TempDir()
+	started, err := start([]string{"--repo", repo, "--candidate", "candidate-a"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	prompt := filepath.Join(t.TempDir(), "assignment.txt")
+	if err := os.WriteFile(prompt, []byte("Review the candidate."), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	got, err := worker([]string{"--repo", repo, "--candidate", "candidate-a", "--role", "specialist-reviewer", "--prompt-file", prompt})
+	if err != nil {
+		t.Fatal(err)
+	}
+	receipt := got["receipt"].(workerReceipt)
+	if receipt.RunID != started["run"].(runState).ID || receipt.Candidate != "candidate-a" || receipt.ThreadID != "thread-worker-a" || got["assuranceEffect"] != "EVIDENCE_ONLY" {
+		t.Fatalf("receipt is not bound correctly: %#v", got)
+	}
+	if _, err := os.Stat(got["path"].(string)); err != nil {
+		t.Fatal(err)
+	}
+	if got["persistence"] != "DIGESTS_ONLY_REPORT_NOT_STORED" {
+		t.Fatalf("unexpected persistence policy: %#v", got)
+	}
+}
+
+func TestWorkerRejectsCandidateDriftAndWritableRole(t *testing.T) {
+	t.Setenv("XDG_STATE_HOME", t.TempDir())
+	repo := t.TempDir()
+	if _, err := start([]string{"--repo", repo, "--candidate", "candidate-a"}); err != nil {
+		t.Fatal(err)
+	}
+	prompt := filepath.Join(t.TempDir(), "assignment.txt")
+	if err := os.WriteFile(prompt, []byte("Review."), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := worker([]string{"--repo", repo, "--candidate", "candidate-b", "--role", "specialist-reviewer", "--prompt-file", prompt}); err == nil {
+		t.Fatal("candidate drift must block worker launch")
+	}
+	if _, err := worker([]string{"--repo", repo, "--candidate", "candidate-a", "--role", "orchestrator", "--prompt-file", prompt}); err == nil {
+		t.Fatal("writable role must not use read-only worker adapter")
+	}
+}
+
+func TestWorkerReportRequiresCompleteFindingContract(t *testing.T) {
+	valid := `{"disposition":"FINDINGS","evidence":[],"findings":[{"id":"F-1","severity":"HIGH","confidence":"HIGH","requirement":"No traversal","location":"main.go:1","evidence":"observed","recommendation":"validate"}],"limitations":[]}`
+	if err := validateWorkerReport(valid); err != nil {
+		t.Fatal(err)
+	}
+	missingConfidence := `{"disposition":"FINDINGS","evidence":[],"findings":[{"id":"F-1","severity":"HIGH","requirement":"No traversal","location":"main.go:1","evidence":"observed","recommendation":"validate"}],"limitations":[]}`
+	if err := validateWorkerReport(missingConfidence); err == nil {
+		t.Fatal("finding without confidence must be rejected")
+	}
+}
+
 func TestDoctorIndependentAssuranceFailsClosed(t *testing.T) {
 	t.Setenv("XDG_STATE_HOME", t.TempDir())
 	got, err := doctor(nil)
@@ -174,6 +249,13 @@ func TestStateResumeTransitionAndDrift(t *testing.T) {
 	}
 	if got["stale"] != true {
 		t.Fatalf("expected stale status: %#v", got)
+	}
+}
+
+func TestStartRejectsUnsupportedWorkflow(t *testing.T) {
+	t.Setenv("XDG_STATE_HOME", t.TempDir())
+	if _, err := start([]string{"--repo", t.TempDir(), "--candidate", "candidate-a", "--workflow", "../../secret"}); err == nil {
+		t.Fatal("unsupported workflow path must be rejected")
 	}
 }
 

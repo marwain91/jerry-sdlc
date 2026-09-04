@@ -22,4 +22,4 @@ else
 fi
 test "$actual" = "$expected" || { echo '{"error":"jsdlc checksum mismatch","outcome":"ADVISORY_ONLY"}' >&2; exit 1; }
 
-exec "$binary" "$@"
+JSDLC_PLUGIN_ROOT="$plugin_dir" exec "$binary" "$@"

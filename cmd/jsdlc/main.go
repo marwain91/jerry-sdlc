@@ -25,7 +25,7 @@ type result map[string]any
 
 func main() {
 	if len(os.Args) < 2 {
-		fail(errors.New("usage: jsdlc <doctor|classify|roles|start|status|transition|verify>"))
+		fail(errors.New("usage: jsdlc <doctor|classify|roles|start|status|transition|worker|verify>"))
 	}
 	var out result
 	var err error
@@ -42,6 +42,8 @@ func main() {
 		out, err = status(os.Args[2:])
 	case "transition":
 		out, err = transition(os.Args[2:])
+	case "worker":
+		out, err = worker(os.Args[2:])
 	case "verify":
 		out, err = verify(os.Args[2:])
 	default:
@@ -105,7 +107,7 @@ func doctor(args []string) (result, error) {
 		}
 		return result{"version": version, "outcome": "MANAGED_SEPARATE_PASSES", "statePath": root, "platform": runtime.GOOS + "/" + runtime.GOARCH, "independentWorkers": false, "readOnlyIsolation": false, "capabilityObservation": observation, "reason": "distinct thread IDs were observed; the canary remained absent and the worker reported a blocked write; this is not proof of enforced isolation"}, nil
 	}
-	return result{"version": version, "outcome": "MANAGED_SEPARATE_PASSES", "statePath": root, "platform": runtime.GOOS + "/" + runtime.GOARCH, "independentWorkers": false, "readOnlyIsolation": false, "reason": "actual role-worker receipts are not implemented; --probe-independent provides a non-authoritative capability diagnostic only"}, nil
+	return result{"version": version, "outcome": "MANAGED_SEPARATE_PASSES", "statePath": root, "platform": runtime.GOOS + "/" + runtime.GOARCH, "independentWorkers": false, "readOnlyIsolation": false, "reason": "role-worker execution receipts are evidence-only; live assurance verification is not implemented; --probe-independent is non-authoritative"}, nil
 }
 
 type workerObservation struct {
@@ -245,8 +247,11 @@ func start(args []string) (result, error) {
 	if !validAssurance(*assurance) {
 		return nil, fmt.Errorf("invalid assurance %q", *assurance)
 	}
+	if !validWorkflow(*wf) {
+		return nil, fmt.Errorf("unsupported workflow %q", *wf)
+	}
 	if *assurance == "MANAGED_INDEPENDENT" {
-		return nil, errors.New("MANAGED_INDEPENDENT requires receipts from actual role workers, which are not implemented")
+		return nil, errors.New("MANAGED_INDEPENDENT requires live verification of actual role-worker receipts, which is not implemented")
 	}
 	s := runState{1, id, *wf, "BASELINED", *assurance, abs, *candidate, now, now}
 	dir := filepath.Join(root, key)
@@ -423,10 +428,13 @@ func readState(root, key string) (runState, string, error) {
 		return runState{}, path, fmt.Errorf("invalid persisted assurance %q", s.Assurance)
 	}
 	if s.Assurance == "MANAGED_INDEPENDENT" {
-		return runState{}, path, errors.New("persisted MANAGED_INDEPENDENT lacks actual role-worker receipts")
+		return runState{}, path, errors.New("persisted MANAGED_INDEPENDENT lacks live-verified role-worker receipts")
 	}
 	if s.ID == "" || s.Workflow == "" || s.State == "" || s.Repository == "" || s.Candidate == "" {
 		return runState{}, path, errors.New("persisted state is missing required fields")
+	}
+	if !validWorkflow(s.Workflow) {
+		return runState{}, path, fmt.Errorf("unsupported persisted workflow %q", s.Workflow)
 	}
 	if !validPersistedState(s.State) {
 		return runState{}, path, fmt.Errorf("invalid persisted state %q", s.State)
@@ -530,6 +538,10 @@ func contains(values []string, value string) bool {
 }
 func validAssurance(v string) bool {
 	return contains([]string{"MANAGED_INDEPENDENT", "MANAGED_SEPARATE_PASSES", "ADVISORY_ONLY"}, v)
+}
+
+func validWorkflow(v string) bool {
+	return v == "release-readiness"
 }
 
 func hasAny(s string, terms ...string) bool {

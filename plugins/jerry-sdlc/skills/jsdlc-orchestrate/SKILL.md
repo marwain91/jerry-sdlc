@@ -29,6 +29,7 @@ Read [references/control-contract.md](references/control-contract.md) before any
 
 - Roles are narrow contracts, not personas. Give each worker immutable inputs and one lens.
 - Review workers are read-only. They return exact evidence and do not fix findings.
+- Launch Phase-1 QA/review roles through `../../scripts/jsdlc worker --repo <repo> --candidate <candidate> --role <role> --prompt-file <file>`. The receipt is bound to the active run and candidate, but currently has `assuranceEffect: EVIDENCE_ONLY`; do not use it to claim `MANAGED_INDEPENDENT`.
 - The orchestrator adjudicates findings. A corrector receives only accepted finding IDs and bounded targets.
 - Re-run affected checks after correction. A fresh verifier checks the exact final candidate.
 - Scripts establish deterministic facts; agents supply judgment.

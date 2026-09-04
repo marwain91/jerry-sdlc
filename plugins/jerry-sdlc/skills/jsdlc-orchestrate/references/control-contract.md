@@ -6,7 +6,11 @@ Confirm: plugin/CLI compatibility, state storage, distinct-worker availability, 
 
 ## Evidence
 
-Every role result records role/workflow versions, candidate digest, input digests, commands and exit status, findings, limitations, and terminal disposition. Candidate drift invalidates dependent evidence.
+The execution receipt plus structured worker report form the Phase-1 evidence envelope. Together they record contract and repository-content digests, input/output digests, command and exit status, findings, limitations, and disposition. Candidate drift invalidates dependent evidence.
+
+Phase-1 execution receipts record the actual ephemeral Codex thread, requested CLI sandbox mode, repository-content and contract digests, prompt/output digests, run, repository, role, and candidate label. Reports are returned to the orchestrator but are not persisted automatically, avoiding unchecked secret retention. These receipts remain evidence-only until live verification—not editable local files—controls the assurance decision.
+
+The worker environment retains `HOME`/`CODEX_HOME` for Codex authentication. The requested read-only sandbox concerns writes; receipts do not prove restricted secret reads or network isolation.
 
 ## Findings
 

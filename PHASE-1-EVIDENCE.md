@@ -20,7 +20,7 @@ Status: in progress
 
 ## Pending Phase-1 gates
 
-- Linux diagnostic worker-capability probe, actual role-worker receipts, and automatic role delegation (all remain pending as release gates)
+- Linux diagnostic worker-capability probe and actual role-worker receipt implementation: present, integration evidence pending; automatic role delegation and live assurance verification remain pending release gates
 - macOS arm64 and x86-64 surface tests (cross-compiled binaries are present but unverified on macOS)
 - IDE-extension and Codex-app matrix tests
 - 100-prompt, three-repeat trigger suite
