@@ -3,6 +3,7 @@
   "adapters": [
     {
       "name": "codex-cli",
+      "protocolVersion": 1,
       "status": "EXPERIMENTAL",
       "capabilities": {"ephemeralWorkersObserved": true, "writeBlockingObserved": true, "attestedWorkerIdentity": false, "writeIsolationAttested": false, "secretIsolationAttested": false, "networkIsolationAttested": false, "structuredOutputObserved": true},
       "policySource": "../workflows/release-readiness.json",
@@ -10,6 +11,7 @@
     },
     {
       "name": "claude-code",
+      "protocolVersion": 1,
       "status": "GATED",
       "capabilities": {"ephemeralWorkersObserved": false, "writeBlockingObserved": false, "attestedWorkerIdentity": false, "writeIsolationAttested": false, "secretIsolationAttested": false, "networkIsolationAttested": false, "structuredOutputObserved": false},
       "policySource": "../workflows/release-readiness.json",
@@ -17,6 +19,7 @@
     },
     {
       "name": "generic",
+      "protocolVersion": 1,
       "status": "GATED",
       "capabilities": {"ephemeralWorkersObserved": false, "writeBlockingObserved": false, "attestedWorkerIdentity": false, "writeIsolationAttested": false, "secretIsolationAttested": false, "networkIsolationAttested": false, "structuredOutputObserved": false},
       "policySource": "../workflows/release-readiness.json",

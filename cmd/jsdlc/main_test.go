@@ -414,6 +414,22 @@ func TestEvalTriggersRejectsDegenerateAndTrailingFixtures(t *testing.T) {
 	}
 }
 
+func TestEvalTriggersBindsOutputToFixture(t *testing.T) {
+	body := []byte(`{"schemaVersion":1,"subjects":["app"],"cases":[{"id":"p","template":"release the {project}","release":true},{"id":"n","template":"fix the {project}","release":false}]}`)
+	path := filepath.Join(t.TempDir(), "triggers.json")
+	if err := os.WriteFile(path, body, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	got, err := evalTriggers([]string{"--fixture", path, "--repeats", "2"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	digest := sha256.Sum256(body)
+	if got["evaluationSchemaVersion"] != 1 || got["fixtureDigest"] != fmt.Sprintf("%x", digest) || got["failureCount"] != 0 || got["failuresTruncated"] != false {
+		t.Fatalf("evaluation provenance is incomplete: %#v", got)
+	}
+}
+
 func TestEvalQualityComputesGraduationMetrics(t *testing.T) {
 	zero := 0
 	tasks := make([]qualityTask, 20)
@@ -436,6 +452,10 @@ func TestEvalQualityComputesGraduationMetrics(t *testing.T) {
 	}
 	if got["passed"] != true || got["tasks"] != 20 || got["trialsPerArm"] != 3 || got["totalRunsPerArm"] != 60 {
 		t.Fatalf("unexpected quality result: %#v", got)
+	}
+	fixtureDigest := sha256.Sum256(b)
+	if got["evaluationSchemaVersion"] != 1 || got["fixtureDigest"] != fmt.Sprintf("%x", fixtureDigest) {
+		t.Fatalf("quality result lacks fixture provenance: %#v", got)
 	}
 	tasks[0].Jerry[0].Tokens = 501
 	b, err = json.Marshal(qualitySuite{SchemaVersion: 1, TrialsPerArm: 3, MaxJerryTokensPerRun: 500, Tasks: tasks})
@@ -870,6 +890,74 @@ func TestAdapterCatalogFailsClosed(t *testing.T) {
 	}
 	if packResult["activationAllowed"] != false || packResult["status"] != "GATED_BY_PHASE_3" {
 		t.Fatalf("packs must remain gated: %#v", packResult)
+	}
+}
+
+func TestAdapterProtocolValidationCannotUpgradeAssurance(t *testing.T) {
+	workingDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	pluginRoot := filepath.Clean(filepath.Join(workingDir, "..", "..", "plugins", "jerry-sdlc"))
+	t.Setenv("JSDLC_PLUGIN_ROOT", pluginRoot)
+	policy, err := os.ReadFile(filepath.Join(pluginRoot, "workflows", "release-readiness.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	role, err := os.ReadFile(filepath.Join(pluginRoot, "roles", "qa-executor.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	policyHash, roleHash := sha256.Sum256(policy), sha256.Sum256(role)
+	record := adapterRecord{SchemaVersion: 1, ProtocolVersion: 1, AdapterName: "generic-test", RunID: "run", Candidate: "candidate", Role: "qa-executor", RepositoryDigest: strings.Repeat("a", 64), PolicyDigest: fmt.Sprintf("%x", policyHash), RoleContractDigest: fmt.Sprintf("%x", roleHash), WorkerInstanceID: "worker", ResultDigest: strings.Repeat("b", 64), Mode: "READ_ONLY", Capabilities: adapterCapabilities{EphemeralWorkersObserved: true, StructuredOutputObserved: true}, Trust: "OBSERVED_UNATTESTED", RecordedAt: "2026-01-01T00:00:00Z"}
+	b, _ := json.Marshal(record)
+	path := filepath.Join(t.TempDir(), "adapter.json")
+	if err := os.WriteFile(path, b, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	got, err := validateAdapter([]string{"--file", path})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got["valid"] != true || got["activationAllowed"] != false || got["assuranceEffect"] != "EVIDENCE_ONLY" {
+		t.Fatalf("adapter protocol overstated assurance: %#v", got)
+	}
+	var raw map[string]any
+	if err := json.Unmarshal(b, &raw); err != nil {
+		t.Fatal(err)
+	}
+	delete(raw, "capabilities")
+	omitted, _ := json.Marshal(raw)
+	if err := os.WriteFile(path, omitted, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := validateAdapter([]string{"--file", path}); err == nil {
+		t.Fatal("adapter record omitted capabilities")
+	}
+	if err := json.Unmarshal(b, &raw); err != nil {
+		t.Fatal(err)
+	}
+	capabilities := raw["capabilities"].(map[string]any)
+	for key := range capabilities {
+		if err := json.Unmarshal(b, &raw); err != nil {
+			t.Fatal(err)
+		}
+		delete(raw["capabilities"].(map[string]any), key)
+		omitted, _ = json.Marshal(raw)
+		if err := os.WriteFile(path, omitted, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := validateAdapter([]string{"--file", path}); err == nil {
+			t.Fatalf("adapter record omitted capability %s", key)
+		}
+	}
+	record.Capabilities.WriteIsolationAttested = true
+	b, _ = json.Marshal(record)
+	if err := os.WriteFile(path, b, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := validateAdapter([]string{"--file", path}); err == nil {
+		t.Fatal("self-reported adapter claimed attested isolation")
 	}
 }
 

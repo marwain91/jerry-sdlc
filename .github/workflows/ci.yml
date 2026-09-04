@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Test
+        run: go test ./...
+      - name: Check formatting
+        run: test -z "$(gofmt -l cmd/jsdlc/*.go)"
+      - name: Validate JSON syntax
+        run: find . -type f -name '*.json' -not -path './.git/*' -print0 | xargs -0 -n1 python3 -m json.tool >/dev/null
+      - name: Reproduce packaged binaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/jsdlc-build
+          for target in linux/amd64 darwin/amd64 darwin/arm64; do
+            os=${target%/*}
+            arch=${target#*/}
+            mkdir -p "/tmp/jsdlc-build/${os}-${arch}"
+            GOOS=$os GOARCH=$arch CGO_ENABLED=0 go build -buildvcs=false -trimpath -ldflags='-s -w' -o "/tmp/jsdlc-build/${os}-${arch}/jsdlc" ./cmd/jsdlc
+            cmp "/tmp/jsdlc-build/${os}-${arch}/jsdlc" "plugins/jerry-sdlc/assets/bin/${os}-${arch}/jsdlc"
+          done
+          cd plugins/jerry-sdlc/assets
+          sha256sum -c checksums.sha256

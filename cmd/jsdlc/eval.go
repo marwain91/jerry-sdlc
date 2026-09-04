@@ -1,12 +1,15 @@
 package main
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
 	"io"
 	"strings"
+	"time"
 )
 
 type triggerSuite struct {
@@ -42,6 +45,7 @@ func evalTriggers(args []string) (result, error) {
 	if err != nil {
 		return nil, err
 	}
+	fixtureHash := sha256.Sum256(b)
 	dec := json.NewDecoder(strings.NewReader(string(b)))
 	dec.DisallowUnknownFields()
 	var suite triggerSuite
@@ -96,6 +100,7 @@ func evalTriggers(args []string) (result, error) {
 	}
 	tp, fp, tn, fn := 0, 0, 0, 0
 	failures := []string{}
+	failureCount := 0
 	labels := len(expanded)
 	for _, item := range expanded {
 		for trial := 0; trial < *repeats; trial++ {
@@ -117,11 +122,14 @@ func evalTriggers(args []string) (result, error) {
 			if got != item.release && len(failures) < 50 {
 				failures = append(failures, fmt.Sprintf("%s/%s trial %d", item.id, item.subject, trial+1))
 			}
+			if got != item.release {
+				failureCount++
+			}
 		}
 	}
 	precision, recall := ratio(tp, tp+fp), ratio(tp, tp+fn)
 	minimum, precisionPass, recallPass := labels >= 100, precision >= .98, recall >= .95
-	return result{"suiteSchemaVersion": suite.SchemaVersion, "labelledPrompts": labels, "repeats": *repeats, "trials": labels * *repeats, "truePositive": tp, "falsePositive": fp, "trueNegative": tn, "falseNegative": fn, "precision": precision, "recall": recall, "passed": minimum && precisionPass && recallPass, "thresholds": result{"minimumLabelledPrompts": minimum, "precisionAtLeast98Percent": precisionPass, "recallAtLeast95Percent": recallPass}, "failures": failures, "scope": "DETERMINISTIC_CLASSIFIER_ONLY_NOT_IMPLICIT_SKILL_SELECTION"}, nil
+	return result{"evaluationSchemaVersion": 1, "evaluatedAt": time.Now().UTC().Format(time.RFC3339Nano), "fixtureDigest": hex.EncodeToString(fixtureHash[:]), "suiteSchemaVersion": suite.SchemaVersion, "labelledPrompts": labels, "repeats": *repeats, "trials": labels * *repeats, "truePositive": tp, "falsePositive": fp, "trueNegative": tn, "falseNegative": fn, "precision": precision, "recall": recall, "passed": minimum && precisionPass && recallPass, "thresholds": result{"minimumLabelledPrompts": minimum, "precisionAtLeast98Percent": precisionPass, "recallAtLeast95Percent": recallPass}, "failureCount": failureCount, "failuresTruncated": failureCount > len(failures), "failures": failures, "scope": "DETERMINISTIC_CLASSIFIER_ONLY_NOT_IMPLICIT_SKILL_SELECTION"}, nil
 }
 
 func normalizeFixtureText(value string) string {

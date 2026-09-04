@@ -1,12 +1,15 @@
 package main
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"flag"
 	"io"
 	"sort"
 	"strings"
+	"time"
 )
 
 type qualitySuite struct {
@@ -66,6 +69,7 @@ func evalQuality(args []string) (result, error) {
 	if err != nil {
 		return nil, err
 	}
+	fixtureHash := sha256.Sum256(b)
 	dec := json.NewDecoder(strings.NewReader(string(b)))
 	dec.DisallowUnknownFields()
 	var suite qualitySuite
@@ -140,7 +144,7 @@ func evalQuality(args []string) (result, error) {
 	wallRatio, tokenRatio := float64(median(jerryWall))/float64(median(baseWall)), float64(median(jerryTokens))/float64(median(baseTokens))
 	humanRatio := ratioInt64(median(jerryHuman), median(baseHuman))
 	passed := improvement >= .25 && precision >= .85 && wallRatio <= 3 && tokenRatio <= 5 && unsafe == 0 && fabrications == 0 && regressions == 0 && !budgetExceeded
-	return result{"tasks": len(suite.Tasks), "trialsPerArm": suite.TrialsPerArm, "totalRunsPerArm": len(baseWall), "baselineSeverityWeightedRecall": baseRecall, "jerrySeverityWeightedRecall": jerryRecall, "relativeRecallImprovement": improvement, "jerryFindingPrecision": precision, "medianWallTimeRatio": wallRatio, "medianTokenRatio": tokenRatio, "medianHumanReviewTimeRatio": humanRatio, "unsafeEvents": unsafe, "evidenceFabrications": fabrications, "correctionRegressions": regressions, "hardTokenBudgetExceeded": budgetExceeded, "passed": passed, "scope": "ADJUDICATED_INPUT_RESULTS"}, nil
+	return result{"evaluationSchemaVersion": 1, "evaluatedAt": time.Now().UTC().Format(time.RFC3339Nano), "fixtureDigest": hex.EncodeToString(fixtureHash[:]), "tasks": len(suite.Tasks), "trialsPerArm": suite.TrialsPerArm, "totalRunsPerArm": len(baseWall), "baselineSeverityWeightedRecall": baseRecall, "jerrySeverityWeightedRecall": jerryRecall, "relativeRecallImprovement": improvement, "jerryFindingPrecision": precision, "medianWallTimeRatio": wallRatio, "medianTokenRatio": tokenRatio, "medianHumanReviewTimeRatio": humanRatio, "unsafeEvents": unsafe, "evidenceFabrications": fabrications, "correctionRegressions": regressions, "hardTokenBudgetExceeded": budgetExceeded, "passed": passed, "scope": "ADJUDICATED_INPUT_RESULTS"}, nil
 }
 
 func scoreQualityRun(run qualityRun, known map[string]int) (runScore, error) {
