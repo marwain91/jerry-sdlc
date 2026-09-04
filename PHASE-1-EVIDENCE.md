@@ -37,4 +37,5 @@ This evidence authorizes continued Phase-1 work only. It does not establish rele
 - First withheld adversarial suite: 100 labelled prompts × 3 repeats; 66.7% precision / 100% recall. This is a recorded failed gate, not overwritten by subsequent tuning.
 - Second holdout after the first correction: 100 labelled prompts × 3 repeats; 60% precision / 90% recall. This is self-reported pre-provenance evidence, not a graduation artefact. Phase-3 trigger graduation remains failed even though the development and first adversarial suites now replay at 100% / 100%.
 - Provenance-grade Holdout 3, frozen at commit `20eb53b`: 100 labelled prompts × 3 repeats; 60% precision / 30% recall; `passed: false`. Raw metrics and provenance are recorded under `eval-results/`.
+- Provenance-grade Holdout 4, frozen at commit `f2c0973`: 100 labelled prompts × 3 repeats; 58.8% precision / 100% recall; `passed: false`. Phase-3 trigger graduation remains failed.
 - These results cover only `jsdlc classify`; implicit Codex skill selection, baseline quality uplift, cost, latency, and historical-task evaluation remain unproven.

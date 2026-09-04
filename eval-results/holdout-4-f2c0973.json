@@ -1,0 +1,26 @@
+{
+  "observedAt": "2026-09-04T18:29:39Z",
+  "classifierCommit": "f2c0973245d9e70bcad1ec625968926741fc951b",
+  "fixture": "evals/holdout-4-trigger-suite.json",
+  "fixtureSha256": "a5669d17317c4bf6daf08eb1cbecf1d2231460f0c3d745f3d20690a78d540be9",
+  "command": "podman run --rm --userns=keep-id -e GOCACHE=/tmp/go-cache -e XDG_CONFIG_HOME=/tmp/go-config -v $PWD:/src:Z -w /src docker.io/library/golang:1.23-alpine /usr/local/go/bin/go run ./cmd/jsdlc eval-triggers --fixture evals/holdout-4-trigger-suite.json --repeats 3",
+  "result": {
+    "labelledPrompts": 100,
+    "repeats": 3,
+    "trials": 300,
+    "truePositive": 150,
+    "falsePositive": 105,
+    "trueNegative": 45,
+    "falseNegative": 0,
+    "precision": 0.5882352941176471,
+    "recall": 1,
+    "passed": false,
+    "scope": "DETERMINISTIC_CLASSIFIER_ONLY_NOT_IMPLICIT_SKILL_SELECTION",
+    "thresholds": {
+      "minimumLabelledPrompts": true,
+      "precisionAtLeast98Percent": false,
+      "recallAtLeast95Percent": true
+    },
+    "failureListTruncatedAt": 50
+  }
+}
