@@ -14,7 +14,7 @@ Status: in progress
 - Fresh-session implicit trigger for “Prepare this project for release”: PASS (1 observation; formal trigger suite pending)
 - Correct read-only-sandbox degradation to `ADVISORY_ONLY`: PASS
 - Repository mutation during zero-init activation: none
-- State resume, legal-transition, candidate-drift, incompatible-schema, lock-contention, symlink-identity, terminal rollover, and CLI/persisted-state false-READY tests: PASS; crash-interruption proof remains pending
+- State resume, legal-transition, candidate-drift, incompatible-schema, lock-contention, symlink-identity, terminal rollover, reversible v1→v2 migration, migration traversal/tamper/drift rejection, interrupted-temp tolerance, deterministic pre-rename `SIGKILL` create/replace safety, and CLI/persisted-state false-READY tests: PASS. Power-loss durability and the post-rename/pre-directory-fsync window remain unproven.
 - `MANAGED_INDEPENDENT` is fail-closed until cryptographic/runtime adapter attestation exists: PASS
 - Independent reviewer in a separate read-only Codex process: observed; durable test evidence and automatic in-session delegation remain pending
 - Real four-role `team` integration against commit `716f226db6ecfa7bfe9b1918123ecea1cf6f4977`: PASS for orchestration, frozen repository digest, distinct reported subprocess IDs, structured reports, and truthful `INCONCLUSIVE`; produced actionable contract-freezing, semantic-validation, candidate-binding, and diagnostic-leak findings
@@ -26,7 +26,7 @@ Status: in progress
 - IDE-extension and Codex-app matrix tests
 - 100-prompt, three-repeat implicit Codex skill-selection suite (deterministic classifier suites exist separately)
 - collision/coexistence fixtures
-- process interruption integration test plus schema upgrade/rollback tests (unit-level resume and incompatible-schema coverage now pass)
+- power-loss and post-rename/pre-directory-fsync interruption evidence (the deterministic pre-rename process-kill boundary passes)
 - published per-cell evidence table
 
 This evidence authorizes continued Phase-1 work only. It does not establish release-readiness capability.

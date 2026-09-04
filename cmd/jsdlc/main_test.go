@@ -1,11 +1,16 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
+	"syscall"
 	"testing"
+	"time"
 )
 
 func TestStartDoesNotReplaceExistingRun(t *testing.T) {
@@ -77,6 +82,265 @@ func TestPersistedIndependentAssuranceIsRejected(t *testing.T) {
 	}
 	if _, err := status([]string{"--repo", repo}); err == nil {
 		t.Fatal("forged independent assurance must be rejected")
+	}
+}
+
+func TestStateUpgradeAndRollbackAreReversible(t *testing.T) {
+	t.Setenv("XDG_STATE_HOME", t.TempDir())
+	repo := t.TempDir()
+	started, err := start([]string{"--repo", repo, "--candidate", "candidate-a"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := started["path"].(string)
+	legacy := started["run"].(runState)
+	legacy.SchemaVersion = 1
+	legacy.ContentDigest = ""
+	b, err := json.Marshal(legacy)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, b, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	upgraded, err := upgradeState([]string{"--repo", repo, "--candidate", "candidate-a"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if upgraded["run"].(runState).SchemaVersion != 2 || upgraded["run"].(runState).ContentDigest == "" {
+		t.Fatalf("upgrade failed: %#v", upgraded)
+	}
+	rolledBack, err := rollbackState([]string{"--repo", repo, "--candidate", "candidate-a"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rolledBack["run"].(runState).SchemaVersion != 1 {
+		t.Fatalf("rollback failed: %#v", rolledBack)
+	}
+	current, _, err := readStateLocationForTest(repo)
+	if err != nil || current.SchemaVersion != 1 {
+		t.Fatalf("legacy state not restored: %#v %v", current, err)
+	}
+}
+
+func readStateLocationForTest(repo string) (runState, string, error) {
+	_, key, root, err := stateLocation(repo)
+	if err != nil {
+		return runState{}, "", err
+	}
+	return readState(root, key)
+}
+
+func TestStateRollbackRefusesPostMigrationTransition(t *testing.T) {
+	t.Setenv("XDG_STATE_HOME", t.TempDir())
+	repo := t.TempDir()
+	started, err := start([]string{"--repo", repo, "--candidate", "candidate-a"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := started["path"].(string)
+	legacy := started["run"].(runState)
+	legacy.SchemaVersion = 1
+	b, _ := json.Marshal(legacy)
+	if err := os.WriteFile(path, b, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := upgradeState([]string{"--repo", repo, "--candidate", "candidate-a"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := transition([]string{"--repo", repo, "--candidate", "candidate-a", "--to", "STRATEGY_READY"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := rollbackState([]string{"--repo", repo, "--candidate", "candidate-a"}); err == nil {
+		t.Fatal("rollback after state progress must be refused")
+	}
+}
+
+func TestInterruptedAtomicWriteLeavesActiveStateReadable(t *testing.T) {
+	t.Setenv("XDG_STATE_HOME", t.TempDir())
+	repo := t.TempDir()
+	started, err := start([]string{"--repo", repo, "--candidate", "candidate-a"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := started["path"].(string)
+	if err := os.WriteFile(filepath.Join(filepath.Dir(path), ".jsdlc-interrupted.tmp"), []byte(`{"partial":`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	got, err := status([]string{"--repo", repo, "--candidate", "candidate-a"})
+	if err != nil || got["run"].(runState).ID != started["run"].(runState).ID {
+		t.Fatalf("interrupted temp affected active state: %#v %v", got, err)
+	}
+}
+
+func TestHelperProcessAtomicWrite(t *testing.T) {
+	if os.Getenv("JSDLC_HELPER_ATOMIC_WRITE") != "1" {
+		return
+	}
+	writeAtomicBeforeRenameHook = func(string) {
+		if err := os.WriteFile(os.Getenv("JSDLC_HELPER_MARKER"), []byte("ready"), 0o600); err != nil {
+			os.Exit(3)
+		}
+		for {
+			time.Sleep(time.Hour)
+		}
+	}
+	if err := writeAtomic(os.Getenv("JSDLC_HELPER_TARGET"), []byte(os.Getenv("JSDLC_HELPER_PAYLOAD"))); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(2)
+	}
+	os.Exit(0)
+}
+
+func TestProcessKillAtRenameBoundaryPreservesAtomicState(t *testing.T) {
+	executable, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	base := runState{SchemaVersion: 2, ID: "run", Workflow: "release-readiness", State: "BASELINED", Assurance: "MANAGED_SEPARATE_PASSES", Repository: "/repo", Candidate: "candidate", ContentDigest: strings.Repeat("a", 64), CreatedAt: "2026-01-01T00:00:00Z", UpdatedAt: "2026-01-01T00:00:00Z"}
+	oldBytes, err := json.Marshal(base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	next := base
+	next.State = "STRATEGY_READY"
+	newBytes, err := json.Marshal(next)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name string
+		old  []byte
+	}{{"create", nil}, {"replace", oldBytes}} {
+		dir := t.TempDir()
+		target, marker := filepath.Join(dir, "active.json"), filepath.Join(dir, "marker")
+		if tc.old != nil {
+			if err := os.WriteFile(target, tc.old, 0o600); err != nil {
+				t.Fatal(err)
+			}
+		}
+		cmd := exec.Command(executable, "-test.run=^TestHelperProcessAtomicWrite$")
+		var helperStderr bytes.Buffer
+		cmd.Stderr = &helperStderr
+		cmd.Env = append(os.Environ(), "JSDLC_HELPER_ATOMIC_WRITE=1", "JSDLC_HELPER_TARGET="+target, "JSDLC_HELPER_MARKER="+marker, "JSDLC_HELPER_PAYLOAD="+string(newBytes))
+		if err := cmd.Start(); err != nil {
+			t.Fatal(err)
+		}
+		deadline := time.Now().Add(5 * time.Second)
+		for {
+			if _, err := os.Stat(marker); err == nil {
+				break
+			}
+			if time.Now().After(deadline) {
+				_ = cmd.Process.Kill()
+				t.Fatal("helper never reached rename boundary")
+			}
+			time.Sleep(5 * time.Millisecond)
+		}
+		if err := cmd.Process.Kill(); err != nil {
+			t.Fatal(err)
+		}
+		err := cmd.Wait()
+		exitErr, ok := err.(*exec.ExitError)
+		if !ok || !exitErr.Sys().(syscall.WaitStatus).Signaled() || exitErr.Sys().(syscall.WaitStatus).Signal() != syscall.SIGKILL {
+			t.Fatalf("helper was not killed at boundary: %v: %s", err, helperStderr.String())
+		}
+		b, readErr := os.ReadFile(target)
+		if tc.old == nil {
+			if !os.IsNotExist(readErr) {
+				t.Fatalf("create published before rename: %q %v", b, readErr)
+			}
+		} else if readErr != nil || !bytes.Equal(b, tc.old) {
+			t.Fatalf("replacement lost old state: %q %v", b, readErr)
+		}
+		if readErr == nil {
+			if _, err := decodeRunState(b); err != nil {
+				t.Fatalf("surviving state is invalid: %v", err)
+			}
+		}
+		if err := writeAtomic(target, newBytes); err != nil {
+			t.Fatal(err)
+		}
+		b, err = os.ReadFile(target)
+		if err != nil || !bytes.Equal(b, newBytes) {
+			t.Fatalf("successful write not committed: %q %v", b, err)
+		}
+		if got, err := decodeRunState(b); err != nil || got.State != "STRATEGY_READY" {
+			t.Fatalf("committed state is invalid: %#v %v", got, err)
+		}
+	}
+}
+
+func TestStateDecoderRejectsTraversalAndNonHexDigest(t *testing.T) {
+	base := runState{SchemaVersion: 2, ID: "run", Workflow: "release-readiness", State: "BASELINED", Assurance: "MANAGED_SEPARATE_PASSES", Repository: "/repo", Candidate: "candidate", ContentDigest: strings.Repeat("a", 64), CreatedAt: "2026-01-01T00:00:00Z", UpdatedAt: "2026-01-01T00:00:00Z"}
+	badDigest := base
+	badDigest.ContentDigest = strings.Repeat("z", 64)
+	badMigration := base
+	badMigration.MigrationID = "../escape"
+	badMigration.MigratedAt = "2026-01-01T00:00:00Z"
+	badMigration.MigrationBackupDigest = strings.Repeat("b", 64)
+	for _, state := range []runState{badDigest, badMigration} {
+		b, err := json.Marshal(state)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := decodeRunState(b); err == nil {
+			t.Fatalf("accepted invalid state: %#v", state)
+		}
+	}
+}
+
+func TestStateRollbackRejectsTamperedBackup(t *testing.T) {
+	t.Setenv("XDG_STATE_HOME", t.TempDir())
+	repo := t.TempDir()
+	started, err := start([]string{"--repo", repo, "--candidate", "candidate-a"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := started["path"].(string)
+	legacy := started["run"].(runState)
+	legacy.SchemaVersion = 1
+	legacy.ContentDigest = ""
+	b, _ := json.Marshal(legacy)
+	if err := os.WriteFile(path, b, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	upgraded, err := upgradeState([]string{"--repo", repo, "--candidate", "candidate-a"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	backup := upgraded["backup"].(string)
+	if err := os.WriteFile(backup, []byte(`{"schemaVersion":1}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := rollbackState([]string{"--repo", repo, "--candidate", "candidate-a"}); err == nil {
+		t.Fatal("tampered backup must be rejected")
+	}
+}
+
+func TestStateRollbackRejectsRepositoryMutation(t *testing.T) {
+	t.Setenv("XDG_STATE_HOME", t.TempDir())
+	repo := t.TempDir()
+	started, err := start([]string{"--repo", repo, "--candidate", "candidate-a"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := started["path"].(string)
+	legacy := started["run"].(runState)
+	legacy.SchemaVersion = 1
+	legacy.ContentDigest = ""
+	b, _ := json.Marshal(legacy)
+	if err := os.WriteFile(path, b, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := upgradeState([]string{"--repo", repo, "--candidate", "candidate-a"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(repo, "drift.txt"), []byte("changed"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := rollbackState([]string{"--repo", repo, "--candidate", "candidate-a"}); err == nil {
+		t.Fatal("rollback after repository drift must be rejected")
 	}
 }
 

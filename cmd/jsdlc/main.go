@@ -10,6 +10,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -25,7 +26,7 @@ type result map[string]any
 
 func main() {
 	if len(os.Args) < 2 {
-		fail(errors.New("usage: jsdlc <adapters|packs|doctor|classify|eval-triggers|eval-quality|roles|start|status|transition|worker|team|verify>"))
+		fail(errors.New("usage: jsdlc <adapters|packs|doctor|classify|eval-triggers|eval-quality|roles|start|status|transition|upgrade-state|rollback-state|worker|team|verify>"))
 	}
 	var out result
 	var err error
@@ -50,6 +51,10 @@ func main() {
 		out, err = status(os.Args[2:])
 	case "transition":
 		out, err = transition(os.Args[2:])
+	case "upgrade-state":
+		out, err = upgradeState(os.Args[2:])
+	case "rollback-state":
+		out, err = rollbackState(os.Args[2:])
 	case "worker":
 		out, err = worker(os.Args[2:])
 	case "team":
@@ -245,16 +250,19 @@ func roles(args []string) (result, error) {
 }
 
 type runState struct {
-	SchemaVersion int    `json:"schemaVersion"`
-	ID            string `json:"id"`
-	Workflow      string `json:"workflow"`
-	State         string `json:"state"`
-	Assurance     string `json:"assurance"`
-	Repository    string `json:"repository"`
-	Candidate     string `json:"candidate"`
-	ContentDigest string `json:"contentDigest,omitempty"`
-	CreatedAt     string `json:"createdAt"`
-	UpdatedAt     string `json:"updatedAt"`
+	SchemaVersion         int    `json:"schemaVersion"`
+	ID                    string `json:"id"`
+	Workflow              string `json:"workflow"`
+	State                 string `json:"state"`
+	Assurance             string `json:"assurance"`
+	Repository            string `json:"repository"`
+	Candidate             string `json:"candidate"`
+	ContentDigest         string `json:"contentDigest,omitempty"`
+	MigrationID           string `json:"migrationId,omitempty"`
+	MigratedAt            string `json:"migratedAt,omitempty"`
+	MigrationBackupDigest string `json:"migrationBackupDigest,omitempty"`
+	CreatedAt             string `json:"createdAt"`
+	UpdatedAt             string `json:"updatedAt"`
 }
 
 func start(args []string) (result, error) {
@@ -270,7 +278,7 @@ func start(args []string) (result, error) {
 	if err != nil {
 		return nil, err
 	}
-	now := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 	id, err := newRunID(key)
 	if err != nil {
 		return nil, err
@@ -288,7 +296,7 @@ func start(args []string) (result, error) {
 	if err != nil {
 		return nil, fmt.Errorf("digest candidate at start: %w", err)
 	}
-	s := runState{SchemaVersion: 1, ID: id, Workflow: *wf, State: "BASELINED", Assurance: *assurance, Repository: abs, Candidate: *candidate, ContentDigest: contentDigest, CreatedAt: now, UpdatedAt: now}
+	s := runState{SchemaVersion: 2, ID: id, Workflow: *wf, State: "BASELINED", Assurance: *assurance, Repository: abs, Candidate: *candidate, ContentDigest: contentDigest, CreatedAt: now, UpdatedAt: now}
 	dir := filepath.Join(root, key)
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return nil, err
@@ -406,6 +414,130 @@ func transition(args []string) (result, error) {
 	return result{"run": s}, nil
 }
 
+func upgradeState(args []string) (result, error) {
+	fs := flag.NewFlagSet("upgrade-state", flag.ContinueOnError)
+	repo := fs.String("repo", ".", "repository path")
+	candidate := fs.String("candidate", "", "active candidate label")
+	if err := fs.Parse(args); err != nil {
+		return nil, err
+	}
+	if *candidate == "" {
+		return nil, errors.New("--candidate is required")
+	}
+	abs, key, root, err := stateLocation(*repo)
+	if err != nil {
+		return nil, err
+	}
+	path := filepath.Join(root, key, "active.json")
+	unlock, err := acquireLock(path)
+	if err != nil {
+		return nil, err
+	}
+	defer unlock()
+	s, _, err := readState(root, key)
+	if err != nil {
+		return nil, err
+	}
+	if s.SchemaVersion != 1 {
+		return nil, errors.New("only state schema 1 can be upgraded")
+	}
+	if s.Repository != abs || s.Candidate != *candidate {
+		return nil, errors.New("state upgrade identity or candidate mismatch")
+	}
+	digest, err := digestRepository(abs)
+	if err != nil {
+		return nil, err
+	}
+	if s.ContentDigest != "" && s.ContentDigest != digest {
+		return nil, errors.New("legacy candidate content changed; start a fresh run instead of upgrading")
+	}
+	before, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	migrationID, err := newRunID("migration")
+	if err != nil {
+		return nil, err
+	}
+	dir := filepath.Join(root, key, "migrations")
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return nil, err
+	}
+	backup := filepath.Join(dir, migrationID+".before.json")
+	if err := writeAtomic(backup, before); err != nil {
+		return nil, err
+	}
+	now := time.Now().UTC().Format(time.RFC3339Nano)
+	backupHash := sha256.Sum256(before)
+	s.SchemaVersion, s.ContentDigest, s.MigrationID, s.MigratedAt, s.MigrationBackupDigest, s.UpdatedAt = 2, digest, migrationID, now, hex.EncodeToString(backupHash[:]), now
+	if err := writeState(path, s); err != nil {
+		return nil, err
+	}
+	return result{"run": s, "migrationId": migrationID, "backup": backup, "rollbackAvailable": true}, nil
+}
+
+func rollbackState(args []string) (result, error) {
+	fs := flag.NewFlagSet("rollback-state", flag.ContinueOnError)
+	repo := fs.String("repo", ".", "repository path")
+	candidate := fs.String("candidate", "", "active candidate label")
+	if err := fs.Parse(args); err != nil {
+		return nil, err
+	}
+	if *candidate == "" {
+		return nil, errors.New("--candidate is required")
+	}
+	abs, key, root, err := stateLocation(*repo)
+	if err != nil {
+		return nil, err
+	}
+	path := filepath.Join(root, key, "active.json")
+	unlock, err := acquireLock(path)
+	if err != nil {
+		return nil, err
+	}
+	defer unlock()
+	s, _, err := readState(root, key)
+	if err != nil {
+		return nil, err
+	}
+	if s.SchemaVersion != 2 || s.MigrationID == "" || s.MigratedAt == "" || s.MigrationBackupDigest == "" || s.UpdatedAt != s.MigratedAt {
+		return nil, errors.New("state is not an unchanged migrated state; rollback refused")
+	}
+	if s.Repository != abs || s.Candidate != *candidate {
+		return nil, errors.New("state rollback identity or candidate mismatch")
+	}
+	currentDigest, err := digestRepository(abs)
+	if err != nil || currentDigest != s.ContentDigest {
+		return nil, errors.New("candidate content changed after migration; rollback refused")
+	}
+	dir := filepath.Join(root, key, "migrations")
+	backup := filepath.Join(dir, s.MigrationID+".before.json")
+	before, err := readBoundedRegularFile(backup, 1024*1024)
+	if err != nil {
+		return nil, err
+	}
+	backupHash := sha256.Sum256(before)
+	if hex.EncodeToString(backupHash[:]) != s.MigrationBackupDigest {
+		return nil, errors.New("migration backup digest mismatch")
+	}
+	legacy, err := decodeRunState(before)
+	if err != nil || legacy.SchemaVersion != 1 || legacy.ID != s.ID || legacy.Repository != s.Repository || legacy.Candidate != s.Candidate {
+		return nil, errors.New("migration backup is invalid or belongs to another run")
+	}
+	current, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	after := filepath.Join(dir, s.MigrationID+".rolled-back-from.json")
+	if err := writeAtomic(after, current); err != nil {
+		return nil, err
+	}
+	if err := writeAtomic(path, before); err != nil {
+		return nil, err
+	}
+	return result{"run": legacy, "migrationId": s.MigrationID, "restored": backup, "rollbackSnapshot": after}, nil
+}
+
 func verify(args []string) (result, error) {
 	fs := flag.NewFlagSet("verify", flag.ContinueOnError)
 	repo := fs.String("repo", ".", "repository path")
@@ -452,29 +584,73 @@ func readState(root, key string) (runState, string, error) {
 	if err != nil {
 		return runState{}, path, err
 	}
-	var s runState
-	if err := json.Unmarshal(b, &s); err != nil {
+	s, err := decodeRunState(b)
+	if err != nil {
 		return runState{}, path, err
 	}
-	if s.SchemaVersion != 1 {
-		return runState{}, path, fmt.Errorf("unsupported state schema %d", s.SchemaVersion)
+	return s, path, nil
+}
+
+func decodeRunState(b []byte) (runState, error) {
+	dec := json.NewDecoder(strings.NewReader(string(b)))
+	dec.DisallowUnknownFields()
+	var s runState
+	if err := dec.Decode(&s); err != nil {
+		return runState{}, err
+	}
+	var trailing any
+	if err := dec.Decode(&trailing); err != io.EOF {
+		return runState{}, errors.New("persisted state contains trailing JSON")
+	}
+	if s.SchemaVersion != 1 && s.SchemaVersion != 2 {
+		return runState{}, fmt.Errorf("unsupported state schema %d", s.SchemaVersion)
 	}
 	if !validAssurance(s.Assurance) {
-		return runState{}, path, fmt.Errorf("invalid persisted assurance %q", s.Assurance)
+		return runState{}, fmt.Errorf("invalid persisted assurance %q", s.Assurance)
 	}
 	if s.Assurance == "MANAGED_INDEPENDENT" {
-		return runState{}, path, errors.New("persisted MANAGED_INDEPENDENT lacks live-verified role-worker receipts")
+		return runState{}, errors.New("persisted MANAGED_INDEPENDENT lacks live-verified role-worker receipts")
 	}
 	if s.ID == "" || s.Workflow == "" || s.State == "" || s.Repository == "" || s.Candidate == "" {
-		return runState{}, path, errors.New("persisted state is missing required fields")
+		return runState{}, errors.New("persisted state is missing required fields")
+	}
+	if s.ContentDigest != "" && !validSHA256(s.ContentDigest) {
+		return runState{}, errors.New("persisted candidate digest is invalid")
+	}
+	if s.SchemaVersion == 2 && s.ContentDigest == "" {
+		return runState{}, errors.New("state schema 2 requires a candidate content digest")
+	}
+	if s.SchemaVersion == 1 && (s.MigrationID != "" || s.MigratedAt != "" || s.MigrationBackupDigest != "") {
+		return runState{}, errors.New("state schema 1 cannot contain migration metadata")
+	}
+	hasMigration := s.MigrationID != "" || s.MigratedAt != "" || s.MigrationBackupDigest != ""
+	if hasMigration && (!validMigrationID(s.MigrationID) || !validSHA256(s.MigrationBackupDigest) || parseRFC3339(s.MigratedAt) != nil) {
+		return runState{}, errors.New("persisted migration metadata is invalid or incomplete")
 	}
 	if !validWorkflow(s.Workflow) {
-		return runState{}, path, fmt.Errorf("unsupported persisted workflow %q", s.Workflow)
+		return runState{}, fmt.Errorf("unsupported persisted workflow %q", s.Workflow)
 	}
 	if !validPersistedState(s.State) {
-		return runState{}, path, fmt.Errorf("invalid persisted state %q", s.State)
+		return runState{}, fmt.Errorf("invalid persisted state %q", s.State)
 	}
-	return s, path, nil
+	return s, nil
+}
+
+func validSHA256(value string) bool {
+	decoded, err := hex.DecodeString(value)
+	return err == nil && len(decoded) == sha256.Size && value == strings.ToLower(value)
+}
+func parseRFC3339(value string) error { _, err := time.Parse(time.RFC3339Nano, value); return err }
+func validMigrationID(value string) bool {
+	if len(value) < 1 || len(value) > 128 || filepath.Base(value) != value {
+		return false
+	}
+	for _, r := range value {
+		if (r < 'a' || r > 'z') && (r < '0' || r > '9') && r != '-' && r != '_' {
+			return false
+		}
+	}
+	return true
 }
 
 func validPersistedState(state string) bool {
@@ -518,6 +694,8 @@ func writeState(path string, s runState) error {
 	return writeAtomic(path, b)
 }
 
+var writeAtomicBeforeRenameHook func(string)
+
 func writeAtomic(path string, b []byte) error {
 	tmpFile, err := os.CreateTemp(filepath.Dir(path), ".jsdlc-*.tmp")
 	if err != nil {
@@ -539,6 +717,9 @@ func writeAtomic(path string, b []byte) error {
 	}
 	if err := tmpFile.Close(); err != nil {
 		return err
+	}
+	if writeAtomicBeforeRenameHook != nil {
+		writeAtomicBeforeRenameHook(path)
 	}
 	if err := os.Rename(tmp, path); err != nil {
 		return err

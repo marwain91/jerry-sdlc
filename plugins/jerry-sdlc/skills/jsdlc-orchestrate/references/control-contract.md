@@ -14,6 +14,8 @@ Phase-1 execution receipts record the reported thread identity, requested CLI sa
 
 The worker environment retains `HOME`/`CODEX_HOME` for Codex authentication. The requested read-only sandbox concerns writes; receipts do not prove restricted secret reads or network isolation.
 
+Run state schema 2 binds candidate content at start. Legacy schema-1 state is readable but cannot run a team until `jsdlc upgrade-state --repo <repo> --candidate <label>` explicitly establishes a new content baseline and a digest-bound backup. `rollback-state` restores that backup only while workflow state and repository content remain unchanged; it never deletes migration evidence.
+
 ## Findings
 
 Each finding needs an ID, exact location/evidence, severity, confidence, violated requirement or observed failure, and bounded recommended outcome. Preserve reviewer disagreement. Only adjudicated findings may enter correction.

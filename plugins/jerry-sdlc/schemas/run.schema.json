@@ -2,9 +2,9 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Jerry SDLC run",
   "type": "object",
-  "required": ["schemaVersion", "id", "workflow", "state", "assurance", "repository", "candidate", "contentDigest", "createdAt", "updatedAt"],
+  "required": ["schemaVersion", "id", "workflow", "state", "assurance", "repository", "candidate", "createdAt", "updatedAt"],
   "properties": {
-    "schemaVersion": {"const": 1},
+    "schemaVersion": {"enum": [1, 2]},
     "id": {"type": "string", "minLength": 1},
     "workflow": {"type": "string", "minLength": 1},
     "state": {"enum": ["BASELINED", "STRATEGY_READY", "EVIDENCE_COLLECTED", "REVIEWED", "ADJUDICATED", "VERIFIED", "NOT_READY", "INCONCLUSIVE", "CANCELLED", "BLOCKED"]},
@@ -12,8 +12,16 @@
     "repository": {"type": "string", "minLength": 1},
     "candidate": {"type": "string", "minLength": 1},
     "contentDigest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "migrationId": {"type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-z0-9_-]+$"},
+    "migratedAt": {"type": "string", "format": "date-time"},
+    "migrationBackupDigest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
     "createdAt": {"type": "string", "format": "date-time"},
     "updatedAt": {"type": "string", "format": "date-time"}
   },
-  "additionalProperties": true
+  "allOf": [
+    {"if":{"properties":{"schemaVersion":{"const":2}}},"then":{"required":["contentDigest"]}},
+    {"if":{"anyOf":[{"required":["migrationId"]},{"required":["migratedAt"]},{"required":["migrationBackupDigest"]}]},"then":{"required":["migrationId","migratedAt","migrationBackupDigest"]}},
+    {"if":{"properties":{"schemaVersion":{"const":1}}},"then":{"not":{"anyOf":[{"required":["migrationId"]},{"required":["migratedAt"]},{"required":["migrationBackupDigest"]}]}}}
+  ],
+  "additionalProperties": false
 }
