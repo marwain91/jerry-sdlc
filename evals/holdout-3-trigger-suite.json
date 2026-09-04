@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "subjects": ["CLI tool", "customer console", "billing API", "Android client", "polyglot monorepo"],
+  "cases": [
+    {"id":"intent-01","template":"Give the {project} a go or no-go review","release":true},
+    {"id":"intent-02","template":"Release the {project} if every required check passes","release":true},
+    {"id":"intent-03","template":"Perform final launch QA for the {project}","release":true},
+    {"id":"intent-04","template":"Prepare the {project} to be published","release":true},
+    {"id":"intent-05","template":"Is the {project} safe for production rollout?","release":true},
+    {"id":"intent-06","template":"Assess the {project} release candidate","release":true},
+    {"id":"intent-07","template":"Run all checks before shipping the {project}","release":true},
+    {"id":"intent-08","template":"Make a release decision for the {project}","release":true},
+    {"id":"intent-09","template":"Verify the {project} before it goes live","release":true},
+    {"id":"intent-10","template":"Can I publish the {project} now?","release":true},
+    {"id":"mention-01","template":"Add a go or no-go field to the {project}","release":false},
+    {"id":"mention-02","template":"Explain how to release the {project}","release":false},
+    {"id":"mention-03","template":"Fix the final launch QA page in the {project}","release":false},
+    {"id":"mention-04","template":"Create a published flag in the {project}","release":false},
+    {"id":"mention-05","template":"Document production rollout for the {project}","release":false},
+    {"id":"mention-06","template":"Deserialize release candidate data in the {project}","release":false},
+    {"id":"mention-07","template":"Translate shipping copy in the {project}","release":false},
+    {"id":"mention-08","template":"Display the previous release decision in the {project}","release":false},
+    {"id":"mention-09","template":"Rename goesLiveAt in the {project}","release":false},
+    {"id":"mention-10","template":"Build a publish-now button in the {project}","release":false}
+  ]
+}
