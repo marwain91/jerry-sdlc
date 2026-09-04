@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bufio"
+	"context"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
@@ -9,6 +11,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -79,6 +82,7 @@ func stateRoot() (string, error) {
 
 func doctor(args []string) (result, error) {
 	fs := flag.NewFlagSet("doctor", flag.ContinueOnError)
+	probeIndependent := fs.Bool("probe-independent", false, "execute distinct read-only Codex worker probes")
 	if err := fs.Parse(args); err != nil {
 		return nil, err
 	}
@@ -94,7 +98,81 @@ func doctor(args []string) (result, error) {
 		return result{"version": version, "outcome": "ADVISORY_ONLY", "statePath": root, "reason": err.Error()}, nil
 	}
 	_ = os.Remove(probe)
-	return result{"version": version, "outcome": "MANAGED_SEPARATE_PASSES", "statePath": root, "platform": runtime.GOOS + "/" + runtime.GOARCH, "independentWorkers": false, "readOnlyIsolation": false, "reason": "independent adapter attestation is not implemented in Phase 1"}, nil
+	if *probeIndependent {
+		observation, probeErr := probeIndependentWorkers(root)
+		if probeErr != nil {
+			return result{"version": version, "outcome": "MANAGED_SEPARATE_PASSES", "statePath": root, "platform": runtime.GOOS + "/" + runtime.GOARCH, "independentWorkers": false, "readOnlyIsolation": false, "reason": probeErr.Error()}, nil
+		}
+		return result{"version": version, "outcome": "MANAGED_SEPARATE_PASSES", "statePath": root, "platform": runtime.GOOS + "/" + runtime.GOARCH, "independentWorkers": false, "readOnlyIsolation": false, "capabilityObservation": observation, "reason": "distinct thread IDs were observed; the canary remained absent and the worker reported a blocked write; this is not proof of enforced isolation"}, nil
+	}
+	return result{"version": version, "outcome": "MANAGED_SEPARATE_PASSES", "statePath": root, "platform": runtime.GOOS + "/" + runtime.GOARCH, "independentWorkers": false, "readOnlyIsolation": false, "reason": "actual role-worker receipts are not implemented; --probe-independent provides a non-authoritative capability diagnostic only"}, nil
+}
+
+type workerObservation struct {
+	Adapter               string   `json:"adapter"`
+	CodexVersion          string   `json:"codexVersion"`
+	ThreadIDs             []string `json:"threadIds"`
+	DistinctThreads       bool     `json:"distinctThreads"`
+	CanaryAbsent          bool     `json:"canaryAbsent"`
+	WorkerReportedBlocked bool     `json:"workerReportedBlocked"`
+	ObservedAt            string   `json:"observedAt"`
+}
+
+func probeIndependentWorkers(root string) (workerObservation, error) {
+	bin, err := exec.LookPath("codex")
+	if err != nil {
+		return workerObservation{}, errors.New("Codex CLI is unavailable for independent workers")
+	}
+	versionBytes, err := exec.Command(bin, "--version").Output()
+	if err != nil {
+		return workerObservation{}, fmt.Errorf("inspect Codex CLI: %w", err)
+	}
+	probeDir, err := os.MkdirTemp(root, ".isolation-probe-")
+	if err != nil {
+		return workerObservation{}, err
+	}
+	defer os.RemoveAll(probeDir)
+	canary := filepath.Join(probeDir, "isolation-canary")
+	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+	defer cancel()
+	first, transcript, err := runCodexProbe(ctx, bin, probeDir, "Use the shell tool to run exactly: touch isolation-canary. Then report whether it succeeded.")
+	if err != nil {
+		return workerObservation{}, fmt.Errorf("read-only worker probe failed: %w", err)
+	}
+	if _, err := os.Stat(canary); err == nil || !os.IsNotExist(err) {
+		return workerObservation{}, errors.New("read-only worker wrote the isolation canary")
+	}
+	lowerTranscript := strings.ToLower(transcript)
+	if !strings.Contains(lowerTranscript, "isolation-canary") || (!strings.Contains(lowerTranscript, "read-only file system") && !strings.Contains(lowerTranscript, "permission denied")) {
+		return workerObservation{}, errors.New("worker did not report that the canary write was blocked")
+	}
+	second, _, err := runCodexProbe(ctx, bin, probeDir, "Return exactly the word PROBE. Do not use tools.")
+	if err != nil {
+		return workerObservation{}, fmt.Errorf("distinct worker probe failed: %w", err)
+	}
+	if first == second {
+		return workerObservation{}, errors.New("Codex reused a worker thread during the independence probe")
+	}
+	return workerObservation{"codex-exec-read-only-v1", strings.TrimSpace(string(versionBytes)), []string{first, second}, true, true, true, time.Now().UTC().Format(time.RFC3339)}, nil
+}
+
+func runCodexProbe(ctx context.Context, bin, dir, prompt string) (string, string, error) {
+	cmd := exec.CommandContext(ctx, bin, "--ask-for-approval", "never", "exec", "--ephemeral", "--ignore-user-config", "--sandbox", "read-only", "--json", "--skip-git-repo-check", "-C", dir, prompt)
+	out, err := cmd.Output()
+	if err != nil {
+		return "", string(out), err
+	}
+	scanner := bufio.NewScanner(strings.NewReader(string(out)))
+	for scanner.Scan() {
+		var event struct {
+			Type     string `json:"type"`
+			ThreadID string `json:"thread_id"`
+		}
+		if json.Unmarshal(scanner.Bytes(), &event) == nil && event.Type == "thread.started" && event.ThreadID != "" {
+			return event.ThreadID, string(out), nil
+		}
+	}
+	return "", string(out), errors.New("Codex worker did not return a thread identity")
 }
 
 func classify(args []string) (result, error) {
@@ -168,7 +246,7 @@ func start(args []string) (result, error) {
 		return nil, fmt.Errorf("invalid assurance %q", *assurance)
 	}
 	if *assurance == "MANAGED_INDEPENDENT" {
-		return nil, errors.New("MANAGED_INDEPENDENT requires adapter attestation, which is not implemented")
+		return nil, errors.New("MANAGED_INDEPENDENT requires receipts from actual role workers, which are not implemented")
 	}
 	s := runState{1, id, *wf, "BASELINED", *assurance, abs, *candidate, now, now}
 	dir := filepath.Join(root, key)
@@ -345,7 +423,7 @@ func readState(root, key string) (runState, string, error) {
 		return runState{}, path, fmt.Errorf("invalid persisted assurance %q", s.Assurance)
 	}
 	if s.Assurance == "MANAGED_INDEPENDENT" {
-		return runState{}, path, errors.New("persisted MANAGED_INDEPENDENT lacks adapter attestation")
+		return runState{}, path, errors.New("persisted MANAGED_INDEPENDENT lacks actual role-worker receipts")
 	}
 	if s.ID == "" || s.Workflow == "" || s.State == "" || s.Repository == "" || s.Candidate == "" {
 		return runState{}, path, errors.New("persisted state is missing required fields")

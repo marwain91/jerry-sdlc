@@ -20,7 +20,7 @@ Status: in progress
 
 ## Pending Phase-1 gates
 
-- Linux managed-mode runtime-adapter persistence and automatic independent worker isolation
+- Linux diagnostic worker-capability probe, actual role-worker receipts, and automatic role delegation (all remain pending as release gates)
 - macOS arm64 and x86-64 surface tests (cross-compiled binaries are present but unverified on macOS)
 - IDE-extension and Codex-app matrix tests
 - 100-prompt, three-repeat trigger suite

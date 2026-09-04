@@ -10,7 +10,7 @@ Select the smallest workflow that provides credible evidence for the requested o
 ## Start
 
 1. Read repository instructions and inspect relevant project structure without changing it.
-2. Run `../../scripts/jsdlc doctor` relative to this skill directory. The wrapper verifies the bundled binary. Phase 1 does not yet accept independent-worker attestations, so report the returned assurance outcome and never upgrade it based on judgment alone.
+2. Run `../../scripts/jsdlc doctor` relative to this skill directory. The wrapper verifies the bundled binary. `doctor --probe-independent` is a diagnostic only: it may observe two ephemeral Codex sessions, but must not upgrade assurance until actual role-worker receipts are bound to the run and candidate. Report the returned assurance outcome and never upgrade it based on judgment alone.
 3. Classify the request and changed surface. Prefer the higher risk between deterministic triggers and reasoned judgment.
 4. Briefly tell the user the workflow, risk, assurance mode, and roles being used.
 
@@ -18,7 +18,7 @@ If another broad orchestration skill is active, do not start a competing workflo
 
 ## Assurance
 
-- `MANAGED_INDEPENDENT`: distinct workers and read-only reviewer isolation are available.
+- `MANAGED_INDEPENDENT`: actual role-worker receipts prove distinct execution and enforced read-only review. Phase 1 does not issue this mode yet.
 - `MANAGED_SEPARATE_PASSES`: use isolated named passes, label them `SELF_REVIEW`, and never claim an independent team.
 - `ADVISORY_ONLY`: provide guidance only; do not issue a `READY` verdict.
 - `UNAVAILABLE`: stop the workflow and provide diagnostics.
