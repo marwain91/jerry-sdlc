@@ -20,7 +20,7 @@ Status: in progress
 
 ## Pending Phase-1 gates
 
-- Linux diagnostic worker-capability probe and actual role-worker receipt implementation: present, integration evidence pending; automatic role delegation and live assurance verification remain pending release gates
+- Linux diagnostic probe, role-worker receipts, and one-process four-role `team` orchestration: implemented as `MANAGED_SEPARATE_PASSES`; a trusted adapter for independent identity attestation and live real-Codex integration evidence remain pending
 - macOS arm64 and x86-64 surface tests (cross-compiled binaries are present but unverified on macOS)
 - IDE-extension and Codex-app matrix tests
 - 100-prompt, three-repeat trigger suite

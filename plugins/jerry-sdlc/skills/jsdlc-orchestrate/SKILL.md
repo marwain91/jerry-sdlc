@@ -10,7 +10,7 @@ Select the smallest workflow that provides credible evidence for the requested o
 ## Start
 
 1. Read repository instructions and inspect relevant project structure without changing it.
-2. Run `../../scripts/jsdlc doctor` relative to this skill directory. The wrapper verifies the bundled binary. `doctor --probe-independent` is a diagnostic only: it may observe two ephemeral Codex sessions, but must not upgrade assurance until actual role-worker receipts are bound to the run and candidate. Report the returned assurance outcome and never upgrade it based on judgment alone.
+2. Run `../../scripts/jsdlc doctor` relative to this skill directory. The wrapper verifies the bundled binary. `doctor --probe-independent` is a diagnostic only and never upgrades stored assurance.
 3. Classify the request and changed surface. Prefer the higher risk between deterministic triggers and reasoned judgment.
 4. Briefly tell the user the workflow, risk, assurance mode, and roles being used.
 
@@ -18,7 +18,7 @@ If another broad orchestration skill is active, do not start a competing workflo
 
 ## Assurance
 
-- `MANAGED_INDEPENDENT`: actual role-worker receipts prove distinct execution and enforced read-only review. Phase 1 does not issue this mode yet.
+- `MANAGED_INDEPENDENT`: reserved until a trusted runtime adapter can attest worker identity and isolation. Distinct IDs in CLI output are insufficient.
 - `MANAGED_SEPARATE_PASSES`: use isolated named passes, label them `SELF_REVIEW`, and never claim an independent team.
 - `ADVISORY_ONLY`: provide guidance only; do not issue a `READY` verdict.
 - `UNAVAILABLE`: stop the workflow and provide diagnostics.
@@ -29,7 +29,8 @@ Read [references/control-contract.md](references/control-contract.md) before any
 
 - Roles are narrow contracts, not personas. Give each worker immutable inputs and one lens.
 - Review workers are read-only. They return exact evidence and do not fix findings.
-- Launch Phase-1 QA/review roles through `../../scripts/jsdlc worker --repo <repo> --candidate <candidate> --role <role> --prompt-file <file>`. The receipt is bound to the active run and candidate, but currently has `assuranceEffect: EVIDENCE_ONLY`; do not use it to claim `MANAGED_INDEPENDENT`.
+- For a release-readiness request, launch the complete Phase-1 review team with `../../scripts/jsdlc team --repo <repo> --candidate <candidate> --objective <objective>`. Do not manually substitute a single generic QA pass. The command runs QA Architect, QA Executor, Specialist Reviewer, and Independent Verifier in separate ephemeral read-only sessions against one frozen digest. It reports `OBSERVED_DISTINCT_SUBPROCESSES`, but remains `MANAGED_SEPARATE_PASSES` because CLI output cannot attest worker identity.
+- Use `worker` only for an explicitly bounded extra pass. Its receipt has `assuranceEffect: EVIDENCE_ONLY` and cannot independently establish assurance.
 - The orchestrator adjudicates findings. A corrector receives only accepted finding IDs and bounded targets.
 - Re-run affected checks after correction. A fresh verifier checks the exact final candidate.
 - Scripts establish deterministic facts; agents supply judgment.

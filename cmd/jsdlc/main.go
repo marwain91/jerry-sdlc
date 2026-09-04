@@ -25,7 +25,7 @@ type result map[string]any
 
 func main() {
 	if len(os.Args) < 2 {
-		fail(errors.New("usage: jsdlc <doctor|classify|roles|start|status|transition|worker|verify>"))
+		fail(errors.New("usage: jsdlc <doctor|classify|roles|start|status|transition|worker|team|verify>"))
 	}
 	var out result
 	var err error
@@ -44,6 +44,8 @@ func main() {
 		out, err = transition(os.Args[2:])
 	case "worker":
 		out, err = worker(os.Args[2:])
+	case "team":
+		out, err = team(os.Args[2:])
 	case "verify":
 		out, err = verify(os.Args[2:])
 	default:
@@ -107,7 +109,7 @@ func doctor(args []string) (result, error) {
 		}
 		return result{"version": version, "outcome": "MANAGED_SEPARATE_PASSES", "statePath": root, "platform": runtime.GOOS + "/" + runtime.GOARCH, "independentWorkers": false, "readOnlyIsolation": false, "capabilityObservation": observation, "reason": "distinct thread IDs were observed; the canary remained absent and the worker reported a blocked write; this is not proof of enforced isolation"}, nil
 	}
-	return result{"version": version, "outcome": "MANAGED_SEPARATE_PASSES", "statePath": root, "platform": runtime.GOOS + "/" + runtime.GOARCH, "independentWorkers": false, "readOnlyIsolation": false, "reason": "role-worker execution receipts are evidence-only; live assurance verification is not implemented; --probe-independent is non-authoritative"}, nil
+	return result{"version": version, "outcome": "MANAGED_SEPARATE_PASSES", "statePath": root, "platform": runtime.GOOS + "/" + runtime.GOARCH, "independentWorkers": false, "readOnlyIsolation": false, "reason": "team execution can observe distinct subprocesses, but CLI output cannot attest worker identity; receipts and --probe-independent are non-authoritative"}, nil
 }
 
 type workerObservation struct {

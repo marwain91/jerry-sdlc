@@ -199,6 +199,52 @@ func TestWorkerRejectsCandidateDriftAndWritableRole(t *testing.T) {
 	}
 }
 
+func TestTeamRunsDistinctFrozenWorkers(t *testing.T) {
+	t.Setenv("XDG_STATE_HOME", t.TempDir())
+	workingDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("JSDLC_PLUGIN_ROOT", filepath.Clean(filepath.Join(workingDir, "..", "..", "plugins", "jerry-sdlc")))
+	binDir := t.TempDir()
+	fakeCodex := filepath.Join(binDir, "codex")
+	script := `#!/bin/sh
+if [ "$1" = "--version" ]; then echo "codex-test 1.0"; exit 0; fi
+while IFS= read -r line; do :; done
+id=thread-$$
+printf '%s\n' "{\"type\":\"thread.started\",\"thread_id\":\"$id\"}" '{"type":"item.completed","item":{"type":"agent_message","text":"{\"disposition\":\"CLEAN\",\"evidence\":[],\"findings\":[],\"limitations\":[]}"}}'
+`
+	if err := os.WriteFile(fakeCodex, []byte(script), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", binDir)
+	repo := t.TempDir()
+	if _, err := start([]string{"--repo", repo, "--candidate", "candidate-a"}); err != nil {
+		t.Fatal(err)
+	}
+	got, err := team([]string{"--repo", repo, "--candidate", "candidate-a", "--objective", "Release review"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got["assurance"] != "MANAGED_SEPARATE_PASSES" || got["workerObservation"] != "OBSERVED_DISTINCT_SUBPROCESSES" || got["scope"] != "THIS_COMMAND_ONLY" || got["verdict"] != "INCONCLUSIVE" {
+		t.Fatalf("unexpected team result: %#v", got)
+	}
+	if len(got["roles"].([]result)) != 4 {
+		t.Fatalf("expected four role results: %#v", got)
+	}
+}
+
+func TestRoleWorkerRejectsDifferentExpectedRun(t *testing.T) {
+	t.Setenv("XDG_STATE_HOME", t.TempDir())
+	repo := t.TempDir()
+	if _, err := start([]string{"--repo", repo, "--candidate", "candidate-a"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runRoleWorker(repo, "candidate-a", "different-run", "qa-architect", []byte("Review.")); err == nil {
+		t.Fatal("worker must reject a different expected team run")
+	}
+}
+
 func TestWorkerReportRequiresCompleteFindingContract(t *testing.T) {
 	valid := `{"disposition":"FINDINGS","evidence":[],"findings":[{"id":"F-1","severity":"HIGH","confidence":"HIGH","requirement":"No traversal","location":"main.go:1","evidence":"observed","recommendation":"validate"}],"limitations":[]}`
 	if err := validateWorkerReport(valid); err != nil {
