@@ -1,0 +1,4 @@
+interface:
+  display_name: "Jerry SDLC"
+  short_description: "Risk-aware multi-agent software delivery"
+  default_prompt: "Assess this project with the appropriate Jerry SDLC workflow."

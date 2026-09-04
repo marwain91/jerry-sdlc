@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Jerry SDLC run",
+  "type": "object",
+  "required": ["schemaVersion", "id", "workflow", "state", "assurance", "repository", "candidate", "createdAt", "updatedAt"],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "id": {"type": "string", "minLength": 1},
+    "workflow": {"type": "string", "minLength": 1},
+    "state": {"type": "string", "minLength": 1},
+    "assurance": {"enum": ["MANAGED_INDEPENDENT", "MANAGED_SEPARATE_PASSES", "ADVISORY_ONLY", "UNAVAILABLE"]},
+    "repository": {"type": "string", "minLength": 1},
+    "candidate": {"type": "string", "minLength": 1},
+    "createdAt": {"type": "string", "format": "date-time"},
+    "updatedAt": {"type": "string", "format": "date-time"}
+  },
+  "additionalProperties": true
+}

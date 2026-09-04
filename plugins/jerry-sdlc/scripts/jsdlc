@@ -1,0 +1,25 @@
+#!/bin/sh
+set -eu
+
+plugin_dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+case "$(uname -s):$(uname -m)" in
+  Linux:x86_64) relative=bin/linux-amd64/jsdlc ;;
+  Darwin:arm64) relative=bin/darwin-arm64/jsdlc ;;
+  Darwin:x86_64) relative=bin/darwin-amd64/jsdlc ;;
+  *) echo '{"error":"unsupported jsdlc platform","outcome":"UNAVAILABLE"}' >&2; exit 1 ;;
+esac
+
+binary="$plugin_dir/assets/$relative"
+checksums="$plugin_dir/assets/checksums.sha256"
+test -x "$binary" || { echo '{"error":"jsdlc binary is unavailable","outcome":"ADVISORY_ONLY"}' >&2; exit 1; }
+
+expected=$(awk -v p="$relative" '$2 == p {print $1}' "$checksums")
+test -n "$expected" || { echo '{"error":"jsdlc checksum is missing","outcome":"ADVISORY_ONLY"}' >&2; exit 1; }
+if command -v sha256sum >/dev/null 2>&1; then
+  actual=$(sha256sum "$binary" | awk '{print $1}')
+else
+  actual=$(shasum -a 256 "$binary" | awk '{print $1}')
+fi
+test "$actual" = "$expected" || { echo '{"error":"jsdlc checksum mismatch","outcome":"ADVISORY_ONLY"}' >&2; exit 1; }
+
+exec "$binary" "$@"
