@@ -150,7 +150,7 @@ if [ "$1" = "--version" ]; then
   exit 0
 fi
 cat >/dev/null
-printf '%s\n' '{"type":"thread.started","thread_id":"thread-worker-a"}' '{"type":"item.completed","item":{"type":"agent_message","text":"{\"disposition\":\"CLEAN\",\"evidence\":[],\"findings\":[],\"limitations\":[]}"}}'
+printf '%s\n' '{"type":"thread.started","thread_id":"thread-worker-a"}' '{"type":"item.completed","item":{"type":"agent_message","text":"{\"disposition\":\"CLEAN\",\"evidence\":[\"checked\"],\"findings\":[],\"limitations\":[]}"}}'
 `
 	if err := os.WriteFile(fakeCodex, []byte(script), 0o700); err != nil {
 		t.Fatal(err)
@@ -170,7 +170,7 @@ printf '%s\n' '{"type":"thread.started","thread_id":"thread-worker-a"}' '{"type"
 		t.Fatal(err)
 	}
 	receipt := got["receipt"].(workerReceipt)
-	if receipt.RunID != started["run"].(runState).ID || receipt.Candidate != "candidate-a" || receipt.ThreadID != "thread-worker-a" || got["assuranceEffect"] != "EVIDENCE_ONLY" {
+	if receipt.RunID != started["run"].(runState).ID || receipt.Candidate != "candidate-a" || receipt.ThreadID != "thread-worker-a" || len(receipt.SchemaDigest) != 64 || got["assuranceEffect"] != "EVIDENCE_ONLY" {
 		t.Fatalf("receipt is not bound correctly: %#v", got)
 	}
 	if _, err := os.Stat(got["path"].(string)); err != nil {
@@ -212,7 +212,7 @@ func TestTeamRunsDistinctFrozenWorkers(t *testing.T) {
 if [ "$1" = "--version" ]; then echo "codex-test 1.0"; exit 0; fi
 while IFS= read -r line; do :; done
 id=thread-$$
-printf '%s\n' "{\"type\":\"thread.started\",\"thread_id\":\"$id\"}" '{"type":"item.completed","item":{"type":"agent_message","text":"{\"disposition\":\"CLEAN\",\"evidence\":[],\"findings\":[],\"limitations\":[]}"}}'
+printf '%s\n' "{\"type\":\"thread.started\",\"thread_id\":\"$id\"}" '{"type":"item.completed","item":{"type":"agent_message","text":"{\"disposition\":\"CLEAN\",\"evidence\":[\"checked\"],\"findings\":[],\"limitations\":[]}"}}'
 `
 	if err := os.WriteFile(fakeCodex, []byte(script), 0o700); err != nil {
 		t.Fatal(err)
@@ -232,6 +232,23 @@ printf '%s\n' "{\"type\":\"thread.started\",\"thread_id\":\"$id\"}" '{"type":"it
 	if len(got["roles"].([]result)) != 4 {
 		t.Fatalf("expected four role results: %#v", got)
 	}
+	if digest, ok := got["contractSetDigest"].(string); !ok || len(digest) != 64 {
+		t.Fatalf("missing frozen contract-set digest: %#v", got)
+	}
+}
+
+func TestTeamRejectsChangesSinceStart(t *testing.T) {
+	t.Setenv("XDG_STATE_HOME", t.TempDir())
+	repo := t.TempDir()
+	if _, err := start([]string{"--repo", repo, "--candidate", "candidate-a"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(repo, "changed.txt"), []byte("drift"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := team([]string{"--repo", repo, "--candidate", "candidate-a"}); err == nil {
+		t.Fatal("team must reject content changed after start")
+	}
 }
 
 func TestRoleWorkerRejectsDifferentExpectedRun(t *testing.T) {
@@ -240,7 +257,7 @@ func TestRoleWorkerRejectsDifferentExpectedRun(t *testing.T) {
 	if _, err := start([]string{"--repo", repo, "--candidate", "candidate-a"}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := runRoleWorker(repo, "candidate-a", "different-run", "qa-architect", []byte("Review.")); err == nil {
+	if _, err := runRoleWorker(repo, "candidate-a", "different-run", "qa-architect", []byte("Review."), nil); err == nil {
 		t.Fatal("worker must reject a different expected team run")
 	}
 }
@@ -253,6 +270,22 @@ func TestWorkerReportRequiresCompleteFindingContract(t *testing.T) {
 	missingConfidence := `{"disposition":"FINDINGS","evidence":[],"findings":[{"id":"F-1","severity":"HIGH","requirement":"No traversal","location":"main.go:1","evidence":"observed","recommendation":"validate"}],"limitations":[]}`
 	if err := validateWorkerReport(missingConfidence); err == nil {
 		t.Fatal("finding without confidence must be rejected")
+	}
+}
+
+func TestWorkerReportRequiresSemanticDisposition(t *testing.T) {
+	invalid := []string{
+		`{"disposition":"CLEAN","evidence":[],"findings":[],"limitations":[]}`,
+		`{"disposition":"CLEAN","evidence":["checked"],"findings":[{"id":"F-1","severity":"LOW","confidence":"HIGH","requirement":"r","location":"x","evidence":"e","recommendation":"do"}],"limitations":[]}`,
+		`{"disposition":"FINDINGS","evidence":["checked"],"findings":[],"limitations":[]}`,
+		`{"disposition":"BLOCKED","evidence":[],"findings":[],"limitations":[]}`,
+		`{"disposition":"CLEAN","evidence":["  "],"findings":[],"limitations":[]}`,
+		`{"disposition":"INCONCLUSIVE","evidence":[],"findings":[],"limitations":[""]}`,
+	}
+	for _, report := range invalid {
+		if err := validateWorkerReport(report); err == nil {
+			t.Fatalf("accepted inconsistent report: %s", report)
+		}
 	}
 }
 

@@ -224,6 +224,7 @@ type runState struct {
 	Assurance     string `json:"assurance"`
 	Repository    string `json:"repository"`
 	Candidate     string `json:"candidate"`
+	ContentDigest string `json:"contentDigest,omitempty"`
 	CreatedAt     string `json:"createdAt"`
 	UpdatedAt     string `json:"updatedAt"`
 }
@@ -255,7 +256,11 @@ func start(args []string) (result, error) {
 	if *assurance == "MANAGED_INDEPENDENT" {
 		return nil, errors.New("MANAGED_INDEPENDENT requires live verification of actual role-worker receipts, which is not implemented")
 	}
-	s := runState{1, id, *wf, "BASELINED", *assurance, abs, *candidate, now, now}
+	contentDigest, err := digestRepository(abs)
+	if err != nil {
+		return nil, fmt.Errorf("digest candidate at start: %w", err)
+	}
+	s := runState{SchemaVersion: 1, ID: id, Workflow: *wf, State: "BASELINED", Assurance: *assurance, Repository: abs, Candidate: *candidate, ContentDigest: contentDigest, CreatedAt: now, UpdatedAt: now}
 	dir := filepath.Join(root, key)
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return nil, err

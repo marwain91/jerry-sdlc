@@ -17,10 +17,11 @@ Status: in progress
 - State resume, legal-transition, candidate-drift, incompatible-schema, lock-contention, symlink-identity, terminal rollover, and CLI/persisted-state false-READY tests: PASS; crash-interruption proof remains pending
 - `MANAGED_INDEPENDENT` is fail-closed until cryptographic/runtime adapter attestation exists: PASS
 - Independent reviewer in a separate read-only Codex process: observed; durable test evidence and automatic in-session delegation remain pending
+- Real four-role `team` integration against commit `716f226db6ecfa7bfe9b1918123ecea1cf6f4977`: PASS for orchestration, frozen repository digest, distinct reported subprocess IDs, structured reports, and truthful `INCONCLUSIVE`; produced actionable contract-freezing, semantic-validation, candidate-binding, and diagnostic-leak findings
 
 ## Pending Phase-1 gates
 
-- Linux diagnostic probe, role-worker receipts, and one-process four-role `team` orchestration: implemented as `MANAGED_SEPARATE_PASSES`; a trusted adapter for independent identity attestation and live real-Codex integration evidence remain pending
+- Linux diagnostic probe, role-worker receipts, and one-process four-role `team` orchestration: live-tested as `MANAGED_SEPARATE_PASSES`; remediation re-test and a trusted adapter for independent identity attestation remain pending
 - macOS arm64 and x86-64 surface tests (cross-compiled binaries are present but unverified on macOS)
 - IDE-extension and Codex-app matrix tests
 - 100-prompt, three-repeat trigger suite

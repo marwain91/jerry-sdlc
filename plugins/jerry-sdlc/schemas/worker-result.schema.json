@@ -5,7 +5,7 @@
   "required": ["disposition", "evidence", "findings", "limitations"],
   "properties": {
     "disposition": {"enum": ["CLEAN", "FINDINGS", "INCONCLUSIVE", "BLOCKED"]},
-    "evidence": {"type": "array", "items": {"type": "string"}},
+    "evidence": {"type": "array", "items": {"type": "string", "minLength": 1}},
     "findings": {
       "type": "array",
       "items": {
@@ -23,7 +23,7 @@
         "additionalProperties": false
       }
     },
-    "limitations": {"type": "array", "items": {"type": "string"}}
+    "limitations": {"type": "array", "items": {"type": "string", "minLength": 1}}
   },
   "additionalProperties": false
 }
