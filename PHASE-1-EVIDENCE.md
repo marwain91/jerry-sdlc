@@ -24,7 +24,7 @@ Status: in progress
 - Linux diagnostic probe, role-worker receipts, and one-process four-role `team` orchestration: live-tested as `MANAGED_SEPARATE_PASSES`; remediation re-test and a trusted adapter for independent identity attestation remain pending
 - macOS arm64 and x86-64 surface tests (cross-compiled binaries are present but unverified on macOS)
 - IDE-extension and Codex-app matrix tests
-- 100-prompt, three-repeat trigger suite
+- 100-prompt, three-repeat implicit Codex skill-selection suite (deterministic classifier suites exist separately)
 - collision/coexistence fixtures
 - process interruption integration test plus schema upgrade/rollback tests (unit-level resume and incompatible-schema coverage now pass)
 - published per-cell evidence table
