@@ -125,6 +125,26 @@ func TestClassifyMigration(t *testing.T) {
 	}
 }
 
+func TestEvalTriggersRejectsDegenerateAndTrailingFixtures(t *testing.T) {
+	for name, body := range map[string]string{
+		"one-class":          `{"schemaVersion":1,"subjects":["app"],"cases":[{"id":"p","template":"release {project}","release":true}]}`,
+		"trailing":           `{"schemaVersion":1,"subjects":["app"],"cases":[{"id":"p","template":"release {project}","release":true},{"id":"n","template":"fix {project}","release":false}]} {}`,
+		"duplicate-subject":  `{"schemaVersion":1,"subjects":["App"," app "],"cases":[{"id":"p","template":"release {project}","release":true},{"id":"n","template":"fix {project}","release":false}]}`,
+		"duplicate-id":       `{"schemaVersion":1,"subjects":["app"],"cases":[{"id":" P ","template":"release {project}","release":true},{"id":"p","template":"fix {project}","release":false}]}`,
+		"duplicate-template": `{"schemaVersion":1,"subjects":["app"],"cases":[{"id":"p","template":" Release  {project} ","release":true},{"id":"n","template":"release {project}","release":false}]}`,
+		"blank-subject":      `{"schemaVersion":1,"subjects":["  "],"cases":[{"id":"p","template":"release {project}","release":true},{"id":"n","template":"fix {project}","release":false}]}`,
+		"blank-id":           `{"schemaVersion":1,"subjects":["app"],"cases":[{"id":" ","template":"release {project}","release":true},{"id":"n","template":"fix {project}","release":false}]}`,
+	} {
+		path := filepath.Join(t.TempDir(), name+".json")
+		if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := evalTriggers([]string{"--fixture", path}); err == nil {
+			t.Fatalf("%s fixture must fail", name)
+		}
+	}
+}
+
 func TestReleaseRoles(t *testing.T) {
 	got, err := roles([]string{"--workflow", "release-readiness"})
 	if err != nil {

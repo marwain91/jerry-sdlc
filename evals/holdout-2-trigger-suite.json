@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "subjects": ["SDK", "admin portal", "worker service", "iOS app", "platform repo"],
+  "cases": [
+    {"id":"go-01","template":"Release the {project} after verifying it","release":true},
+    {"id":"go-02","template":"Is this {project} release candidate safe?","release":true},
+    {"id":"go-03","template":"Prepare the {project} release","release":true},
+    {"id":"go-04","template":"Run a release readiness assessment for the {project}","release":true},
+    {"id":"go-05","template":"Do preflight checks before the {project} goes live","release":true},
+    {"id":"go-06","template":"Ship the {project} if QA passes","release":true},
+    {"id":"go-07","template":"Publish the {project} after final review","release":true},
+    {"id":"go-08","template":"Make the launch decision for the {project}","release":true},
+    {"id":"go-09","template":"Can the {project} go live today?","release":true},
+    {"id":"go-10","template":"Tag the {project} after release QA","release":true},
+    {"id":"stay-01","template":"Add a release button to the {project}","release":false},
+    {"id":"stay-02","template":"Validate a shipping address in the {project}","release":false},
+    {"id":"stay-03","template":"Handle the publish event in the {project}","release":false},
+    {"id":"stay-04","template":"Rename the tag component in the {project}","release":false},
+    {"id":"stay-05","template":"Translate the phrase ready to ship in the {project}","release":false},
+    {"id":"stay-06","template":"Store release readiness history in the {project}","release":false},
+    {"id":"stay-07","template":"Mock a launch decision in a {project} unit test","release":false},
+    {"id":"stay-08","template":"Document preflight checks implemented by the {project}","release":false},
+    {"id":"stay-09","template":"Parse release candidate metadata in the {project}","release":false},
+    {"id":"stay-10","template":"Explain whether can go live is a good variable name in the {project}","release":false}
+  ]
+}

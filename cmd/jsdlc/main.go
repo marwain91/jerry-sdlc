@@ -25,7 +25,7 @@ type result map[string]any
 
 func main() {
 	if len(os.Args) < 2 {
-		fail(errors.New("usage: jsdlc <doctor|classify|roles|start|status|transition|worker|team|verify>"))
+		fail(errors.New("usage: jsdlc <doctor|classify|eval-triggers|roles|start|status|transition|worker|team|verify>"))
 	}
 	var out result
 	var err error
@@ -34,6 +34,8 @@ func main() {
 		out, err = doctor(os.Args[2:])
 	case "classify":
 		out, err = classify(os.Args[2:])
+	case "eval-triggers":
+		out, err = evalTriggers(os.Args[2:])
 	case "roles":
 		out, err = roles(os.Args[2:])
 	case "start":
@@ -188,7 +190,7 @@ func classify(args []string) (result, error) {
 	}
 	text := strings.ToLower(*req + " " + *files)
 	workflow, risk := "feature", "NORMAL"
-	if hasAny(text, "release", "ship", "publish", "tag") {
+	if releaseIntent(text) {
 		workflow, risk = "release-readiness", "HIGH"
 	}
 	if hasAny(text, "incident", "outage", "production down") {
@@ -202,6 +204,18 @@ func classify(args []string) (result, error) {
 		}
 	}
 	return result{"workflow": workflow, "risk": risk, "triggers": triggers, "semanticReviewRequired": true}, nil
+}
+
+func releaseIntent(text string) bool {
+	nonAction := hasAny(text, "do not release", "don't release", "never release", "cannot ship", "can't ship", "release process", "release notes", "what was published", "summarize the tag", "compare publishing", "old release tags", "list release tags", "explain release readiness", "document the launch decision", "preflight check history", "labelled ready to ship")
+	strong := hasAny(text, "release readiness", "ready to ship", "before publishing", "before deploying", "can go live", "preflight check", "launch decision", "release candidate") || (strings.Contains(text, "prepare") && strings.Contains(text, "release"))
+	if nonAction {
+		return false
+	}
+	if strong {
+		return true
+	}
+	return hasAny(text, "release the ", "ship the ", "publish the ", "tag the ")
 }
 
 func roles(args []string) (result, error) {

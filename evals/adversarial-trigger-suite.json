@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "subjects": ["package", "dashboard", "gateway", "desktop app", "workspace"],
+  "cases": [
+    {"id":"positive-01","template":"Please release the {project}","release":true},
+    {"id":"positive-02","template":"Ship the {project} after a complete quality review","release":true},
+    {"id":"positive-03","template":"Publish the {project} once it passes final checks","release":true},
+    {"id":"positive-04","template":"Tag the {project} only if it is safe","release":true},
+    {"id":"positive-05","template":"I need a release readiness verdict for the {project}","release":true},
+    {"id":"positive-06","template":"Check if the {project} is ready to ship","release":true},
+    {"id":"positive-07","template":"Prepare a release of the {project}","release":true},
+    {"id":"positive-08","template":"Run preflight checks on the {project}","release":true},
+    {"id":"positive-09","template":"Decide whether the {project} can go live","release":true},
+    {"id":"positive-10","template":"Review this {project} release candidate","release":true},
+    {"id":"negative-01","template":"Never release the {project}","release":false},
+    {"id":"negative-02","template":"Explain release readiness for the {project}","release":false},
+    {"id":"negative-03","template":"Parse a release tag in the {project}","release":false},
+    {"id":"negative-04","template":"Render the published date in the {project}","release":false},
+    {"id":"negative-05","template":"Why did the {project} ship yesterday?","release":false},
+    {"id":"negative-06","template":"Rename releaseCandidate in the {project}","release":false},
+    {"id":"negative-07","template":"Document the launch decision format in the {project}","release":false},
+    {"id":"negative-08","template":"Test the canGoLive helper in the {project}","release":false},
+    {"id":"negative-09","template":"Show preflight check history for the {project}","release":false},
+    {"id":"negative-10","template":"Create a UI labelled ready to ship in the {project}","release":false}
+  ]
+}
