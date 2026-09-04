@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -145,6 +146,70 @@ func TestEvalTriggersRejectsDegenerateAndTrailingFixtures(t *testing.T) {
 	}
 }
 
+func TestEvalQualityComputesGraduationMetrics(t *testing.T) {
+	tasks := make([]qualityTask, 20)
+	for i := range tasks {
+		baseline := qualityRun{Findings: []adjudicatedFinding{{ID: "medium", Outcome: "TRUE_POSITIVE"}}, WallMilliseconds: 100, Tokens: 100, HumanReviewMinutes: 10}
+		jerry := qualityRun{Findings: []adjudicatedFinding{{ID: "high", Outcome: "TRUE_POSITIVE"}, {ID: "medium", Outcome: "TRUE_POSITIVE"}}, WallMilliseconds: 200, Tokens: 200, HumanReviewMinutes: 5}
+		tasks[i] = qualityTask{ID: fmt.Sprintf("task-%d", i), Source: fmt.Sprintf("repo-%d", i), Candidate: fmt.Sprintf("commit-%d", i), Known: []knownFinding{{ID: "high", Severity: "HIGH"}, {ID: "medium", Severity: "MEDIUM"}}, Baseline: []qualityRun{baseline, baseline, baseline}, Jerry: []qualityRun{jerry, jerry, jerry}}
+	}
+	b, err := json.Marshal(qualitySuite{SchemaVersion: 1, TrialsPerArm: 3, MaxJerryTokensPerRun: 500, Tasks: tasks})
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(t.TempDir(), "quality.json")
+	if err := os.WriteFile(path, b, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	got, err := evalQuality([]string{"--fixture", path})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got["passed"] != true || got["tasks"] != 20 || got["trialsPerArm"] != 3 || got["totalRunsPerArm"] != 60 {
+		t.Fatalf("unexpected quality result: %#v", got)
+	}
+	tasks[0].Jerry[0].Tokens = 501
+	b, err = json.Marshal(qualitySuite{SchemaVersion: 1, TrialsPerArm: 3, MaxJerryTokensPerRun: 500, Tasks: tasks})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, b, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	got, err = evalQuality([]string{"--fixture", path})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got["passed"] != false || got["hardTokenBudgetExceeded"] != true {
+		t.Fatalf("hard budget must fail: %#v", got)
+	}
+	tasks[0].Jerry = append(tasks[0].Jerry, tasks[0].Jerry[0])
+	b, err = json.Marshal(qualitySuite{SchemaVersion: 1, TrialsPerArm: 3, MaxJerryTokensPerRun: 500, Tasks: tasks})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, b, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := evalQuality([]string{"--fixture", path}); err == nil {
+		t.Fatal("unequal task weighting must be rejected")
+	}
+}
+
+func TestQualityRunRejectsMetricGaming(t *testing.T) {
+	known := map[string]int{"known": 5}
+	cases := []qualityRun{
+		{Findings: []adjudicatedFinding{{ID: "unknown", Outcome: "TRUE_POSITIVE"}}, WallMilliseconds: 1, Tokens: 1},
+		{Findings: []adjudicatedFinding{{ID: "known", Outcome: "FALSE_POSITIVE"}}, WallMilliseconds: 1, Tokens: 1},
+		{Findings: []adjudicatedFinding{}, WallMilliseconds: 1, Tokens: 1, UnauthorizedActions: -1},
+	}
+	for _, run := range cases {
+		if _, err := scoreQualityRun(run, known); err == nil {
+			t.Fatalf("accepted gameable run: %#v", run)
+		}
+	}
+}
+
 func TestReleaseRoles(t *testing.T) {
 	got, err := roles([]string{"--workflow", "release-readiness"})
 	if err != nil {
@@ -152,6 +217,34 @@ func TestReleaseRoles(t *testing.T) {
 	}
 	if len(got["roles"].([]string)) != 5 {
 		t.Fatalf("unexpected roles: %#v", got)
+	}
+}
+
+func TestAdapterCatalogFailsClosed(t *testing.T) {
+	workingDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("JSDLC_PLUGIN_ROOT", filepath.Clean(filepath.Join(workingDir, "..", "..", "plugins", "jerry-sdlc")))
+	got, err := adapters(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	items := got["adapters"].([]adapterDescriptor)
+	if len(items) != 3 || got["assuranceRule"] != "DESCRIPTORS_NEVER_ESTABLISH_MANAGED_INDEPENDENT" {
+		t.Fatalf("unexpected catalog: %#v", got)
+	}
+	for _, item := range items {
+		if item.Capabilities.AttestedWorkerIdentity || item.Capabilities.WriteIsolationAttested {
+			t.Fatalf("gated adapter claims identity: %#v", item)
+		}
+	}
+	packResult, err := packs(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if packResult["activationAllowed"] != false || packResult["status"] != "GATED_BY_PHASE_3" {
+		t.Fatalf("packs must remain gated: %#v", packResult)
 	}
 }
 

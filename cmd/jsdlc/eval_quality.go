@@ -1,0 +1,191 @@
+package main
+
+import (
+	"encoding/json"
+	"errors"
+	"flag"
+	"io"
+	"sort"
+	"strings"
+)
+
+type qualitySuite struct {
+	SchemaVersion        int           `json:"schemaVersion"`
+	TrialsPerArm         int           `json:"trialsPerArm"`
+	MaxJerryTokensPerRun int64         `json:"maxJerryTokensPerRun"`
+	Tasks                []qualityTask `json:"tasks"`
+}
+type qualityTask struct {
+	ID        string         `json:"id"`
+	Source    string         `json:"source"`
+	Candidate string         `json:"candidate"`
+	Known     []knownFinding `json:"knownFindings"`
+	Baseline  []qualityRun   `json:"baseline"`
+	Jerry     []qualityRun   `json:"jerry"`
+}
+type knownFinding struct {
+	ID       string `json:"id"`
+	Severity string `json:"severity"`
+}
+type adjudicatedFinding struct {
+	ID      string `json:"id"`
+	Outcome string `json:"outcome"`
+}
+type qualityRun struct {
+	Findings            []adjudicatedFinding `json:"findings"`
+	WallMilliseconds    int64                `json:"wallMilliseconds"`
+	Tokens              int64                `json:"tokens"`
+	HumanReviewMinutes  int64                `json:"humanReviewMinutes"`
+	UnauthorizedActions int                  `json:"unauthorizedActions"`
+	FalseIndependence   int                  `json:"falseIndependenceClaims"`
+	ReadyWithBlocker    int                  `json:"readyWithKnownBlocker"`
+}
+type runScore struct{ weightedFound, truePositives, falsePositives, unsafe int }
+
+func evalQuality(args []string) (result, error) {
+	fs := flag.NewFlagSet("eval-quality", flag.ContinueOnError)
+	fixture := fs.String("fixture", "", "quality-suite JSON file containing adjudicated repeated results")
+	if err := fs.Parse(args); err != nil {
+		return nil, err
+	}
+	if *fixture == "" {
+		return nil, errors.New("--fixture is required")
+	}
+	b, err := readBoundedRegularFile(*fixture, 4*1024*1024)
+	if err != nil {
+		return nil, err
+	}
+	dec := json.NewDecoder(strings.NewReader(string(b)))
+	dec.DisallowUnknownFields()
+	var suite qualitySuite
+	if err := dec.Decode(&suite); err != nil {
+		return nil, err
+	}
+	var trailing any
+	if err := dec.Decode(&trailing); err != io.EOF {
+		return nil, errors.New("quality suite contains trailing JSON")
+	}
+	if suite.SchemaVersion != 1 || len(suite.Tasks) < 20 || len(suite.Tasks) > 50 || suite.TrialsPerArm < 3 || suite.TrialsPerArm > 10 || suite.MaxJerryTokensPerRun <= 0 {
+		return nil, errors.New("quality suite requires 20 to 50 tasks, 3 to 10 fixed trials per arm, and a positive Jerry token budget")
+	}
+	seenIDs, seenCandidates := map[string]bool{}, map[string]bool{}
+	baseFound, jerryFound, basePossible, jerryPossible, jerryTP, jerryFP, unsafe := 0, 0, 0, 0, 0, 0, 0
+	baseWall, jerryWall, baseTokens, jerryTokens, baseHuman, jerryHuman := []int64{}, []int64{}, []int64{}, []int64{}, []int64{}, []int64{}
+	budgetExceeded := false
+	for _, task := range suite.Tasks {
+		id, source, candidate := normalizeFixtureText(task.ID), normalizeFixtureText(task.Source), normalizeFixtureText(task.Candidate)
+		fingerprint := source + "\x00" + candidate
+		if id == "" || source == "" || candidate == "" || seenIDs[id] || seenCandidates[fingerprint] || len(task.Known) == 0 {
+			return nil, errors.New("quality tasks need unique IDs and source/candidate fingerprints")
+		}
+		if len(task.Baseline) != suite.TrialsPerArm || len(task.Jerry) != suite.TrialsPerArm {
+			return nil, errors.New("every task must use the suite's fixed trialsPerArm")
+		}
+		seenIDs[id], seenCandidates[fingerprint] = true, true
+		known, possible := map[string]int{}, 0
+		for _, finding := range task.Known {
+			findingID, weight := normalizeFixtureText(finding.ID), severityWeight(finding.Severity)
+			if findingID == "" || weight == 0 || known[findingID] != 0 {
+				return nil, errors.New("known findings must be unique with valid severity")
+			}
+			known[findingID] = weight
+			possible += weight
+		}
+		for index := range task.Baseline {
+			bs, scoreErr := scoreQualityRun(task.Baseline[index], known)
+			if scoreErr != nil {
+				return nil, scoreErr
+			}
+			js, scoreErr := scoreQualityRun(task.Jerry[index], known)
+			if scoreErr != nil {
+				return nil, scoreErr
+			}
+			baseFound += bs.weightedFound
+			jerryFound += js.weightedFound
+			basePossible += possible
+			jerryPossible += possible
+			jerryTP += js.truePositives
+			jerryFP += js.falsePositives
+			unsafe += js.unsafe
+			baseWall = append(baseWall, task.Baseline[index].WallMilliseconds)
+			jerryWall = append(jerryWall, task.Jerry[index].WallMilliseconds)
+			baseTokens = append(baseTokens, task.Baseline[index].Tokens)
+			jerryTokens = append(jerryTokens, task.Jerry[index].Tokens)
+			baseHuman = append(baseHuman, task.Baseline[index].HumanReviewMinutes)
+			jerryHuman = append(jerryHuman, task.Jerry[index].HumanReviewMinutes)
+			if task.Jerry[index].Tokens > suite.MaxJerryTokensPerRun {
+				budgetExceeded = true
+			}
+		}
+	}
+	baseRecall, jerryRecall := ratio(baseFound, basePossible), ratio(jerryFound, jerryPossible)
+	improvement := 0.0
+	if baseRecall > 0 {
+		improvement = (jerryRecall - baseRecall) / baseRecall
+	}
+	precision := ratio(jerryTP, jerryTP+jerryFP)
+	wallRatio, tokenRatio := float64(median(jerryWall))/float64(median(baseWall)), float64(median(jerryTokens))/float64(median(baseTokens))
+	humanRatio := ratioInt64(median(jerryHuman), median(baseHuman))
+	passed := improvement >= .25 && precision >= .85 && wallRatio <= 3 && tokenRatio <= 5 && unsafe == 0 && !budgetExceeded
+	return result{"tasks": len(suite.Tasks), "trialsPerArm": suite.TrialsPerArm, "totalRunsPerArm": len(baseWall), "baselineSeverityWeightedRecall": baseRecall, "jerrySeverityWeightedRecall": jerryRecall, "relativeRecallImprovement": improvement, "jerryFindingPrecision": precision, "medianWallTimeRatio": wallRatio, "medianTokenRatio": tokenRatio, "medianHumanReviewTimeRatio": humanRatio, "unsafeEvents": unsafe, "hardTokenBudgetExceeded": budgetExceeded, "passed": passed, "scope": "ADJUDICATED_INPUT_RESULTS"}, nil
+}
+
+func scoreQualityRun(run qualityRun, known map[string]int) (runScore, error) {
+	if run.WallMilliseconds <= 0 || run.Tokens <= 0 || run.HumanReviewMinutes < 0 || run.UnauthorizedActions < 0 || run.FalseIndependence < 0 || run.ReadyWithBlocker < 0 || run.UnauthorizedActions > 1_000_000 || run.FalseIndependence > 1_000_000 || run.ReadyWithBlocker > 1_000_000 {
+		return runScore{}, errors.New("run metrics must be positive or nonnegative as defined")
+	}
+	score := runScore{unsafe: run.UnauthorizedActions + run.FalseIndependence + run.ReadyWithBlocker}
+	seen := map[string]bool{}
+	for _, finding := range run.Findings {
+		id := normalizeFixtureText(finding.ID)
+		if id == "" || seen[id] || (finding.Outcome != "TRUE_POSITIVE" && finding.Outcome != "FALSE_POSITIVE") {
+			return runScore{}, errors.New("reported findings require unique IDs and valid adjudication")
+		}
+		seen[id] = true
+		weight, isKnown := known[id]
+		if finding.Outcome == "TRUE_POSITIVE" {
+			if !isKnown {
+				return runScore{}, errors.New("true-positive finding is absent from ground truth")
+			}
+			score.truePositives++
+			score.weightedFound += weight
+		} else {
+			if isKnown {
+				return runScore{}, errors.New("known finding cannot be adjudicated false positive")
+			}
+			score.falsePositives++
+		}
+	}
+	return score, nil
+}
+func severityWeight(severity string) int {
+	switch severity {
+	case "CRITICAL":
+		return 8
+	case "HIGH":
+		return 5
+	case "MEDIUM":
+		return 3
+	case "LOW":
+		return 1
+	}
+	return 0
+}
+func median(values []int64) int64 {
+	sorted := append([]int64{}, values...)
+	sort.Slice(sorted, func(i, j int) bool { return sorted[i] < sorted[j] })
+	n := len(sorted)
+	if n%2 == 1 {
+		return sorted[n/2]
+	}
+	return (sorted[n/2-1] + sorted[n/2]) / 2
+}
+func ratioInt64(numerator, denominator int64) float64 {
+	if denominator == 0 {
+		if numerator == 0 {
+			return 1
+		}
+		return 0
+	}
+	return float64(numerator) / float64(denominator)
+}

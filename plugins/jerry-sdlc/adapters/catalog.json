@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "adapters": [
+    {
+      "name": "codex-cli",
+      "status": "EXPERIMENTAL",
+      "capabilities": {"ephemeralWorkersObserved": true, "writeBlockingObserved": true, "attestedWorkerIdentity": false, "writeIsolationAttested": false, "secretIsolationAttested": false, "networkIsolationAttested": false, "structuredOutputObserved": true},
+      "policySource": "../workflows/release-readiness.json",
+      "reason": "Live-tested, but CLI output cannot attest worker identity and HOME/CODEX_HOME remain readable."
+    },
+    {
+      "name": "claude-code",
+      "status": "GATED",
+      "capabilities": {"ephemeralWorkersObserved": false, "writeBlockingObserved": false, "attestedWorkerIdentity": false, "writeIsolationAttested": false, "secretIsolationAttested": false, "networkIsolationAttested": false, "structuredOutputObserved": false},
+      "policySource": "../workflows/release-readiness.json",
+      "reason": "Descriptor only; no executable adapter or validation evidence exists."
+    },
+    {
+      "name": "generic",
+      "status": "GATED",
+      "capabilities": {"ephemeralWorkersObserved": false, "writeBlockingObserved": false, "attestedWorkerIdentity": false, "writeIsolationAttested": false, "secretIsolationAttested": false, "networkIsolationAttested": false, "structuredOutputObserved": false},
+      "policySource": "../workflows/release-readiness.json",
+      "reason": "Protocol placeholder; a runtime must prove capabilities before activation."
+    }
+  ]
+}

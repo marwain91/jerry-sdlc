@@ -1,0 +1,5 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","required":["schemaVersion","status","packs","activationRule"],
+  "properties":{"schemaVersion":{"const":1},"status":{"const":"GATED_BY_PHASE_3"},"packs":{"type":"array","minItems":1,"items":{"type":"object","required":["name","domains"],"properties":{"name":{"type":"string","minLength":1},"domains":{"type":"array","minItems":1,"uniqueItems":true,"items":{"enum":["functional","security","supply-chain","api-compatibility","data-migration","reliability","observability","documentation","candidate-identity"]}},"extraLenses":{"type":"array","uniqueItems":true,"items":{"type":"string","minLength":1}}},"additionalProperties":false}},"activationRule":{"const":"Do not activate packs or additional workflows until Phase-3 graduation evidence passes."}},
+  "additionalProperties":false
+}

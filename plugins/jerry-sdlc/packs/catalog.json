@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "status": "GATED_BY_PHASE_3",
+  "packs": [
+    {"name":"frontend","domains":["functional","security","reliability","documentation"],"extraLenses":["ux-accessibility"]},
+    {"name":"backend","domains":["functional","security","api-compatibility","reliability","observability"]},
+    {"name":"mobile","domains":["functional","security","api-compatibility","reliability","documentation"],"extraLenses":["store-policy"]},
+    {"name":"database","domains":["data-migration","reliability","observability","security"],"extraLenses":["rollback","data-integrity"]},
+    {"name":"infrastructure","domains":["security","supply-chain","reliability","observability"],"extraLenses":["rollback","blast-radius"]},
+    {"name":"incident","domains":["reliability","observability","documentation"],"extraLenses":["containment","timeline","follow-up"]}
+  ],
+  "activationRule": "Do not activate packs or additional workflows until Phase-3 graduation evidence passes."
+}

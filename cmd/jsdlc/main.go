@@ -25,17 +25,23 @@ type result map[string]any
 
 func main() {
 	if len(os.Args) < 2 {
-		fail(errors.New("usage: jsdlc <doctor|classify|eval-triggers|roles|start|status|transition|worker|team|verify>"))
+		fail(errors.New("usage: jsdlc <adapters|packs|doctor|classify|eval-triggers|eval-quality|roles|start|status|transition|worker|team|verify>"))
 	}
 	var out result
 	var err error
 	switch os.Args[1] {
+	case "adapters":
+		out, err = adapters(os.Args[2:])
+	case "packs":
+		out, err = packs(os.Args[2:])
 	case "doctor":
 		out, err = doctor(os.Args[2:])
 	case "classify":
 		out, err = classify(os.Args[2:])
 	case "eval-triggers":
 		out, err = evalTriggers(os.Args[2:])
+	case "eval-quality":
+		out, err = evalQuality(os.Args[2:])
 	case "roles":
 		out, err = roles(os.Args[2:])
 	case "start":
