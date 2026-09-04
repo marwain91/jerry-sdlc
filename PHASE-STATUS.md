@@ -12,3 +12,13 @@ This matrix distinguishes implementation from graduation evidence. A phase is no
 Current overall status: **not graduated and not releasable**. No repository release, tag, deployment, external publication, or production change has been performed.
 
 External evidence limits on this VPS are recorded rather than waived: native macOS execution and complete Codex IDE/app behavior cannot be proven here; historical-task quality evaluation needs an adjudicated corpus and repeated model runs; trusted worker identity/secret/network attestation is not exposed by the current CLI boundary.
+
+## Remaining gate ownership
+
+- **Owner decision/authorization:** select an open-source license; authorize creation or publication of a public remote; separately authorize any tag or release; approve the model/time budget and source corpus for 20–50 historical tasks with repeated baseline/Jerry trials.
+- **Independent fresh evidence:** freeze and commit a new trigger holdout before first execution; measure implicit skill selection rather than the deterministic classifier alone; preserve failures.
+- **Unavailable platform evidence:** run the declared native macOS and Codex IDE/app cells and an actual storage power-loss test on suitable systems.
+- **Trusted runtime capability:** provide an adapter trust domain that can authenticate worker identity and enforce write, secret, and network isolation. Local same-owner records and protocol validation cannot substitute for it.
+- **Deliberately gated implementation:** executable Claude/generic integrations, additional workflows/packs, PR review, and any stable release remain behind Phase 3 graduation. Implementing or activating them early would violate the reviewed plan rather than advance it.
+
+The current checkout has no Git remote. No repository was published, no external contribution was accepted, and no release action was performed.
