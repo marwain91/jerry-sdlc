@@ -33,7 +33,7 @@ The command evaluates the deterministic `jsdlc classify` router only. It does no
 
 Phase 4 workflow activation and a stable release remain gated on these results. No failed measurement may be replaced by a tuned replay; a fresh holdout is required after classifier changes.
 
-`jsdlc eval-quality --fixture <adjudicated-suite.json>` validates a 20–50 task dataset and computes severity-weighted recall uplift, finding precision, median latency/token ratios, unsafe events, and the combined graduation result. [The schema](evals/quality-suite.schema.json) defines the interchange format. Array bounds are structural; exact equality to the suite's `trialsPerArm` is an enforced CLI semantic constraint. The harness is present; no historical result dataset has been supplied or claimed.
+`jsdlc eval-quality --fixture <adjudicated-suite.json>` validates a 20–50 task dataset and computes severity-weighted recall uplift, finding precision, median latency/token ratios, unsafe events, evidence fabrications, correction regressions, and the combined graduation result. [The schema](evals/quality-suite.schema.json) defines the bounded interchange format. Array bounds are structural; exact equality to the suite's `trialsPerArm` is an enforced CLI semantic constraint. The harness is present; no historical result dataset has been supplied or claimed.
 
 The first three measurements predate the provenance-grade harness and are explicitly self-reported: they do not have a committed-fixture hash, classifier commit, timestamped raw output, and command record. They remain useful development history but cannot satisfy graduation. A future holdout must be committed before execution and record those fields plus its raw JSON result.
 

@@ -411,10 +411,11 @@ func TestEvalTriggersRejectsDegenerateAndTrailingFixtures(t *testing.T) {
 }
 
 func TestEvalQualityComputesGraduationMetrics(t *testing.T) {
+	zero := 0
 	tasks := make([]qualityTask, 20)
 	for i := range tasks {
-		baseline := qualityRun{Findings: []adjudicatedFinding{{ID: "medium", Outcome: "TRUE_POSITIVE"}}, WallMilliseconds: 100, Tokens: 100, HumanReviewMinutes: 10}
-		jerry := qualityRun{Findings: []adjudicatedFinding{{ID: "high", Outcome: "TRUE_POSITIVE"}, {ID: "medium", Outcome: "TRUE_POSITIVE"}}, WallMilliseconds: 200, Tokens: 200, HumanReviewMinutes: 5}
+		baseline := qualityRun{Findings: []adjudicatedFinding{{ID: "medium", Outcome: "TRUE_POSITIVE"}}, WallMilliseconds: 100, Tokens: 100, HumanReviewMinutes: 10, EvidenceFabrications: &zero, CorrectionRegressions: &zero}
+		jerry := qualityRun{Findings: []adjudicatedFinding{{ID: "high", Outcome: "TRUE_POSITIVE"}, {ID: "medium", Outcome: "TRUE_POSITIVE"}}, WallMilliseconds: 200, Tokens: 200, HumanReviewMinutes: 5, EvidenceFabrications: &zero, CorrectionRegressions: &zero}
 		tasks[i] = qualityTask{ID: fmt.Sprintf("task-%d", i), Source: fmt.Sprintf("repo-%d", i), Candidate: fmt.Sprintf("commit-%d", i), Known: []knownFinding{{ID: "high", Severity: "HIGH"}, {ID: "medium", Severity: "MEDIUM"}}, Baseline: []qualityRun{baseline, baseline, baseline}, Jerry: []qualityRun{jerry, jerry, jerry}}
 	}
 	b, err := json.Marshal(qualitySuite{SchemaVersion: 1, TrialsPerArm: 3, MaxJerryTokensPerRun: 500, Tasks: tasks})
@@ -462,15 +463,57 @@ func TestEvalQualityComputesGraduationMetrics(t *testing.T) {
 
 func TestQualityRunRejectsMetricGaming(t *testing.T) {
 	known := map[string]int{"known": 5}
+	zero, negative, tooMany := 0, -1, maxEventCount+1
 	cases := []qualityRun{
-		{Findings: []adjudicatedFinding{{ID: "unknown", Outcome: "TRUE_POSITIVE"}}, WallMilliseconds: 1, Tokens: 1},
-		{Findings: []adjudicatedFinding{{ID: "known", Outcome: "FALSE_POSITIVE"}}, WallMilliseconds: 1, Tokens: 1},
-		{Findings: []adjudicatedFinding{}, WallMilliseconds: 1, Tokens: 1, UnauthorizedActions: -1},
+		{Findings: []adjudicatedFinding{{ID: "unknown", Outcome: "TRUE_POSITIVE"}}, WallMilliseconds: 1, Tokens: 1, EvidenceFabrications: &zero, CorrectionRegressions: &zero},
+		{Findings: []adjudicatedFinding{{ID: "known", Outcome: "FALSE_POSITIVE"}}, WallMilliseconds: 1, Tokens: 1, EvidenceFabrications: &zero, CorrectionRegressions: &zero},
+		{Findings: []adjudicatedFinding{}, WallMilliseconds: 1, Tokens: 1, UnauthorizedActions: -1, EvidenceFabrications: &zero, CorrectionRegressions: &zero},
+		{Findings: []adjudicatedFinding{}, WallMilliseconds: int64(^uint64(0) >> 1), Tokens: 1, EvidenceFabrications: &zero, CorrectionRegressions: &zero},
+		{Findings: []adjudicatedFinding{}, WallMilliseconds: 1, Tokens: int64(^uint64(0) >> 1), EvidenceFabrications: &zero, CorrectionRegressions: &zero},
+		{Findings: []adjudicatedFinding{}, WallMilliseconds: 1, Tokens: 1, EvidenceFabrications: &negative, CorrectionRegressions: &zero},
+		{Findings: []adjudicatedFinding{}, WallMilliseconds: 1, Tokens: 1, EvidenceFabrications: &zero, CorrectionRegressions: &tooMany},
+		{Findings: []adjudicatedFinding{}, WallMilliseconds: 1, Tokens: 1, EvidenceFabrications: nil, CorrectionRegressions: &zero},
+		{Findings: []adjudicatedFinding{}, WallMilliseconds: 1, Tokens: 1, EvidenceFabrications: &zero, CorrectionRegressions: nil},
 	}
 	for _, run := range cases {
 		if _, err := scoreQualityRun(run, known); err == nil {
 			t.Fatalf("accepted gameable run: %#v", run)
 		}
+	}
+}
+
+func TestQualityEvaluatorFailsFabricationAndCorrectionRegression(t *testing.T) {
+	zero := 0
+	tasks := make([]qualityTask, 20)
+	for i := range tasks {
+		baseline := qualityRun{Findings: []adjudicatedFinding{{ID: "medium", Outcome: "TRUE_POSITIVE"}}, WallMilliseconds: 100, Tokens: 100, EvidenceFabrications: &zero, CorrectionRegressions: &zero}
+		jerry := qualityRun{Findings: []adjudicatedFinding{{ID: "high", Outcome: "TRUE_POSITIVE"}, {ID: "medium", Outcome: "TRUE_POSITIVE"}}, WallMilliseconds: 100, Tokens: 100, EvidenceFabrications: &zero, CorrectionRegressions: &zero}
+		tasks[i] = qualityTask{ID: fmt.Sprintf("task-%d", i), Source: fmt.Sprintf("repo-%d", i), Candidate: fmt.Sprintf("commit-%d", i), Known: []knownFinding{{ID: "high", Severity: "HIGH"}, {ID: "medium", Severity: "MEDIUM"}}, Baseline: []qualityRun{baseline, baseline, baseline}, Jerry: []qualityRun{jerry, jerry, jerry}}
+	}
+	one := 1
+	tasks[0].Jerry[0].EvidenceFabrications = &one
+	tasks[1].Jerry[0].CorrectionRegressions = &one
+	b, err := json.Marshal(qualitySuite{SchemaVersion: 1, TrialsPerArm: 3, MaxJerryTokensPerRun: 500, Tasks: tasks})
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(t.TempDir(), "quality.json")
+	if err := os.WriteFile(path, b, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	got, err := evalQuality([]string{"--fixture", path})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got["passed"] != false || got["evidenceFabrications"] != 1 || got["correctionRegressions"] != 1 {
+		t.Fatalf("fabrication and regression must fail graduation: %#v", got)
+	}
+}
+
+func TestMedianAvoidsOverflow(t *testing.T) {
+	max := int64(^uint64(0) >> 1)
+	if got := median([]int64{max - 2, max}); got != max-1 {
+		t.Fatalf("overflow-safe median got %d", got)
 	}
 }
 
