@@ -653,5 +653,22 @@ func verifyEvidence(repo, candidate string) (result, error) {
 	if verdict != bundle.Verdict || reason != bundle.Reason {
 		return result{"verdict": "BLOCKED", "reason": "persisted verdict does not reproduce from its evidence", "run": state}, nil
 	}
-	return result{"verdict": verdict, "reason": reason, "run": state, "evidencePath": path, "reproduced": true}, nil
+	teamDigest := strings.TrimSuffix(filepath.Base(path), ".json")
+	adjudication, err := loadAdjudication(root, key, state.ID, teamDigest)
+	if err != nil {
+		return result{"verdict": "BLOCKED", "reason": "persisted adjudication is invalid: " + err.Error(), "run": state}, nil
+	}
+	if adjudication != nil {
+		if adjudication.Repository != abs || adjudication.Candidate != state.Candidate || adjudication.RepositoryDigest != currentDigest {
+			return result{"verdict": "BLOCKED", "reason": "persisted adjudication is stale or identity-mismatched", "run": state}, nil
+		}
+		if err := validateAdjudicationDecisions(adjudication.Decisions, bundle, checks); err != nil {
+			return result{"verdict": "BLOCKED", "reason": "persisted adjudication decisions are invalid: " + err.Error(), "run": state}, nil
+		}
+		verdict, reason = aggregateTeamVerdictWithAdjudication(outputs, checks, false, adjudication)
+		if verdict == "READY" && state.Assurance != "MANAGED_INDEPENDENT" {
+			verdict, reason = "INCONCLUSIVE", "independent assurance is unavailable; clean separate passes cannot satisfy the readiness independence gate"
+		}
+	}
+	return result{"verdict": verdict, "reason": reason, "run": state, "evidencePath": path, "reproduced": true, "adjudicated": adjudication != nil}, nil
 }

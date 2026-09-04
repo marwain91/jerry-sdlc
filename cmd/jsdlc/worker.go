@@ -360,39 +360,90 @@ func team(args []string) (result, error) {
 }
 
 func aggregateTeamVerdict(outputs []result, checks map[string]checkEvidence, attestedChecksAuthorized bool) (string, string) {
+	return aggregateTeamVerdictWithAdjudication(outputs, checks, attestedChecksAuthorized, nil)
+}
+
+func aggregateTeamVerdictWithAdjudication(outputs []result, checks map[string]checkEvidence, attestedChecksAuthorized bool, adjudication *adjudicationEvidence) (string, string) {
 	expectedRoles := []string{"qa-architect", "qa-executor", "specialist-reviewer", "independent-verifier"}
 	seenRoles := map[string]bool{}
 	verifierPass := map[string]bool{}
+	decisions := map[string]adjudicationDecision{}
+	if adjudication != nil {
+		for _, decision := range adjudication.Decisions {
+			decisions[decision.Kind+"\x00"+decision.ID] = decision
+		}
+	}
+	acceptedFinding := false
+	unadjudicatedFinding, blocked, unresolvedNA, missingCheckedEvidence := false, false, false, false
+	seenFindingIDs := map[string]bool{}
 	for _, output := range outputs {
 		role, ok := output["role"].(string)
 		if !ok || !contains(expectedRoles, role) || seenRoles[role] {
 			return "INCONCLUSIVE", "required review roles are missing, duplicated, or invalid"
 		}
 		seenRoles[role] = true
+		raw, ok := output["report"].(json.RawMessage)
+		if !ok || validateWorkerReport(string(raw)) != nil {
+			return "INCONCLUSIVE", "a worker report could not be aggregated"
+		}
 		var report workerReport
-		if err := json.Unmarshal(output["report"].(json.RawMessage), &report); err != nil {
+		if err := json.Unmarshal(raw, &report); err != nil {
 			return "INCONCLUSIVE", "a worker report could not be aggregated"
 		}
 		if report.Disposition == "FINDINGS" {
-			return "NOT_READY", "one or more review workers reported findings"
+			for _, finding := range report.Findings {
+				if seenFindingIDs[finding.ID] {
+					return "INCONCLUSIVE", "reviewers reused a finding ID across roles"
+				}
+				seenFindingIDs[finding.ID] = true
+				decision, decided := decisions["FINDING\x00"+finding.ID]
+				if !decided {
+					unadjudicatedFinding = true
+				}
+				if decided && decision.Disposition == "ACCEPTED" {
+					acceptedFinding = true
+				}
+			}
 		}
 		if report.Disposition == "BLOCKED" || report.Disposition == "INCONCLUSIVE" {
-			return "INCONCLUSIVE", "one or more review workers could not reach a conclusion"
+			blocked = true
 		}
 		for _, domain := range report.Domains {
 			if domain.Status == "BLOCKED" {
-				return "INCONCLUSIVE", "an applicable release-risk domain is blocked"
+				blocked = true
 			}
 			if domain.Status == "NOT_APPLICABLE" {
-				return "INCONCLUSIVE", "NOT_APPLICABLE requires adjudication not implemented in this phase"
+				decision, decided := decisions["DOMAIN_NOT_APPLICABLE\x00"+domain.Domain]
+				if !decided || decision.Disposition != "ACCEPTED" {
+					unresolvedNA = true
+				}
+				if decided && decision.Disposition == "ACCEPTED" && role == "independent-verifier" {
+					verifierPass[domain.Domain] = true
+				}
+				continue
 			}
 			if domain.Status == "PASS" && !domainHasCheckedEvidence(domain, checks, attestedChecksAuthorized) {
-				return "INCONCLUSIVE", "a PASS domain lacks successful candidate-bound checked evidence"
+				missingCheckedEvidence = true
 			}
 			if role == "independent-verifier" && domain.Status == "PASS" {
 				verifierPass[domain.Domain] = true
 			}
 		}
+	}
+	if unadjudicatedFinding {
+		return "NOT_READY", "one or more review findings remain unadjudicated"
+	}
+	if acceptedFinding {
+		return "NOT_READY", "one or more adjudicated findings require correction"
+	}
+	if blocked {
+		return "INCONCLUSIVE", "one or more workers or applicable release-risk domains are blocked"
+	}
+	if unresolvedNA {
+		return "INCONCLUSIVE", "NOT_APPLICABLE lacks accepted explicit adjudication"
+	}
+	if missingCheckedEvidence {
+		return "INCONCLUSIVE", "a PASS domain lacks successful candidate-bound checked evidence"
 	}
 	for _, role := range expectedRoles {
 		if !seenRoles[role] {
@@ -548,6 +599,7 @@ func validateWorkerReport(message string) error {
 		}
 	}
 	seenDomains := map[string]bool{}
+	seenFindings := map[string]bool{}
 	for _, domain := range report.Domains {
 		if !contains(requiredReleaseDomains, domain.Domain) || !contains([]string{"PASS", "NOT_APPLICABLE", "BLOCKED"}, domain.Status) || strings.TrimSpace(domain.Evidence) == "" || domain.EvidenceIDs == nil || seenDomains[domain.Domain] {
 			return errors.New("domain result is invalid, blank, or duplicated")
@@ -562,9 +614,10 @@ func validateWorkerReport(message string) error {
 		seenDomains[domain.Domain] = true
 	}
 	for _, finding := range report.Findings {
-		if finding.ID == "" || finding.Requirement == "" || finding.Location == "" || finding.Evidence == "" || finding.Recommendation == "" || !contains([]string{"CRITICAL", "HIGH", "MEDIUM", "LOW"}, finding.Severity) || !contains([]string{"HIGH", "MEDIUM", "LOW"}, finding.Confidence) {
+		if finding.ID == "" || seenFindings[finding.ID] || finding.Requirement == "" || finding.Location == "" || finding.Evidence == "" || finding.Recommendation == "" || !contains([]string{"CRITICAL", "HIGH", "MEDIUM", "LOW"}, finding.Severity) || !contains([]string{"HIGH", "MEDIUM", "LOW"}, finding.Confidence) {
 			return errors.New("finding is missing a required field or has invalid severity/confidence")
 		}
+		seenFindings[finding.ID] = true
 	}
 	return nil
 }

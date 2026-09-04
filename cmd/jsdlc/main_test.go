@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -991,6 +992,7 @@ func TestTeamLocalCheckedEvidencePersistsButCannotClaimReadiness(t *testing.T) {
 	for _, domain := range requiredReleaseDomains {
 		domains = append(domains, domainResult{Domain: domain, Status: "PASS", Evidence: "checked command and repository evidence", EvidenceIDs: []string{"all-checks"}})
 	}
+	domains[0] = domainResult{Domain: requiredReleaseDomains[0], Status: "NOT_APPLICABLE", Evidence: "explicit applicability review", EvidenceIDs: []string{"all-checks"}}
 	reportBytes, err := json.Marshal(workerReport{Disposition: "CLEAN", Evidence: []string{"checked"}, Findings: []workerFinding{}, Limitations: []string{}, Domains: domains})
 	if err != nil {
 		t.Fatal(err)
@@ -1013,7 +1015,7 @@ func TestTeamLocalCheckedEvidencePersistsButCannotClaimReadiness(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got["verdict"] != "INCONCLUSIVE" || !strings.Contains(got["reason"].(string), "lacks successful") {
+	if got["verdict"] != "INCONCLUSIVE" {
 		t.Fatalf("unattested local evidence claimed readiness: %#v", got)
 	}
 	verified, err := verify([]string{"--repo", repo, "--candidate", "candidate-a"})
@@ -1022,6 +1024,82 @@ func TestTeamLocalCheckedEvidencePersistsButCannotClaimReadiness(t *testing.T) {
 	}
 	if verified["verdict"] != "INCONCLUSIVE" || verified["reproduced"] != true {
 		t.Fatalf("clean persisted result did not reproduce: %#v", verified)
+	}
+	decisionInput := adjudicationInput{SchemaVersion: 1, TeamDigest: got["evidenceDigest"].(string), Decisions: []adjudicationDecision{{Kind: "DOMAIN_NOT_APPLICABLE", ID: requiredReleaseDomains[0], Disposition: "ACCEPTED", Rationale: "the checked candidate has no applicable functional surface", EvidenceIDs: []string{"all-checks"}}}}
+	decisionBytes, err := json.Marshal(decisionInput)
+	if err != nil {
+		t.Fatal(err)
+	}
+	decisionPath := filepath.Join(t.TempDir(), "adjudication.json")
+	if err := os.WriteFile(decisionPath, decisionBytes, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	adjudicated, err := adjudicate([]string{"--repo", repo, "--candidate", "candidate-a", "--file", decisionPath, "--authorized"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := adjudicate([]string{"--repo", repo, "--candidate", "candidate-a", "--file", decisionPath, "--authorized"}); err == nil {
+		t.Fatal("team evidence must not be adjudicated twice")
+	}
+	verified, err = verify([]string{"--repo", repo, "--candidate", "candidate-a"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if verified["verdict"] != "INCONCLUSIVE" || verified["adjudicated"] != true {
+		t.Fatalf("adjudicated result did not reproduce: %#v", verified)
+	}
+	adjudicationPath := adjudicated["path"].(string)
+	originalAdjudication, err := os.ReadFile(adjudicationPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tamperedAdjudication := bytes.Replace(originalAdjudication, []byte("the checked candidate"), []byte("an edited candidate"), 1)
+	if bytes.Equal(tamperedAdjudication, originalAdjudication) {
+		t.Fatal("test failed to alter adjudication evidence")
+	}
+	if err := os.WriteFile(adjudicationPath, tamperedAdjudication, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	tamperedDigest := fmt.Sprintf("%x", sha256.Sum256(tamperedAdjudication))
+	tamperedPath := filepath.Join(filepath.Dir(adjudicationPath), tamperedDigest+".json")
+	if err := os.Rename(adjudicationPath, tamperedPath); err != nil {
+		t.Fatal(err)
+	}
+	verified, err = verify([]string{"--repo", repo, "--candidate", "candidate-a"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if verified["verdict"] != "BLOCKED" || !strings.Contains(verified["reason"].(string), "authorization anchor") {
+		t.Fatalf("edited and rehashed adjudication evidence must block: %#v", verified)
+	}
+	// LOCAL_USER_AUTHORIZED deliberately does not claim integrity against the
+	// same OS user. That user can replace both evidence and its local anchor;
+	// a trusted adapter or remote log is required to close this boundary.
+	anchorPath := filepath.Join(filepath.Dir(filepath.Dir(adjudicationPath)), got["evidenceDigest"].(string)+".digest")
+	if err := os.Remove(anchorPath); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(anchorPath, []byte(tamperedDigest+"\n"), 0o400); err != nil {
+		t.Fatal(err)
+	}
+	verified, err = verify([]string{"--repo", repo, "--candidate", "candidate-a"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if verified["verdict"] != "INCONCLUSIVE" || verified["adjudicated"] != true {
+		t.Fatalf("local-owner rewrite limitation changed; revisit the documented trust boundary: %#v", verified)
+	}
+	if err := os.Rename(tamperedPath, adjudicationPath); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(adjudicationPath, originalAdjudication, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(anchorPath); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(anchorPath, []byte(adjudicated["digest"].(string)+"\n"), 0o400); err != nil {
+		t.Fatal(err)
 	}
 	if _, err := check([]string{"--repo", repo, "--candidate", "candidate-a", "--id", "late-check", "--domains", "functional", "--authorized", "--", "/bin/true"}); err != nil {
 		t.Fatal(err)
@@ -1129,6 +1207,9 @@ func TestAggregateTeamVerdictRequiresEveryDomain(t *testing.T) {
 func TestAggregateTeamVerdictFailsClosed(t *testing.T) {
 	checks := map[string]checkEvidence{}
 	clean := func(disposition string, domains []domainResult) json.RawMessage {
+		if domains == nil {
+			domains = []domainResult{}
+		}
 		findings := []workerFinding{}
 		if disposition == "FINDINGS" {
 			findings = append(findings, workerFinding{ID: "F-1", Severity: "HIGH", Confidence: "HIGH", Requirement: "safe", Location: "x", Evidence: "broken", Recommendation: "fix"})
@@ -1165,6 +1246,70 @@ func TestAggregateTeamVerdictFailsClosed(t *testing.T) {
 		if got, _ := aggregateTeamVerdict(tc.outputs, checks, true); got != tc.want {
 			t.Fatalf("%s: got %s want %s", name, got, tc.want)
 		}
+	}
+}
+
+func TestAdjudicationControlsFindingsAndNotApplicable(t *testing.T) {
+	checks := map[string]checkEvidence{}
+	passes := make([]domainResult, 0, len(requiredReleaseDomains))
+	for _, domain := range requiredReleaseDomains {
+		id := "check-" + domain
+		passes = append(passes, domainResult{Domain: domain, Status: "PASS", Evidence: "verified", EvidenceIDs: []string{id}})
+		checks[id] = checkEvidence{ID: id, Domains: []string{domain}, ExitStatus: 0, Trust: "ATTESTED_RUNTIME"}
+	}
+	passes[0].Status = "NOT_APPLICABLE"
+	clean := func(disposition string, findings []workerFinding, domains []domainResult) json.RawMessage {
+		if domains == nil {
+			domains = []domainResult{}
+		}
+		b, err := json.Marshal(workerReport{Disposition: disposition, Evidence: []string{"checked"}, Findings: findings, Limitations: []string{}, Domains: domains})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return b
+	}
+	finding := workerFinding{ID: "F-1", Severity: "HIGH", Confidence: "HIGH", Requirement: "safe", Location: "x", Evidence: "broken", Recommendation: "fix"}
+	outputs := []result{{"role": "qa-architect", "report": clean("CLEAN", []workerFinding{}, nil)}, {"role": "qa-executor", "report": clean("FINDINGS", []workerFinding{finding}, nil)}, {"role": "specialist-reviewer", "report": clean("CLEAN", []workerFinding{}, nil)}, {"role": "independent-verifier", "report": clean("CLEAN", []workerFinding{}, passes)}}
+	acceptedNA := adjudicationDecision{Kind: "DOMAIN_NOT_APPLICABLE", ID: requiredReleaseDomains[0], Disposition: "ACCEPTED", Rationale: "not present", EvidenceIDs: []string{"check-" + requiredReleaseDomains[0]}}
+	rejectedFinding := adjudicationDecision{Kind: "FINDING", ID: "F-1", Disposition: "REJECTED", Rationale: "contradicted by exact evidence", EvidenceIDs: []string{"check-functional"}}
+	adj := &adjudicationEvidence{Decisions: []adjudicationDecision{acceptedNA, rejectedFinding}}
+	if verdict, _ := aggregateTeamVerdictWithAdjudication(outputs, checks, true, adj); verdict != "READY" {
+		t.Fatalf("rejected finding and accepted N/A should allow clean aggregation, got %s", verdict)
+	}
+	adj.Decisions[1].Disposition = "ACCEPTED"
+	if verdict, _ := aggregateTeamVerdictWithAdjudication(outputs, checks, true, adj); verdict != "NOT_READY" {
+		t.Fatalf("accepted finding must remain NOT_READY, got %s", verdict)
+	}
+	adj.Decisions = adj.Decisions[:1]
+	if verdict, _ := aggregateTeamVerdictWithAdjudication(outputs, checks, true, adj); verdict != "NOT_READY" {
+		t.Fatalf("unadjudicated finding must remain NOT_READY, got %s", verdict)
+	}
+}
+
+func TestAdjudicationValidatesFindingIdentityAndRejectionEvidence(t *testing.T) {
+	report := func(id string) json.RawMessage {
+		b, err := json.Marshal(workerReport{Disposition: "FINDINGS", Evidence: []string{"reviewed"}, Findings: []workerFinding{{ID: id, Severity: "HIGH", Confidence: "HIGH", Requirement: "safe", Location: "x", Evidence: "broken", Recommendation: "fix"}}, Limitations: []string{}, Domains: []domainResult{}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return b
+	}
+	checks := map[string]checkEvidence{"check-functional": {ID: "check-functional", ExitStatus: 0}}
+	bundle := teamEvidence{Roles: []teamRoleEvidence{{Role: "qa-executor", Report: report("F-1")}}}
+	decision := adjudicationDecision{Kind: "FINDING", ID: "F-1", Disposition: "REJECTED", Rationale: "disproved", EvidenceIDs: []string{"check-functional"}}
+	if err := validateAdjudicationDecisions([]adjudicationDecision{decision}, bundle, checks); err != nil {
+		t.Fatalf("valid rejection was refused: %v", err)
+	}
+	for name, ids := range map[string][]string{"empty": {}, "unknown": {"missing"}, "duplicate": {"check-functional", "check-functional"}, "invalid": {"Bad ID"}} {
+		invalid := decision
+		invalid.EvidenceIDs = ids
+		if err := validateAdjudicationDecisions([]adjudicationDecision{invalid}, bundle, checks); err == nil {
+			t.Fatalf("%s rejection evidence was accepted", name)
+		}
+	}
+	bundle.Roles = append(bundle.Roles, teamRoleEvidence{Role: "specialist-reviewer", Report: report("F-1")})
+	if err := validateAdjudicationDecisions([]adjudicationDecision{decision}, bundle, checks); err == nil {
+		t.Fatal("finding IDs duplicated across roles were accepted")
 	}
 }
 
