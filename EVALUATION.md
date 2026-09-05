@@ -44,6 +44,7 @@ go run ./cmd/jsdlc eval-triggers --fixture evals/holdout-7-trigger-suite.json --
 | Holdout 6 | 100 | 300 | 87.5% | 70% | 100% / 100% after tuning; first result remains failed |
 | Holdout 7 | 100 | 300 | 100% | 50% | 100% / 100% after tuning; first result remains failed |
 | Holdout 8 | 100 | 300 | 100% | 80% | failed; independently authored provenance-grade result at `0ad20a4` |
+| Holdout 9 | 100 | 300 | 88.9% | 80% | failed; independently authored provenance-grade result at `f069669` |
 
 The command evaluates the deterministic `jsdlc classify` router only. It does not measure implicit Codex skill selection.
 
@@ -77,3 +78,5 @@ Holdout 6 was independently authored and frozen at commit `1a5590d` before its f
 Holdout 7 was independently authored at `af11452`, but its first preflight was rejected before classification because it used the wrong JSON field names. Commit `279d378` mechanically corrected only the schema mapping without changing prompt wording, then froze fixture SHA-256 `7eef5eb60d93a2c2a9d1893c2b36d90f49048144fb2604143b0c17e1707a82ac`. [Its first valid result](eval-results/holdout-7-279d378.json) had 100% precision and 50% recall, so it failed. Both the rejected preflight and valid failure are preserved; neither is graduation evidence.
 
 Holdout 8 was independently frozen at commit `0ad20a4` before first execution, with fixture SHA-256 `7c98876d1b9adef1a3838119d22a03e588293fc9f12ff29d48cba17d3237cad6`. [Its first result](eval-results/holdout-8-0ad20a4.json) had 100% precision and 80% recall, so it failed the recall threshold. It missed “finish hardening … promote to production” and “turn … into a release candidate” constructions. The failure is preserved and cannot become graduation evidence after tuning.
+
+Holdout 9 was independently frozen at commit `f069669` before first execution, with fixture SHA-256 `e4b316cc508d75ff1ec37cfdff700994b72c623dbca173f5d2719b895004a102`. [Its first result](eval-results/holdout-9-f069669.json) had 88.9% precision and 80% recall, failing both thresholds. It also demonstrated the danger of phrase-list tuning: “turn … into a release candidate” and a referential instruction to turn quoted “ready to ship” text into a slide heading require semantic context. Further replay tuning is regression work, not a substitute for model-level implicit-selection evaluation.
