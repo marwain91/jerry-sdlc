@@ -1072,6 +1072,74 @@ func TestAdapterProtocolValidationCannotUpgradeAssurance(t *testing.T) {
 	}
 }
 
+func TestCollisionResolutionPrecedenceAndNoLaunch(t *testing.T) {
+	writeInput := func(t *testing.T, input collisionInput) string {
+		t.Helper()
+		b, err := json.Marshal(input)
+		if err != nil {
+			t.Fatal(err)
+		}
+		path := filepath.Join(t.TempDir(), "collision.json")
+		if err := os.WriteFile(path, b, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		return path
+	}
+	base := collisionInput{SchemaVersion: 1, ExplicitSelection: "NONE", CompetingBroadOrchestrators: []string{}, DiscoveryEvidence: "RUNTIME_OBSERVED"}
+	tests := []struct {
+		name      string
+		input     collisionInput
+		decision  string
+		assurance string
+		allowed   bool
+	}{
+		{"no collision", base, "PROCEED_JERRY", "UNCHANGED", true},
+		{"explicit Jerry wins", collisionInput{SchemaVersion: 1, ExplicitSelection: "JERRY", ActiveJerryRunID: "old", RequestedJerryRunID: "new", CompetingBroadOrchestrators: []string{"another-agent"}, DiscoveryEvidence: "CALLER_DECLARED"}, "PROCEED_JERRY", "UNCHANGED", true},
+		{"explicit other wins", collisionInput{SchemaVersion: 1, ExplicitSelection: "OTHER", ActiveJerryRunID: "run-a", RequestedJerryRunID: "run-a", CompetingBroadOrchestrators: []string{}, DiscoveryEvidence: "RUNTIME_OBSERVED"}, "YIELD_TO_EXPLICIT_SELECTION", "UNCHANGED", false},
+		{"same run resumes", collisionInput{SchemaVersion: 1, ExplicitSelection: "NONE", ActiveJerryRunID: "run-a", RequestedJerryRunID: "run-a", CompetingBroadOrchestrators: []string{"another-agent"}, DiscoveryEvidence: "RUNTIME_OBSERVED"}, "RESUME_JERRY", "UNCHANGED", true},
+		{"different Jerry run blocks", collisionInput{SchemaVersion: 1, ExplicitSelection: "NONE", ActiveJerryRunID: "run-a", RequestedJerryRunID: "run-b", CompetingBroadOrchestrators: []string{}, DiscoveryEvidence: "RUNTIME_OBSERVED"}, "COLLISION", "OWNER_GATE", false},
+		{"competitor blocks", collisionInput{SchemaVersion: 1, ExplicitSelection: "NONE", CompetingBroadOrchestrators: []string{"another-agent"}, DiscoveryEvidence: "CALLER_DECLARED"}, "COLLISION", "OWNER_GATE", false},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := resolveCollision([]string{"--file", writeInput(t, tc.input)})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got["decision"] != tc.decision || got["assurance"] != tc.assurance || got["launchAllowed"] != tc.allowed || got["launchPerformed"] != false || got["runtimeDiscoveryRule"] != "CALLER_SUPPLIED_EVIDENCE_ONLY" {
+				t.Fatalf("unexpected collision decision: %#v", got)
+			}
+			if !validSHA256(got["inputDigest"].(string)) {
+				t.Fatalf("missing input binding: %#v", got)
+			}
+		})
+	}
+}
+
+func TestCollisionInputFailsClosed(t *testing.T) {
+	write := func(content string) string {
+		path := filepath.Join(t.TempDir(), "collision.json")
+		if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		return path
+	}
+	invalid := []string{
+		`{"schemaVersion":1,"explicitSelection":"NONE","competingBroadOrchestrators":[],"discoveryEvidence":"RUNTIME_OBSERVED","unknown":true}`,
+		`{"schemaVersion":1,"explicitSelection":"NONE","activeJerryRunId":"run","competingBroadOrchestrators":[],"discoveryEvidence":"RUNTIME_OBSERVED"}`,
+		`{"schemaVersion":1,"explicitSelection":"NONE","competingBroadOrchestrators":["Other Agent"," other agent "],"discoveryEvidence":"RUNTIME_OBSERVED"}`,
+		`{"schemaVersion":1,"explicitSelection":"NONE","competingBroadOrchestrators":["jsdlc"],"discoveryEvidence":"RUNTIME_OBSERVED"}`,
+		`{"schemaVersion":1,"explicitSelection":"NONE","competingBroadOrchestrators":null,"discoveryEvidence":"RUNTIME_OBSERVED"}`,
+		`{"schemaVersion":1,"explicitSelection":"NONE","competingBroadOrchestrators":[],"discoveryEvidence":"AUTOMATIC"}`,
+		`{"schemaVersion":1,"explicitSelection":"NONE","competingBroadOrchestrators":[],"discoveryEvidence":"RUNTIME_OBSERVED"} {}`,
+	}
+	for _, content := range invalid {
+		if _, err := resolveCollision([]string{"--file", write(content)}); err == nil {
+			t.Fatalf("invalid collision input was accepted: %s", content)
+		}
+	}
+}
+
 func TestWorkerReceiptBindsActiveRun(t *testing.T) {
 	t.Setenv("XDG_STATE_HOME", t.TempDir())
 	workingDir, err := os.Getwd()

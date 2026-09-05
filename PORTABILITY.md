@@ -14,4 +14,6 @@ Adapter protocol v1 defines a strict, bounded record tied to the exact canonical
 
 The adapter catalogue reports capabilities individually. A runtime must never infer `MANAGED_INDEPENDENT` from a descriptor, process count, self-reported thread IDs, or a structurally valid protocol record.
 
+Coexistence uses a runtime-neutral, deterministic boundary. A host supplies observed or user-declared active-orchestrator evidence matching `schemas/collision-input.schema.json`, then calls `jsdlc resolve-collision --file <evidence.json>`. Explicit selection has priority, the same active Jerry run resumes, and an unresolved competing orchestrator or different Jerry run returns `COLLISION` with `OWNER_GATE`. The command never discovers installed plugins and always reports `launchPerformed: false`; host-specific discovery remains unproven until tested on each surface.
+
 Frontend, backend, mobile, database, infrastructure, and incident pack metadata is present but deliberately inactive. The project plan permits activation only after release/PR evaluation evidence passes; current Phase-3 results do not.

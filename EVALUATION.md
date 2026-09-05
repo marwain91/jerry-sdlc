@@ -21,6 +21,7 @@ go run ./cmd/jsdlc eval-triggers --fixture evals/holdout-2-trigger-suite.json --
 | Holdout 4 | 100 | 300 | 58.8% | 100% | 100% / 100% after tuning; first result remains failed |
 | Holdout 5 | 100 | 300 | 0% | 0% | 100% / 100% after tuning; first result remains failed |
 | Holdout 6 | 100 | 300 | 87.5% | 70% | 100% / 70% after safety fix; first result remains failed |
+| Holdout 7 | 100 | 300 | 100% | 50% | failed; independently authored provenance-grade result at `279d378` |
 
 The command evaluates the deterministic `jsdlc classify` router only. It does not measure implicit Codex skill selection.
 
@@ -48,3 +49,5 @@ Holdout 4 was independently frozen at commit `f2c0973` with fixture SHA-256 `a56
 Holdout 5 was frozen at commit `02d68eb` before its first execution, with fixture SHA-256 `e21ff75dcf93a3cec2a90de1ff2500d0385200d168cd9df03e30fa034e648926`. [Its first result](eval-results/holdout-5-02d68eb.json) had 150 false negatives and no positive predictions (0% recall; precision reported as 0), so it failed. It demonstrates that the exact-phrase router does not generalize to a fresh set of ordinary release-request paraphrases. This result is preserved and may not become graduation evidence after tuning.
 
 Holdout 6 was independently authored and frozen at commit `1a5590d` before its first execution, with fixture SHA-256 `54573ca366e7fbc87dd9ddbfcfb1719582e7d8dcba72552f7f00b9f74230e4aa`. [Its first result](eval-results/holdout-6-1a5590d.json) had 87.5% precision and 70% recall, so it failed both thresholds. The misses cover risk evaluation, launch-blocker discovery, and store-submission readiness; publishing internal documentation caused false positives. This result is preserved and cannot serve as graduation evidence after tuning.
+
+Holdout 7 was independently authored at `af11452`, but its first preflight was rejected before classification because it used the wrong JSON field names. Commit `279d378` mechanically corrected only the schema mapping without changing prompt wording, then froze fixture SHA-256 `7eef5eb60d93a2c2a9d1893c2b36d90f49048144fb2604143b0c17e1707a82ac`. [Its first valid result](eval-results/holdout-7-279d378.json) had 100% precision and 50% recall, so it failed. Both the rejected preflight and valid failure are preserved; neither is graduation evidence.

@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Jerry SDLC collision evidence",
+  "type": "object",
+  "required": ["schemaVersion", "explicitSelection", "competingBroadOrchestrators", "discoveryEvidence"],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "explicitSelection": {"enum": ["NONE", "JERRY", "OTHER"]},
+    "activeJerryRunId": {"type": "string", "minLength": 1, "maxLength": 256},
+    "requestedJerryRunId": {"type": "string", "minLength": 1, "maxLength": 256},
+    "competingBroadOrchestrators": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1, "maxLength": 128}
+    },
+    "discoveryEvidence": {"enum": ["RUNTIME_OBSERVED", "CALLER_DECLARED"]}
+  },
+  "dependentRequired": {
+    "activeJerryRunId": ["requestedJerryRunId"],
+    "requestedJerryRunId": ["activeJerryRunId"]
+  },
+  "additionalProperties": false
+}
