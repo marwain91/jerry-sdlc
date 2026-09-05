@@ -10,6 +10,11 @@ Run in the project container:
 go run ./cmd/jsdlc eval-triggers --fixture evals/trigger-suite.json --repeats 3
 go run ./cmd/jsdlc eval-triggers --fixture evals/adversarial-trigger-suite.json --repeats 3
 go run ./cmd/jsdlc eval-triggers --fixture evals/holdout-2-trigger-suite.json --repeats 3
+go run ./cmd/jsdlc eval-triggers --fixture evals/holdout-3-trigger-suite.json --repeats 3
+go run ./cmd/jsdlc eval-triggers --fixture evals/holdout-4-trigger-suite.json --repeats 3
+go run ./cmd/jsdlc eval-triggers --fixture evals/holdout-5-trigger-suite.json --repeats 3
+go run ./cmd/jsdlc eval-triggers --fixture evals/holdout-6-trigger-suite.json --repeats 3
+go run ./cmd/jsdlc eval-triggers --fixture evals/holdout-7-trigger-suite.json --repeats 3
 ```
 
 | Suite | Labelled prompts | Trials | First observed precision | First observed recall | Current replay |

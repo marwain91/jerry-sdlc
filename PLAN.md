@@ -1,6 +1,6 @@
 # Jerry SDLC implementation plan
 
-Status: revision 4, incorporating three independent CTO review passes. Approved to begin Phase 1; later phases remain gated.
+Status: revision 5. The local control plane, release-readiness vertical slice, evaluation harness, and inert portability contracts are implemented experimentally. Graduation, workflow/pack activation, publication, and release remain gated by the exit criteria below.
 
 ## 1. Product outcome
 
@@ -124,7 +124,7 @@ On resume, any candidate or input drift invalidates dependent evidence. Tool fai
 
 ### 4.5 Optional project configuration
 
-Projects may opt into `.jsdlc.yaml` to define:
+After v1 graduation, projects may opt into a future `.jsdlc.yaml` to define:
 
 - authoritative build and test commands;
 - protected paths and risk rules;
@@ -133,7 +133,7 @@ Projects may opt into `.jsdlc.yaml` to define:
 - human approval gates;
 - advisory, managed, or enforced operation.
 
-Without this file, Jerry SDLC infers repository capabilities conservatively from existing instructions, manifests, CI, and test configuration.
+`.jsdlc.yaml` is not parsed or enforced by the current implementation. Until that explicitly versioned policy format exists, Jerry SDLC infers repository capabilities conservatively from existing instructions, manifests, CI, and test configuration; repository instructions remain authoritative. Documentation must not instruct users to create the file yet.
 
 ### 4.6 Policy precedence and security
 
@@ -311,7 +311,7 @@ jerry-sdlc/
 - Define the state machine, candidate identity, capability handshake, degradation matrix, policy precedence, and security model.
 - Prove separate read-only reviewer execution and truthful fallback where isolation is unavailable.
 
-Exit criterion: all feasibility gates pass on the declared Codex surfaces. No release-readiness claim is implemented before this foundation works.
+Exit criterion: all feasibility gates pass on the declared Codex surfaces. Later experimental code may be developed behind fail-closed gates, but no release-readiness or support claim graduates before this foundation works.
 
 Phase-1 evidence uses at least four representative repositories: a small library, web application, service/API, and multi-component project. Each explicit invocation and lifecycle test runs once per matrix cell; implicit trigger classification uses at least 100 labelled prompts with three repeated trials per supported surface.
 
