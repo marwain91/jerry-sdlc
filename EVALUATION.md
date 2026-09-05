@@ -31,6 +31,8 @@ go run ./cmd/jsdlc eval-triggers --fixture evals/holdout-4-trigger-suite.json --
 go run ./cmd/jsdlc eval-triggers --fixture evals/holdout-5-trigger-suite.json --repeats 3
 go run ./cmd/jsdlc eval-triggers --fixture evals/holdout-6-trigger-suite.json --repeats 3
 go run ./cmd/jsdlc eval-triggers --fixture evals/holdout-7-trigger-suite.json --repeats 3
+go run ./cmd/jsdlc eval-triggers --fixture evals/holdout-8-trigger-suite.json --repeats 3
+go run ./cmd/jsdlc eval-triggers --fixture evals/holdout-9-trigger-suite.json --repeats 3
 ```
 
 | Suite | Labelled prompts | Trials | First observed precision | First observed recall | Current replay |
