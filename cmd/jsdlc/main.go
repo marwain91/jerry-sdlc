@@ -26,7 +26,7 @@ type result map[string]any
 
 func main() {
 	if len(os.Args) < 2 {
-		fail(errors.New("usage: jsdlc <adapters|validate-adapter|packs|resolve-collision|doctor|classify|eval-triggers|eval-quality|roles|start|status|transition|upgrade-state|rollback-state|check|recover-check|worker|team|adjudicate|authorize-correction|finish-correction|verify>"))
+		fail(errors.New("usage: jsdlc <adapters|validate-adapter|packs|resolve-collision|validate-workflow|doctor|classify|eval-triggers|eval-quality|roles|start|status|transition|upgrade-state|rollback-state|check|recover-check|worker|team|adjudicate|authorize-correction|finish-correction|verify>"))
 	}
 	var out result
 	var err error
@@ -39,6 +39,8 @@ func main() {
 		out, err = packs(os.Args[2:])
 	case "resolve-collision":
 		out, err = resolveCollision(os.Args[2:])
+	case "validate-workflow":
+		out, err = validateWorkflow(os.Args[2:])
 	case "doctor":
 		out, err = doctor(os.Args[2:])
 	case "classify":
@@ -121,6 +123,10 @@ func doctor(args []string) (result, error) {
 	if err != nil {
 		return nil, err
 	}
+	workflowValidation, workflowErr := validateWorkflow(nil)
+	if workflowErr != nil {
+		return result{"version": version, "outcome": "UNAVAILABLE", "statePath": root, "platform": runtime.GOOS + "/" + runtime.GOARCH, "reason": "canonical workflow validation failed: " + workflowErr.Error()}, nil
+	}
 	if err := os.MkdirAll(root, 0o700); err != nil {
 		return result{"version": version, "outcome": "ADVISORY_ONLY", "statePath": root, "reason": err.Error()}, nil
 	}
@@ -139,7 +145,7 @@ func doctor(args []string) (result, error) {
 		}
 		return result{"version": version, "outcome": "MANAGED_SEPARATE_PASSES", "statePath": root, "platform": runtime.GOOS + "/" + runtime.GOARCH, "independentWorkers": false, "readOnlyIsolation": false, "capabilityObservation": observation, "reason": "distinct thread IDs were observed; the canary remained absent and the worker reported a blocked write; this is not proof of enforced isolation"}, nil
 	}
-	return result{"version": version, "outcome": "MANAGED_SEPARATE_PASSES", "statePath": root, "platform": runtime.GOOS + "/" + runtime.GOARCH, "independentWorkers": false, "readOnlyIsolation": false, "reason": "team execution can observe distinct subprocesses, but CLI output cannot attest worker identity; receipts and --probe-independent are non-authoritative"}, nil
+	return result{"version": version, "outcome": "MANAGED_SEPARATE_PASSES", "statePath": root, "platform": runtime.GOOS + "/" + runtime.GOARCH, "independentWorkers": false, "readOnlyIsolation": false, "workflowContractDigest": workflowValidation["contractDigest"], "reason": "team execution can observe distinct subprocesses, but CLI output cannot attest worker identity; receipts and --probe-independent are non-authoritative"}, nil
 }
 
 type workerObservation struct {

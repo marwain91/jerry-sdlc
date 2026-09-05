@@ -522,12 +522,18 @@ func canonicalJSONDigest(value []byte) (string, error) {
 }
 
 func validateTeamEvidence(e teamEvidence) error {
-	if e.SchemaVersion != 1 || e.RunID == "" || e.Repository == "" || e.Candidate == "" || e.Workflow != "release-readiness" || !validSHA256(e.RepositoryDigest) || !validSHA256(e.ContractSetDigest) || !validSHA256(e.ChecksDigest) || !validAssurance(e.Assurance) || !contains([]string{"READY", "NOT_READY", "INCONCLUSIVE"}, e.Verdict) || strings.TrimSpace(e.Reason) == "" || parseRFC3339(e.CompletedAt) != nil || len(e.Roles) != 4 {
+	expectedAssignments := releaseTeamAssignments()
+	if e.SchemaVersion != 2 || e.RunID == "" || e.Repository == "" || e.Candidate == "" || e.Workflow != "release-readiness" || !validSHA256(e.RepositoryDigest) || !validSHA256(e.ContractSetDigest) || !validSHA256(e.ChecksDigest) || !validAssurance(e.Assurance) || !contains([]string{"READY", "NOT_READY", "INCONCLUSIVE"}, e.Verdict) || strings.TrimSpace(e.Reason) == "" || parseRFC3339(e.CompletedAt) != nil || len(e.Roles) != len(expectedAssignments) {
 		return errors.New("invalid team evidence envelope")
 	}
-	seenRoles, seenThreads := map[string]bool{}, map[string]bool{}
+	expected := map[string]roleAssignment{}
+	for _, assignment := range expectedAssignments {
+		expected[assignment.id] = assignment
+	}
+	seenAssignments, seenThreads := map[string]bool{}, map[string]bool{}
 	for _, role := range e.Roles {
-		if !contains([]string{"qa-architect", "qa-executor", "specialist-reviewer", "independent-verifier"}, role.Role) || seenRoles[role.Role] || role.Receipt.SchemaVersion != 1 || role.Receipt.Role != role.Role || role.Receipt.RunID != e.RunID || role.Receipt.Repository != e.Repository || role.Receipt.Candidate != e.Candidate || role.Receipt.RepositoryDigest != e.RepositoryDigest || role.Receipt.ThreadID == "" || seenThreads[role.Receipt.ThreadID] || !validSHA256(role.Receipt.RoleContractDigest) || !validSHA256(role.Receipt.WorkflowDigest) || !validSHA256(role.Receipt.SchemaDigest) || !validSHA256(role.Receipt.PromptDigest) || !validSHA256(role.Receipt.OutputDigest) || !validSHA256(role.Receipt.ReportDigest) || role.Receipt.SandboxModeRequested != "read-only" || role.Receipt.ExitStatus != 0 {
+		assignment, ok := expected[role.AssignmentID]
+		if !ok || assignment.role != role.Role || seenAssignments[role.AssignmentID] || role.Receipt.SchemaVersion != 2 || role.Receipt.Role != role.Role || role.Receipt.AssignmentID != role.AssignmentID || role.Receipt.RunID != e.RunID || role.Receipt.Repository != e.Repository || role.Receipt.Candidate != e.Candidate || role.Receipt.RepositoryDigest != e.RepositoryDigest || role.Receipt.ThreadID == "" || seenThreads[role.Receipt.ThreadID] || !validSHA256(role.Receipt.RoleContractDigest) || !validSHA256(role.Receipt.WorkflowDigest) || !validSHA256(role.Receipt.SchemaDigest) || !validSHA256(role.Receipt.PromptDigest) || !validSHA256(role.Receipt.OutputDigest) || !validSHA256(role.Receipt.ReportDigest) || role.Receipt.SandboxModeRequested != "read-only" || role.Receipt.ExitStatus != 0 {
 			return errors.New("team role receipt is missing, duplicated, or not bound to the evidence envelope")
 		}
 		if err := validateWorkerReport(string(role.Report)); err != nil {
@@ -537,7 +543,7 @@ func validateTeamEvidence(e teamEvidence) error {
 		if err != nil || reportDigest != role.Receipt.ReportDigest {
 			return errors.New("persisted report digest does not match its worker receipt")
 		}
-		seenRoles[role.Role], seenThreads[role.Receipt.ThreadID] = true, true
+		seenAssignments[role.AssignmentID], seenThreads[role.Receipt.ThreadID] = true, true
 	}
 	return nil
 }
@@ -644,7 +650,7 @@ func verifyEvidence(repo, candidate string) (result, error) {
 	}
 	outputs := make([]result, 0, len(bundle.Roles))
 	for _, role := range bundle.Roles {
-		outputs = append(outputs, result{"role": role.Role, "report": role.Report})
+		outputs = append(outputs, result{"role": role.Role, "assignmentId": role.AssignmentID, "report": role.Report})
 	}
 	verdict, reason := aggregateTeamVerdict(outputs, checks, false)
 	if verdict == "READY" && state.Assurance != "MANAGED_INDEPENDENT" {

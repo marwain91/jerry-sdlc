@@ -11,6 +11,7 @@ Status: in progress
 - Wrapper SHA-256 verification: PASS
 - `doctor`, `classify`, `start`, and `status` smoke test: PASS
 - Local marketplace add and plugin install: PASS
+- Reproducible disposable Linux CLI matrix (discovery, checksum-verifying wrapper, writable external state, process-exit resume, caller-evidenced collision refusal, migration/rollback, and truthful runtime degradation): PASS. See `evidence/LINUX-CLI-MATRIX.md`.
 - Fresh-session implicit trigger for “Prepare this project for release”: PASS (1 observation; formal trigger suite pending)
 - Correct read-only-sandbox degradation to `ADVISORY_ONLY`: PASS
 - Repository mutation during zero-init activation: none
@@ -27,7 +28,7 @@ Status: in progress
 - 100-prompt, three-repeat implicit Codex skill-selection suite (deterministic classifier suites exist separately)
 - host-surface collision discovery/coexistence evidence (deterministic caller-evidence precedence and fail-closed fixtures pass locally; automatic discovery is not claimed)
 - actual power-loss durability evidence (deterministic pre- and post-rename process-kill boundaries pass, but do not emulate storage loss)
-- published per-cell evidence table
+- published native macOS and IDE/app per-cell evidence (the Linux CLI procedure and table are recorded under `evidence/`)
 
 This evidence authorizes continued Phase-1 work only. It does not establish release-readiness capability.
 

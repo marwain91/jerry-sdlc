@@ -3,7 +3,16 @@
   "name": "release-readiness",
   "terminalStates": ["NOT_READY", "INCONCLUSIVE", "CANCELLED", "BLOCKED"],
   "roles": ["orchestrator", "qa-architect", "qa-executor", "specialist-reviewer", "independent-verifier"],
+  "specialistAssignments": ["specialist-security", "specialist-supply-chain", "specialist-api-compatibility", "specialist-data-migration", "specialist-reliability", "specialist-observability", "specialist-documentation"],
   "states": ["BASELINED", "STRATEGY_READY", "EVIDENCE_COLLECTED", "REVIEWED", "ADJUDICATED", "VERIFIED"],
+  "transitions": {
+    "BASELINED": ["STRATEGY_READY", "CANCELLED", "BLOCKED"],
+    "STRATEGY_READY": ["EVIDENCE_COLLECTED", "CANCELLED", "BLOCKED"],
+    "EVIDENCE_COLLECTED": ["REVIEWED", "INCONCLUSIVE", "NOT_READY", "CANCELLED", "BLOCKED"],
+    "REVIEWED": ["ADJUDICATED", "INCONCLUSIVE", "NOT_READY", "CANCELLED", "BLOCKED"],
+    "ADJUDICATED": ["VERIFIED", "INCONCLUSIVE", "NOT_READY", "CANCELLED", "BLOCKED"],
+    "VERIFIED": ["NOT_READY", "INCONCLUSIVE"]
+  },
   "requiredDomains": ["functional", "security", "supply-chain", "api-compatibility", "data-migration", "reliability", "observability", "documentation", "candidate-identity"],
   "forbiddenActions": ["deploy", "publish", "tag", "release"]
 }

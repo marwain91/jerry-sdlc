@@ -4,7 +4,7 @@
   "type": "object",
   "required": ["schemaVersion", "runId", "repository", "candidateLabel", "repositoryDigest", "contractSetDigest", "checksDigest", "workflow", "roles", "assurance", "verdict", "reason", "completedAt"],
   "properties": {
-    "schemaVersion": {"const": 1},
+    "schemaVersion": {"const": 2},
     "runId": {"type": "string", "minLength": 1},
     "repository": {"type": "string", "minLength": 1},
     "candidateLabel": {"type": "string", "minLength": 1},
@@ -13,11 +13,12 @@
     "checksDigest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
     "workflow": {"const": "release-readiness"},
     "roles": {
-      "type": "array", "minItems": 4, "maxItems": 4,
+      "type": "array", "minItems": 10, "maxItems": 10,
       "items": {
-        "type": "object", "required": ["role", "receipt", "report"],
+        "type": "object", "required": ["role", "assignmentId", "receipt", "report"],
         "properties": {
           "role": {"enum": ["qa-architect", "qa-executor", "specialist-reviewer", "independent-verifier"]},
+          "assignmentId": {"enum": ["qa-architecture", "qa-execution", "specialist-security", "specialist-supply-chain", "specialist-api-compatibility", "specialist-data-migration", "specialist-reliability", "specialist-observability", "specialist-documentation", "independent-verification"]},
           "receipt": {"$ref": "worker-receipt.schema.json"},
           "report": {"$ref": "worker-result.schema.json"}
         },

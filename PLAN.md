@@ -280,6 +280,11 @@ Reviewer disagreement is preserved, not averaged into consensus. Blocking disagr
 
 ## 10. Repository layout
 
+The tree below is conceptual. In the current repository, distributable content
+is rooted at `plugins/jerry-sdlc/`, Go CLI source is at `cmd/jsdlc/`, validators
+are CLI subcommands, and captured evidence lives under `evidence/` and
+`eval-results/`.
+
 ```text
 jerry-sdlc/
 ├── .codex-plugin/plugin.json

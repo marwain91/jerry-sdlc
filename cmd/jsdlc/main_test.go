@@ -1188,6 +1188,97 @@ func TestCollisionInputFailsClosed(t *testing.T) {
 	}
 }
 
+func TestShippedWorkflowContractExactlyMatchesRuntime(t *testing.T) {
+	workingDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	pluginRoot := filepath.Clean(filepath.Join(workingDir, "..", "..", "plugins", "jerry-sdlc"))
+	t.Setenv("JSDLC_PLUGIN_ROOT", pluginRoot)
+	got, err := validateWorkflow(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got["valid"] != true || got["runtimeParity"] != "EXACT" || got["activationAllowed"] != false || !validSHA256(got["contractDigest"].(string)) {
+		t.Fatalf("unexpected workflow validation: %#v", got)
+	}
+}
+
+func TestWorkflowContractDriftFailsClosed(t *testing.T) {
+	base := workflowContract{
+		SchemaVersion: 1, Name: "release-readiness",
+		TerminalStates:        append([]string(nil), releaseWorkflowTerminalStates...),
+		Roles:                 append([]string(nil), releaseWorkflowRoles...),
+		SpecialistAssignments: append([]string(nil), specialistAssignments...),
+		States:                append([]string(nil), releaseWorkflowStates...),
+		Transitions:           map[string][]string{},
+		RequiredDomains:       append([]string(nil), requiredReleaseDomains...),
+		ForbiddenActions:      append([]string(nil), releaseWorkflowForbiddenActions...),
+	}
+	for state, next := range allowedTransitions {
+		base.Transitions[state] = append([]string(nil), next...)
+	}
+	write := func(t *testing.T, value any) string {
+		t.Helper()
+		b, err := json.Marshal(value)
+		if err != nil {
+			t.Fatal(err)
+		}
+		path := filepath.Join(t.TempDir(), "workflow.json")
+		if err := os.WriteFile(path, b, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		return path
+	}
+	mutations := map[string]func(*workflowContract){
+		"schema":         func(c *workflowContract) { c.SchemaVersion = 2 },
+		"name":           func(c *workflowContract) { c.Name = "feature" },
+		"terminal state": func(c *workflowContract) { c.TerminalStates[0] = "READY" },
+		"role":           func(c *workflowContract) { c.Roles = c.Roles[:len(c.Roles)-1] },
+		"specialist": func(c *workflowContract) {
+			c.SpecialistAssignments = c.SpecialistAssignments[:len(c.SpecialistAssignments)-1]
+		},
+		"state":             func(c *workflowContract) { c.States[0] = "NEW" },
+		"transition source": func(c *workflowContract) { delete(c.Transitions, "BASELINED") },
+		"transition target": func(c *workflowContract) { c.Transitions["VERIFIED"] = append(c.Transitions["VERIFIED"], "READY") },
+		"domain":            func(c *workflowContract) { c.RequiredDomains[0] = "invented" },
+		"forbidden action":  func(c *workflowContract) { c.ForbiddenActions = c.ForbiddenActions[:len(c.ForbiddenActions)-1] },
+	}
+	for name, mutate := range mutations {
+		t.Run(name, func(t *testing.T) {
+			b, _ := json.Marshal(base)
+			var changed workflowContract
+			if err := json.Unmarshal(b, &changed); err != nil {
+				t.Fatal(err)
+			}
+			mutate(&changed)
+			if _, err := validateWorkflow([]string{"--file", write(t, changed)}); err == nil {
+				t.Fatal("drifted workflow contract was accepted")
+			}
+		})
+	}
+	var raw map[string]any
+	b, _ := json.Marshal(base)
+	if err := json.Unmarshal(b, &raw); err != nil {
+		t.Fatal(err)
+	}
+	raw["unknown"] = true
+	if _, err := validateWorkflow([]string{"--file", write(t, raw)}); err == nil {
+		t.Fatal("unknown workflow field was accepted")
+	}
+	path := write(t, base)
+	content, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, append(content, []byte(" {}")...), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := validateWorkflow([]string{"--file", path}); err == nil {
+		t.Fatal("trailing workflow JSON was accepted")
+	}
+}
+
 func TestWorkerReceiptBindsActiveRun(t *testing.T) {
 	t.Setenv("XDG_STATE_HOME", t.TempDir())
 	workingDir, err := os.Getwd()
@@ -1218,12 +1309,12 @@ printf '%s\n' '{"type":"thread.started","thread_id":"thread-worker-a"}' '{"type"
 	if err := os.WriteFile(prompt, []byte("Review the candidate."), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	got, err := worker([]string{"--repo", repo, "--candidate", "candidate-a", "--role", "specialist-reviewer", "--prompt-file", prompt})
+	got, err := worker([]string{"--repo", repo, "--candidate", "candidate-a", "--role", "specialist-reviewer", "--assignment", "specialist-security", "--prompt-file", prompt})
 	if err != nil {
 		t.Fatal(err)
 	}
 	receipt := got["receipt"].(workerReceipt)
-	if receipt.RunID != started["run"].(runState).ID || receipt.Candidate != "candidate-a" || receipt.ThreadID != "thread-worker-a" || len(receipt.SchemaDigest) != 64 || len(receipt.ReportDigest) != 64 || got["assuranceEffect"] != "EVIDENCE_ONLY" {
+	if receipt.RunID != started["run"].(runState).ID || receipt.Candidate != "candidate-a" || receipt.AssignmentID != "specialist-security" || receipt.ThreadID != "thread-worker-a" || len(receipt.SchemaDigest) != 64 || len(receipt.ReportDigest) != 64 || got["assuranceEffect"] != "EVIDENCE_ONLY" {
 		t.Fatalf("receipt is not bound correctly: %#v", got)
 	}
 	if _, err := os.Stat(got["path"].(string)); err != nil {
@@ -1282,8 +1373,8 @@ printf '%s\n' "{\"type\":\"thread.started\",\"thread_id\":\"$id\"}" '{"type":"it
 	if got["assurance"] != "MANAGED_SEPARATE_PASSES" || got["workerObservation"] != "OBSERVED_DISTINCT_SUBPROCESSES" || got["scope"] != "PERSISTED_CANDIDATE_BOUND_EVIDENCE" || got["persistence"] != "REPORTS_AND_RECEIPTS" || got["verdict"] != "INCONCLUSIVE" {
 		t.Fatalf("unexpected team result: %#v", got)
 	}
-	if len(got["roles"].([]result)) != 4 {
-		t.Fatalf("expected four role results: %#v", got)
+	if len(got["roles"].([]result)) != 10 {
+		t.Fatalf("expected ten bounded assignment results: %#v", got)
 	}
 	if digest, ok := got["contractSetDigest"].(string); !ok || len(digest) != 64 {
 		t.Fatalf("missing frozen contract-set digest: %#v", got)
@@ -1481,6 +1572,77 @@ func TestWorkerReportRequiresSemanticDisposition(t *testing.T) {
 	}
 }
 
+func completeAssignedOutputs(architect, executor, specialist, verifier json.RawMessage) []result {
+	outputs := []result{
+		{"role": "qa-architect", "assignmentId": "qa-architecture", "report": architect},
+		{"role": "qa-executor", "assignmentId": "qa-execution", "report": executor},
+	}
+	for _, assignmentID := range specialistAssignments {
+		domain := specialistAssignmentDomains[assignmentID]
+		var base workerReport
+		_ = json.Unmarshal(specialist, &base)
+		base.Domains = []domainResult{{Domain: domain, Status: "BLOCKED", Evidence: "specialist lens not supplied", EvidenceIDs: []string{}}}
+		if len(specialist) > 0 {
+			var supplied workerReport
+			if json.Unmarshal(specialist, &supplied) == nil {
+				for _, candidate := range supplied.Domains {
+					if candidate.Domain == domain {
+						base.Domains = []domainResult{candidate}
+					}
+				}
+			}
+		}
+		raw, _ := json.Marshal(base)
+		outputs = append(outputs, result{"role": "specialist-reviewer", "assignmentId": assignmentID, "report": json.RawMessage(raw)})
+	}
+	return append(outputs, result{"role": "independent-verifier", "assignmentId": "independent-verification", "report": verifier})
+}
+
+func validAssignmentBundle(t *testing.T) teamEvidence {
+	t.Helper()
+	bundle := teamEvidence{SchemaVersion: 2, RunID: "run", Repository: "/repo", Candidate: "candidate", RepositoryDigest: strings.Repeat("a", 64), ContractSetDigest: strings.Repeat("b", 64), ChecksDigest: strings.Repeat("c", 64), Workflow: "release-readiness", Assurance: "MANAGED_SEPARATE_PASSES", Verdict: "INCONCLUSIVE", Reason: "local passes cannot establish independence", CompletedAt: "2026-01-01T00:00:00Z"}
+	for index, assignment := range releaseTeamAssignments() {
+		domains := []domainResult{}
+		if assignment.lens != "" {
+			domains = []domainResult{{Domain: assignment.lens, Status: "BLOCKED", Evidence: "no attested check", EvidenceIDs: []string{}}}
+		}
+		report, err := json.Marshal(workerReport{Disposition: "CLEAN", Evidence: []string{"reviewed"}, Findings: []workerFinding{}, Limitations: []string{}, Domains: domains})
+		if err != nil {
+			t.Fatal(err)
+		}
+		reportDigest, err := canonicalJSONDigest(report)
+		if err != nil {
+			t.Fatal(err)
+		}
+		receipt := workerReceipt{SchemaVersion: 2, RunID: bundle.RunID, Repository: bundle.Repository, Candidate: bundle.Candidate, RepositoryDigest: bundle.RepositoryDigest, Role: assignment.role, AssignmentID: assignment.id, RoleContractDigest: strings.Repeat("d", 64), WorkflowDigest: strings.Repeat("e", 64), SchemaDigest: strings.Repeat("f", 64), ThreadID: fmt.Sprintf("thread-%d", index), SandboxModeRequested: "read-only", CodexVersion: "codex-test", PromptDigest: strings.Repeat("1", 64), OutputDigest: strings.Repeat("2", 64), ReportDigest: reportDigest, StartedAt: "2026-01-01T00:00:00Z", CompletedAt: "2026-01-01T00:00:01Z", Command: []string{"codex"}, ExitStatus: 0}
+		bundle.Roles = append(bundle.Roles, teamRoleEvidence{Role: assignment.role, AssignmentID: assignment.id, Receipt: receipt, Report: report})
+	}
+	return bundle
+}
+
+func TestSpecialistAssignmentEvidenceFailsClosed(t *testing.T) {
+	if err := validateTeamEvidence(validAssignmentBundle(t)); err != nil {
+		t.Fatalf("valid assignment bundle failed: %v", err)
+	}
+	for name, mutate := range map[string]func(*teamEvidence){
+		"missing": func(bundle *teamEvidence) { bundle.Roles = bundle.Roles[:len(bundle.Roles)-1] },
+		"duplicate": func(bundle *teamEvidence) {
+			bundle.Roles[3].AssignmentID, bundle.Roles[3].Receipt.AssignmentID = bundle.Roles[2].AssignmentID, bundle.Roles[2].AssignmentID
+		},
+		"reused worker":   func(bundle *teamEvidence) { bundle.Roles[3].Receipt.ThreadID = bundle.Roles[2].Receipt.ThreadID },
+		"stale candidate": func(bundle *teamEvidence) { bundle.Roles[3].Receipt.Candidate = "older-candidate" },
+		"tampered report": func(bundle *teamEvidence) { bundle.Roles[3].Report = bundle.Roles[2].Report },
+	} {
+		t.Run(name, func(t *testing.T) {
+			bundle := validAssignmentBundle(t)
+			mutate(&bundle)
+			if err := validateTeamEvidence(bundle); err == nil {
+				t.Fatal("invalid assignment evidence was accepted")
+			}
+		})
+	}
+}
+
 func TestAggregateTeamVerdictRequiresEveryDomain(t *testing.T) {
 	domains := make([]domainResult, 0, len(requiredReleaseDomains))
 	checks := map[string]checkEvidence{}
@@ -1493,11 +1655,12 @@ func TestAggregateTeamVerdictRequiresEveryDomain(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	fullReport := append(json.RawMessage(nil), report...)
 	cleanEmpty, err := json.Marshal(workerReport{Disposition: "CLEAN", Evidence: []string{"checked"}, Findings: []workerFinding{}, Limitations: []string{}, Domains: []domainResult{}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	outputs := []result{{"role": "qa-architect", "report": json.RawMessage(cleanEmpty)}, {"role": "qa-executor", "report": json.RawMessage(cleanEmpty)}, {"role": "specialist-reviewer", "report": json.RawMessage(cleanEmpty)}, {"role": "independent-verifier", "report": json.RawMessage(report)}}
+	outputs := completeAssignedOutputs(json.RawMessage(cleanEmpty), json.RawMessage(cleanEmpty), json.RawMessage(report), json.RawMessage(report))
 	verdict, _ := aggregateTeamVerdict(outputs, checks, true)
 	if verdict != "READY" {
 		t.Fatalf("expected READY, got %s", verdict)
@@ -1509,14 +1672,26 @@ func TestAggregateTeamVerdictRequiresEveryDomain(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	outputs[3]["report"] = json.RawMessage(report)
+	outputs[len(outputs)-1]["report"] = json.RawMessage(report)
 	verdict, _ = aggregateTeamVerdict(outputs, checks, true)
 	if verdict != "INCONCLUSIVE" {
 		t.Fatalf("missing domain must be inconclusive, got %s", verdict)
 	}
-	verdict, _ = aggregateTeamVerdict(outputs[:3], checks, true)
+	verdict, _ = aggregateTeamVerdict(outputs[:len(outputs)-1], checks, true)
 	if verdict != "INCONCLUSIVE" {
 		t.Fatalf("missing role must be inconclusive, got %s", verdict)
+	}
+	missingSpecialist := append([]result{}, outputs[:2]...)
+	missingSpecialist = append(missingSpecialist, outputs[3:]...)
+	if verdict, _ := aggregateTeamVerdict(missingSpecialist, checks, true); verdict != "INCONCLUSIVE" {
+		t.Fatalf("missing specialist lens must be inconclusive, got %s", verdict)
+	}
+	securityNA, _ := json.Marshal(workerReport{Disposition: "CLEAN", Evidence: []string{"checked"}, Findings: []workerFinding{}, Limitations: []string{}, Domains: []domainResult{{Domain: "security", Status: "NOT_APPLICABLE", Evidence: "no security surface", EvidenceIDs: []string{"check-security"}}}})
+	outputs = completeAssignedOutputs(json.RawMessage(cleanEmpty), json.RawMessage(cleanEmpty), fullReport, fullReport)
+	outputs[2]["report"] = json.RawMessage(securityNA)
+	adjudication := &adjudicationEvidence{Decisions: []adjudicationDecision{{Kind: "DOMAIN_NOT_APPLICABLE", ID: "security", Disposition: "ACCEPTED", Rationale: "the checked candidate has no security surface", EvidenceIDs: []string{"check-security"}}}}
+	if verdict, _ := aggregateTeamVerdictWithAdjudication(outputs, checks, true, adjudication); verdict != "READY" {
+		t.Fatalf("evidence-backed specialist N/A should aggregate, got %s", verdict)
 	}
 }
 
@@ -1543,18 +1718,18 @@ func TestAggregateTeamVerdictFailsClosed(t *testing.T) {
 		checks[id] = checkEvidence{ID: id, Domains: []string{domain}, ExitStatus: 0, Trust: "ATTESTED_RUNTIME"}
 	}
 	base := func() []result {
-		return []result{{"role": "qa-architect", "report": clean("CLEAN", nil)}, {"role": "qa-executor", "report": clean("CLEAN", nil)}, {"role": "specialist-reviewer", "report": clean("CLEAN", nil)}, {"role": "independent-verifier", "report": clean("CLEAN", passes)}}
+		return completeAssignedOutputs(clean("CLEAN", nil), clean("CLEAN", nil), clean("CLEAN", passes), clean("CLEAN", passes))
 	}
 	duplicate := base()
-	duplicate[3]["role"] = "specialist-reviewer"
+	duplicate[3]["assignmentId"] = duplicate[2]["assignmentId"]
 	finding := base()
-	finding[1] = result{"role": "qa-executor", "report": clean("FINDINGS", nil)}
+	finding[1] = result{"role": "qa-executor", "assignmentId": "qa-execution", "report": clean("FINDINGS", nil)}
 	blocked := base()
-	blocked[1] = result{"role": "qa-executor", "report": clean("BLOCKED", nil)}
+	blocked[1] = result{"role": "qa-executor", "assignmentId": "qa-execution", "report": clean("BLOCKED", nil)}
 	naDomains := append([]domainResult{}, passes...)
 	naDomains[0] = domainResult{Domain: requiredReleaseDomains[0], Status: "NOT_APPLICABLE", Evidence: "claimed n/a", EvidenceIDs: []string{}}
 	notApplicable := base()
-	notApplicable[3] = result{"role": "independent-verifier", "report": clean("CLEAN", naDomains)}
+	notApplicable[len(notApplicable)-1] = result{"role": "independent-verifier", "assignmentId": "independent-verification", "report": clean("CLEAN", naDomains)}
 	for name, tc := range map[string]struct {
 		outputs []result
 		want    string
@@ -1585,7 +1760,7 @@ func TestAdjudicationControlsFindingsAndNotApplicable(t *testing.T) {
 		return b
 	}
 	finding := workerFinding{ID: "F-1", Severity: "HIGH", Confidence: "HIGH", Requirement: "safe", Location: "x", Evidence: "broken", Recommendation: "fix"}
-	outputs := []result{{"role": "qa-architect", "report": clean("CLEAN", []workerFinding{}, nil)}, {"role": "qa-executor", "report": clean("FINDINGS", []workerFinding{finding}, nil)}, {"role": "specialist-reviewer", "report": clean("CLEAN", []workerFinding{}, nil)}, {"role": "independent-verifier", "report": clean("CLEAN", []workerFinding{}, passes)}}
+	outputs := completeAssignedOutputs(clean("CLEAN", []workerFinding{}, nil), clean("FINDINGS", []workerFinding{finding}, nil), clean("CLEAN", []workerFinding{}, passes), clean("CLEAN", []workerFinding{}, passes))
 	acceptedNA := adjudicationDecision{Kind: "DOMAIN_NOT_APPLICABLE", ID: requiredReleaseDomains[0], Disposition: "ACCEPTED", Rationale: "not present", EvidenceIDs: []string{"check-" + requiredReleaseDomains[0]}}
 	rejectedFinding := adjudicationDecision{Kind: "FINDING", ID: "F-1", Disposition: "REJECTED", Rationale: "contradicted by exact evidence", EvidenceIDs: []string{"check-functional"}}
 	adj := &adjudicationEvidence{Decisions: []adjudicationDecision{acceptedNA, rejectedFinding}}
@@ -1722,18 +1897,19 @@ func TestAuthorizedCorrectionCreatesFreshBoundedRun(t *testing.T) {
 		return b
 	}
 	roles := []teamRoleEvidence{}
-	for index, role := range []string{"qa-architect", "qa-executor", "specialist-reviewer", "independent-verifier"} {
+	for index, assignment := range releaseTeamAssignments() {
+		role := assignment.role
 		raw := report(role)
 		reportDigest, digestErr := canonicalJSONDigest(raw)
 		if digestErr != nil {
 			t.Fatal(digestErr)
 		}
-		receipt := workerReceipt{SchemaVersion: 1, RunID: state.ID, Repository: abs, Candidate: state.Candidate, RepositoryDigest: state.ContentDigest, Role: role, RoleContractDigest: strings.Repeat("a", 64), WorkflowDigest: strings.Repeat("b", 64), SchemaDigest: strings.Repeat("c", 64), ThreadID: fmt.Sprintf("thread-%d", index), SandboxModeRequested: "read-only", PromptDigest: strings.Repeat("d", 64), OutputDigest: strings.Repeat("e", 64), ReportDigest: reportDigest, StartedAt: "2026-01-01T00:00:00Z", CompletedAt: "2026-01-01T00:00:01Z", Command: []string{"codex"}, ExitStatus: 0}
-		roles = append(roles, teamRoleEvidence{Role: role, Receipt: receipt, Report: raw})
+		receipt := workerReceipt{SchemaVersion: 2, RunID: state.ID, Repository: abs, Candidate: state.Candidate, RepositoryDigest: state.ContentDigest, Role: role, AssignmentID: assignment.id, RoleContractDigest: strings.Repeat("a", 64), WorkflowDigest: strings.Repeat("b", 64), SchemaDigest: strings.Repeat("c", 64), ThreadID: fmt.Sprintf("thread-%d", index), SandboxModeRequested: "read-only", CodexVersion: "codex-test", PromptDigest: strings.Repeat("d", 64), OutputDigest: strings.Repeat("e", 64), ReportDigest: reportDigest, StartedAt: "2026-01-01T00:00:00Z", CompletedAt: "2026-01-01T00:00:01Z", Command: []string{"codex"}, ExitStatus: 0}
+		roles = append(roles, teamRoleEvidence{Role: role, AssignmentID: assignment.id, Receipt: receipt, Report: raw})
 	}
 	checksBytes, _ := json.Marshal(map[string]checkEvidence{})
 	checksDigest := sha256.Sum256(checksBytes)
-	bundle := teamEvidence{SchemaVersion: 1, RunID: state.ID, Repository: abs, Candidate: state.Candidate, RepositoryDigest: state.ContentDigest, ContractSetDigest: strings.Repeat("f", 64), ChecksDigest: fmt.Sprintf("%x", checksDigest), Workflow: "release-readiness", Roles: roles, Assurance: state.Assurance, Verdict: "NOT_READY", Reason: "finding requires correction", CompletedAt: "2026-01-01T00:00:02Z"}
+	bundle := teamEvidence{SchemaVersion: 2, RunID: state.ID, Repository: abs, Candidate: state.Candidate, RepositoryDigest: state.ContentDigest, ContractSetDigest: strings.Repeat("f", 64), ChecksDigest: fmt.Sprintf("%x", checksDigest), Workflow: "release-readiness", Roles: roles, Assurance: state.Assurance, Verdict: "NOT_READY", Reason: "finding requires correction", CompletedAt: "2026-01-01T00:00:02Z"}
 	_, teamDigest, err := persistTeamEvidence(root, key, bundle)
 	if err != nil {
 		t.Fatal(err)
@@ -1836,6 +2012,11 @@ func TestAuthorizedCorrectionCreatesFreshBoundedRun(t *testing.T) {
 
 func TestDoctorIndependentAssuranceFailsClosed(t *testing.T) {
 	t.Setenv("XDG_STATE_HOME", t.TempDir())
+	workingDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("JSDLC_PLUGIN_ROOT", filepath.Clean(filepath.Join(workingDir, "..", "..", "plugins", "jerry-sdlc")))
 	t.Setenv("PATH", t.TempDir())
 	got, err := doctor(nil)
 	if err != nil {
@@ -1851,6 +2032,11 @@ func TestDoctorIndependentAssuranceFailsClosed(t *testing.T) {
 
 func TestDoctorReportsSeparatePassesWhenCodexIsAvailable(t *testing.T) {
 	t.Setenv("XDG_STATE_HOME", t.TempDir())
+	workingDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("JSDLC_PLUGIN_ROOT", filepath.Clean(filepath.Join(workingDir, "..", "..", "plugins", "jerry-sdlc")))
 	binDir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(binDir, "codex"), []byte("#!/bin/sh\nexit 0\n"), 0o700); err != nil {
 		t.Fatal(err)
@@ -1862,6 +2048,28 @@ func TestDoctorReportsSeparatePassesWhenCodexIsAvailable(t *testing.T) {
 	}
 	if got["outcome"] != "MANAGED_SEPARATE_PASSES" {
 		t.Fatalf("unexpected outcome: %#v", got)
+	}
+	if !validSHA256(got["workflowContractDigest"].(string)) {
+		t.Fatalf("doctor omitted workflow validation: %#v", got)
+	}
+}
+
+func TestDoctorFailsClosedOnWorkflowDrift(t *testing.T) {
+	t.Setenv("XDG_STATE_HOME", t.TempDir())
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "workflows"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "workflows", "release-readiness.json"), []byte(`{"schemaVersion":1}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("JSDLC_PLUGIN_ROOT", root)
+	got, err := doctor(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got["outcome"] != "UNAVAILABLE" || !strings.Contains(got["reason"].(string), "canonical workflow validation failed") {
+		t.Fatalf("doctor accepted workflow drift: %#v", got)
 	}
 }
 

@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Jerry SDLC workflow contract",
+  "type": "object",
+  "required": ["schemaVersion", "name", "terminalStates", "roles", "states", "transitions", "requiredDomains", "forbiddenActions"],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "name": {"const": "release-readiness"},
+    "terminalStates": {"const": ["NOT_READY", "INCONCLUSIVE", "CANCELLED", "BLOCKED"]},
+    "roles": {"const": ["orchestrator", "qa-architect", "qa-executor", "specialist-reviewer", "independent-verifier"]},
+    "states": {"const": ["BASELINED", "STRATEGY_READY", "EVIDENCE_COLLECTED", "REVIEWED", "ADJUDICATED", "VERIFIED"]},
+    "transitions": {
+      "const": {
+        "BASELINED": ["STRATEGY_READY", "CANCELLED", "BLOCKED"],
+        "STRATEGY_READY": ["EVIDENCE_COLLECTED", "CANCELLED", "BLOCKED"],
+        "EVIDENCE_COLLECTED": ["REVIEWED", "INCONCLUSIVE", "NOT_READY", "CANCELLED", "BLOCKED"],
+        "REVIEWED": ["ADJUDICATED", "INCONCLUSIVE", "NOT_READY", "CANCELLED", "BLOCKED"],
+        "ADJUDICATED": ["VERIFIED", "INCONCLUSIVE", "NOT_READY", "CANCELLED", "BLOCKED"],
+        "VERIFIED": ["NOT_READY", "INCONCLUSIVE"]
+      }
+    },
+    "requiredDomains": {"const": ["functional", "security", "supply-chain", "api-compatibility", "data-migration", "reliability", "observability", "documentation", "candidate-identity"]},
+    "forbiddenActions": {"const": ["deploy", "publish", "tag", "release"]}
+  },
+  "additionalProperties": false
+}
