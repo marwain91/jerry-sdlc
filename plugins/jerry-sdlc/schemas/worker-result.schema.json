@@ -33,7 +33,7 @@
           "domain": {"enum": ["functional", "security", "supply-chain", "api-compatibility", "data-migration", "reliability", "observability", "documentation", "candidate-identity"]},
           "status": {"enum": ["PASS", "NOT_APPLICABLE", "BLOCKED"]},
           "evidence": {"type": "string", "minLength": 1},
-          "evidenceIds": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^[a-z0-9_-]{1,80}$"}}
+          "evidenceIds": {"type": "array", "items": {"type": "string", "pattern": "^[a-z0-9_-]{1,80}$"}}
         },
         "additionalProperties": false
       }
