@@ -441,6 +441,35 @@ func TestClassifyRelease(t *testing.T) {
 	}
 }
 
+func TestReleaseIntentComposesActionAndReleaseConcept(t *testing.T) {
+	for _, request := range []string{
+		"Decide whether the gateway can be promoted to production",
+		"Certify the worker for tonight's deployment",
+		"Approve or block shipping the SDK",
+		"Validate the editor for general availability",
+		"Sign off the platform for launch",
+		"Tell me whether we should deploy the gateway",
+	} {
+		if !releaseIntent(strings.ToLower(request)) {
+			t.Errorf("expected release intent: %q", request)
+		}
+	}
+}
+
+func TestReleaseIntentRejectsReferentialReleaseLanguage(t *testing.T) {
+	for _, request := range []string{
+		"Explain the release gate used by the gateway",
+		"Test the launch sign-off parser in the worker",
+		"Build a release QA dashboard for the SDK",
+		"Read the launch decision from the editor",
+		"Persist a release decision in the platform",
+	} {
+		if releaseIntent(strings.ToLower(request)) {
+			t.Errorf("unexpected release intent: %q", request)
+		}
+	}
+}
+
 func TestClassifyMigration(t *testing.T) {
 	got, err := classify([]string{"--request", "implement account export", "--files", "db/042.sql"})
 	if err != nil {
