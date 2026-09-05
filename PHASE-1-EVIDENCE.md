@@ -39,4 +39,5 @@ This evidence authorizes continued Phase-1 work only. It does not establish rele
 - Provenance-grade Holdout 3, frozen at commit `20eb53b`: 100 labelled prompts × 3 repeats; 60% precision / 30% recall; `passed: false`. Raw metrics and provenance are recorded under `eval-results/`.
 - Provenance-grade Holdout 4, frozen at commit `f2c0973`: 100 labelled prompts × 3 repeats; 58.8% precision / 100% recall; `passed: false`. Phase-3 trigger graduation remains failed.
 - Provenance-grade Holdout 5, frozen at commit `02d68eb`: 100 labelled prompts × 3 repeats; 0% precision / 0% recall with 150 false negatives; `passed: false`. This exposes exact-phrase overfitting and keeps Phase-3 trigger graduation failed.
+- Independently authored provenance-grade Holdout 6, frozen at commit `1a5590d`: 100 labelled prompts × 3 repeats; 87.5% precision / 70% recall; `passed: false`. The compositional router improves prior-suite replay but still does not generalize enough for Phase-3 graduation.
 - These results cover only `jsdlc classify`; implicit Codex skill selection, baseline quality uplift, cost, latency, and historical-task evaluation remain unproven.

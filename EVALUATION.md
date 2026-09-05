@@ -20,6 +20,7 @@ go run ./cmd/jsdlc eval-triggers --fixture evals/holdout-2-trigger-suite.json --
 | Holdout 3 | 100 | 300 | 60% | 30% | 100% / 100% after tuning; first result remains failed |
 | Holdout 4 | 100 | 300 | 58.8% | 100% | 100% / 100% after tuning; first result remains failed |
 | Holdout 5 | 100 | 300 | 0% | 0% | 100% / 100% after tuning; first result remains failed |
+| Holdout 6 | 100 | 300 | 87.5% | 70% | failed; independently frozen provenance-grade result at `1a5590d` |
 
 The command evaluates the deterministic `jsdlc classify` router only. It does not measure implicit Codex skill selection.
 
@@ -45,3 +46,5 @@ Holdout 3 is the first provenance-grade result. The fixture was committed before
 Holdout 4 was independently frozen at commit `f2c0973` with fixture SHA-256 `a5669d17317c4bf6daf08eb1cbecf1d2231460f0c3d745f3d20690a78d540be9`. [Its result](eval-results/holdout-4-f2c0973.json) also failed. Replaying either suite after tuning is regression evidence only, never a replacement for its first observation.
 
 Holdout 5 was frozen at commit `02d68eb` before its first execution, with fixture SHA-256 `e21ff75dcf93a3cec2a90de1ff2500d0385200d168cd9df03e30fa034e648926`. [Its first result](eval-results/holdout-5-02d68eb.json) had 150 false negatives and no positive predictions (0% recall; precision reported as 0), so it failed. It demonstrates that the exact-phrase router does not generalize to a fresh set of ordinary release-request paraphrases. This result is preserved and may not become graduation evidence after tuning.
+
+Holdout 6 was independently authored and frozen at commit `1a5590d` before its first execution, with fixture SHA-256 `54573ca366e7fbc87dd9ddbfcfb1719582e7d8dcba72552f7f00b9f74230e4aa`. [Its first result](eval-results/holdout-6-1a5590d.json) had 87.5% precision and 70% recall, so it failed both thresholds. The misses cover risk evaluation, launch-blocker discovery, and store-submission readiness; publishing internal documentation caused false positives. This result is preserved and cannot serve as graduation evidence after tuning.
