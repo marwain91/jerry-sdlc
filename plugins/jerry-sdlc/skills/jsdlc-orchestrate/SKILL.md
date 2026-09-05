@@ -12,9 +12,10 @@ Select the smallest workflow that provides credible evidence for the requested o
 1. Read repository instructions and inspect relevant project structure without changing it.
 2. Run `../../scripts/jsdlc doctor` relative to this skill directory. The wrapper verifies the bundled binary. `doctor --probe-independent` is a diagnostic only and never upgrades stored assurance.
 3. Classify the request and changed surface. Prefer the higher risk between deterministic triggers and reasoned judgment.
-4. Briefly tell the user the workflow, risk, assurance mode, and roles being used.
+4. For delivery work, derive a stable candidate label (prefer the exact commit SHA for a clean candidate; use an explicit working-tree label otherwise). Run `../../scripts/jsdlc status --repo <repo> --candidate <candidate>` first. Resume only when it returns a matching, non-terminal run. When it reports that no state exists, run `../../scripts/jsdlc start --repo <repo> --candidate <candidate> --workflow <workflow> --assurance <doctor-outcome>`. Never replace a mismatched active run; report the collision. Starting this external run record is automatic workflow bootstrap, not repository initialization and needs no user setup.
+5. If `doctor` returns `UNAVAILABLE`, stop before starting or launching workers and provide its diagnostics. Otherwise briefly tell the user the workflow, risk, assurance mode, and roles being used.
 
-If another broad orchestration skill is active, do not start a competing workflow silently. Follow an explicit user choice; otherwise report the collision.
+If the runtime or user reports another broad orchestrator, record that caller-supplied evidence using `schemas/collision-input.schema.json` and run `../../scripts/jsdlc resolve-collision --file <evidence.json>` before starting. The command only resolves precedence; it does not discover plugins or launch work. Follow an explicit user choice, resume only the same active Jerry run, and stop at `OWNER_GATE` for every unresolved collision.
 
 ## Assurance
 

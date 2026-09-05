@@ -505,6 +505,25 @@ func TestClassifyMigration(t *testing.T) {
 	}
 }
 
+func TestClassifyTriggersAreBoundedAndDeduplicated(t *testing.T) {
+	got, err := classify([]string{"--request", "review the build", "--files", "db/migration.sql"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	triggers := got["triggers"].([]string)
+	if len(triggers) != 1 || triggers[0] != "data-migration" {
+		t.Fatalf("substring or duplicate trigger leaked through: %#v", got)
+	}
+	got, err = classify([]string{"--request", "review authentication and API UI changes"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	triggers = got["triggers"].([]string)
+	if strings.Join(triggers, ",") != "security,api-compatibility,ux-accessibility" {
+		t.Fatalf("expected bounded triggers: %#v", got)
+	}
+}
+
 func TestEvalTriggersRejectsDegenerateAndTrailingFixtures(t *testing.T) {
 	for name, body := range map[string]string{
 		"one-class":          `{"schemaVersion":1,"subjects":["app"],"cases":[{"id":"p","template":"release {project}","release":true}]}`,
@@ -642,6 +661,35 @@ func TestQualityEvaluatorFailsFabricationAndCorrectionRegression(t *testing.T) {
 	}
 	if got["passed"] != false || got["evidenceFabrications"] != 1 || got["correctionRegressions"] != 1 {
 		t.Fatalf("fabrication and regression must fail graduation: %#v", got)
+	}
+}
+
+func TestQualityEvaluatorRejectsUndefinedRelativeUplift(t *testing.T) {
+	zero := 0
+	tasks := make([]qualityTask, 20)
+	for i := range tasks {
+		baseline := qualityRun{Findings: []adjudicatedFinding{}, WallMilliseconds: 100, Tokens: 100, EvidenceFabrications: &zero, CorrectionRegressions: &zero}
+		jerry := qualityRun{Findings: []adjudicatedFinding{{ID: "high", Outcome: "TRUE_POSITIVE"}}, WallMilliseconds: 100, Tokens: 100, EvidenceFabrications: &zero, CorrectionRegressions: &zero}
+		tasks[i] = qualityTask{ID: fmt.Sprintf("zero-task-%d", i), Source: fmt.Sprintf("zero-repo-%d", i), Candidate: fmt.Sprintf("zero-commit-%d", i), Known: []knownFinding{{ID: "high", Severity: "HIGH"}}, Baseline: []qualityRun{baseline, baseline, baseline}, Jerry: []qualityRun{jerry, jerry, jerry}}
+	}
+	b, err := json.Marshal(qualitySuite{SchemaVersion: 1, TrialsPerArm: 3, MaxJerryTokensPerRun: 500, Tasks: tasks})
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(t.TempDir(), "quality.json")
+	if err := os.WriteFile(path, b, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	got, err := evalQuality([]string{"--fixture", path})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got["passed"] != false || got["relativeRecallImprovementDefined"] != false || got["absoluteRecallImprovement"] != 1.0 {
+		t.Fatalf("zero baseline cannot establish relative uplift: %#v", got)
+	}
+	thresholds := got["thresholds"].(result)
+	if thresholds["baselineRecallPositive"] != false || thresholds["relativeRecallAtLeast25Percent"] != false {
+		t.Fatalf("undefined relative uplift thresholds must fail: %#v", thresholds)
 	}
 }
 
@@ -1788,15 +1836,32 @@ func TestAuthorizedCorrectionCreatesFreshBoundedRun(t *testing.T) {
 
 func TestDoctorIndependentAssuranceFailsClosed(t *testing.T) {
 	t.Setenv("XDG_STATE_HOME", t.TempDir())
+	t.Setenv("PATH", t.TempDir())
+	got, err := doctor(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got["outcome"] != "UNAVAILABLE" {
+		t.Fatalf("unexpected outcome: %#v", got)
+	}
+	if _, err := start([]string{"--repo", t.TempDir(), "--candidate", "x", "--assurance", "MANAGED_INDEPENDENT"}); err == nil {
+		t.Fatal("independent assurance must require unavailable adapter attestation")
+	}
+}
+
+func TestDoctorReportsSeparatePassesWhenCodexIsAvailable(t *testing.T) {
+	t.Setenv("XDG_STATE_HOME", t.TempDir())
+	binDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(binDir, "codex"), []byte("#!/bin/sh\nexit 0\n"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", binDir)
 	got, err := doctor(nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if got["outcome"] != "MANAGED_SEPARATE_PASSES" {
 		t.Fatalf("unexpected outcome: %#v", got)
-	}
-	if _, err := start([]string{"--repo", t.TempDir(), "--candidate", "x", "--assurance", "MANAGED_INDEPENDENT"}); err == nil {
-		t.Fatal("independent assurance must require unavailable adapter attestation")
 	}
 }
 

@@ -129,6 +129,9 @@ func doctor(args []string) (result, error) {
 		return result{"version": version, "outcome": "ADVISORY_ONLY", "statePath": root, "reason": err.Error()}, nil
 	}
 	_ = os.Remove(probe)
+	if _, err := exec.LookPath("codex"); err != nil {
+		return result{"version": version, "outcome": "UNAVAILABLE", "statePath": root, "platform": runtime.GOOS + "/" + runtime.GOARCH, "independentWorkers": false, "readOnlyIsolation": false, "reason": "Codex CLI is unavailable for role workers"}, nil
+	}
 	if *probeIndependent {
 		observation, probeErr := probeIndependentWorkers(root)
 		if probeErr != nil {
@@ -222,13 +225,39 @@ func classify(args []string) (result, error) {
 		workflow, risk = "incident", "HIGH"
 	}
 	triggers := []string{}
-	for _, pair := range [][2]string{{"auth", "security"}, {"migration", "data-migration"}, {".sql", "data-migration"}, {"api", "api-compatibility"}, {"ui", "ux-accessibility"}} {
-		if strings.Contains(text, pair[0]) {
+	seenTriggers := map[string]bool{}
+	for _, pair := range [][2]string{{"auth", "security"}, {"authentication", "security"}, {"authorization", "security"}, {"migration", "data-migration"}, {".sql", "data-migration"}, {"api", "api-compatibility"}, {"ui", "ux-accessibility"}} {
+		if triggerPresent(text, pair[0]) && !seenTriggers[pair[1]] {
 			triggers = append(triggers, pair[1])
+			seenTriggers[pair[1]] = true
 			risk = "HIGH"
 		}
 	}
 	return result{"workflow": workflow, "risk": risk, "triggers": triggers, "semanticReviewRequired": true}, nil
+}
+
+func triggerPresent(text, trigger string) bool {
+	if strings.HasPrefix(trigger, ".") {
+		return strings.Contains(text, trigger)
+	}
+	for offset := 0; ; {
+		index := strings.Index(text[offset:], trigger)
+		if index < 0 {
+			return false
+		}
+		index += offset
+		beforeOK := index == 0 || !isTriggerWordByte(text[index-1])
+		after := index + len(trigger)
+		afterOK := after == len(text) || !isTriggerWordByte(text[after])
+		if beforeOK && afterOK {
+			return true
+		}
+		offset = index + 1
+	}
+}
+
+func isTriggerWordByte(value byte) bool {
+	return value >= 'a' && value <= 'z' || value >= '0' && value <= '9' || value == '_'
 }
 
 func releaseIntent(text string) bool {
