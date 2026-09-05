@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "subjects": ["GraphQL gateway", "desktop editor", "payments worker", "Kotlin SDK", "data platform"],
+  "cases": [
+    {"id":"act-01","template":"Decide whether the {project} can be promoted to production","release":true},
+    {"id":"act-02","template":"Certify the {project} for tonight's deployment","release":true},
+    {"id":"act-03","template":"Run the release gate on the {project}","release":true},
+    {"id":"act-04","template":"Approve or block shipping the {project}","release":true},
+    {"id":"act-05","template":"Do the production-readiness assessment for the {project}","release":true},
+    {"id":"act-06","template":"Validate the {project} for general availability","release":true},
+    {"id":"act-07","template":"Sign off the {project} for launch","release":true},
+    {"id":"act-08","template":"Perform the pre-deployment quality gate for the {project}","release":true},
+    {"id":"act-09","template":"Tell me whether we should deploy the {project}","release":true},
+    {"id":"act-10","template":"Complete release QA for the {project}","release":true},
+    {"id":"ref-01","template":"Add a production-readiness badge to the {project}","release":false},
+    {"id":"ref-02","template":"Explain the release gate used by the {project}","release":false},
+    {"id":"ref-03","template":"Rename the deployment approval field in the {project}","release":false},
+    {"id":"ref-04","template":"Test the launch sign-off parser in the {project}","release":false},
+    {"id":"ref-05","template":"Document how the {project} reaches general availability","release":false},
+    {"id":"ref-06","template":"Build a release QA dashboard for the {project}","release":false},
+    {"id":"ref-07","template":"Show the last deployment decision in the {project}","release":false},
+    {"id":"ref-08","template":"Fix copy saying approved for production in the {project}","release":false},
+    {"id":"ref-09","template":"Store release gate results for the {project}","release":false},
+    {"id":"ref-10","template":"Translate the shipping approval message in the {project}","release":false}
+  ]
+}
