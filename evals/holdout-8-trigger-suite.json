@@ -1,0 +1,112 @@
+{
+  "schemaVersion": 1,
+  "subjects": [
+    "a Rust command-line tool that synchronizes encrypted backups",
+    "a Django marketplace with seller payouts and webhook processing",
+    "an Android transit app with offline timetables and push alerts",
+    "a Go service that ingests telemetry into ClickHouse",
+    "a TypeScript browser extension for shared research annotations"
+  ],
+  "cases": [
+    {
+      "id": "h8-ready-01",
+      "template": "Can you take {project} from its current state to a production-ready release?",
+      "release": true
+    },
+    {
+      "id": "h8-ready-02",
+      "template": "Before we ship {project}, do the full release-readiness pass and close every blocker you find.",
+      "release": true
+    },
+    {
+      "id": "h8-ready-03",
+      "template": "Prepare {project} for its first public launch, including the checks and fixes needed to deploy safely.",
+      "release": true
+    },
+    {
+      "id": "h8-ready-04",
+      "template": "Is {project} actually ready for production? Audit it and make whatever changes are required for release.",
+      "release": true
+    },
+    {
+      "id": "h8-ready-05",
+      "template": "We have a go-live window tomorrow; get {project} into a shippable state and verify the release candidate.",
+      "release": true
+    },
+    {
+      "id": "h8-ready-06",
+      "template": "Finish hardening {project} so I can confidently promote it to production.",
+      "release": true
+    },
+    {
+      "id": "h8-ready-07",
+      "template": "Please own the pre-deployment review for {project}, resolve the risks, and leave it ready to roll out.",
+      "release": true
+    },
+    {
+      "id": "h8-ready-08",
+      "template": "What still stands between {project} and a stable release? Find it, fix it, and validate the result.",
+      "release": true
+    },
+    {
+      "id": "h8-ready-09",
+      "template": "Turn {project} into a release candidate we can send to customers this week.",
+      "release": true
+    },
+    {
+      "id": "h8-ready-10",
+      "template": "Do an end-to-end launch readiness effort on {project}; I want it safe, tested, and ready for rollout.",
+      "release": true
+    },
+    {
+      "id": "h8-nonrelease-01",
+      "template": "Explain how the production configuration loader in {project} chooses between environment files.",
+      "release": false
+    },
+    {
+      "id": "h8-nonrelease-02",
+      "template": "Rename the `releaseDate` field in {project} to `publishedAt` and update its unit tests.",
+      "release": false
+    },
+    {
+      "id": "h8-nonrelease-03",
+      "template": "Why does the deploy button in {project} remain disabled for read-only users?",
+      "release": false
+    },
+    {
+      "id": "h8-nonrelease-04",
+      "template": "Add a parser for GitHub release URLs to {project}; do not publish or deploy anything.",
+      "release": false
+    },
+    {
+      "id": "h8-nonrelease-05",
+      "template": "Review the last production incident notes for {project} and summarize the root cause described there.",
+      "release": false
+    },
+    {
+      "id": "h8-nonrelease-06",
+      "template": "Mock the deployment client in {project}'s test suite so the tests never contact a real environment.",
+      "release": false
+    },
+    {
+      "id": "h8-nonrelease-07",
+      "template": "The documentation for {project} says 'production mode' twice; consolidate those paragraphs.",
+      "release": false
+    },
+    {
+      "id": "h8-nonrelease-08",
+      "template": "Compare the release branch with main for {project} and tell me which commits differ; make no changes.",
+      "release": false
+    },
+    {
+      "id": "h8-nonrelease-09",
+      "template": "Implement a `POST /deployments/preview` endpoint in {project} that returns fixture data locally.",
+      "release": false
+    },
+    {
+      "id": "h8-nonrelease-10",
+      "template": "Fix the typo in {project}'s production checklist heading, but leave the checklist content and code untouched.",
+      "release": false
+    }
+  ]
+}
