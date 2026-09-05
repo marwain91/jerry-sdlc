@@ -1,0 +1,112 @@
+{
+  "schemaVersion": 1,
+  "subjects": [
+    "payment reconciliation service",
+    "mobile accessibility toolkit",
+    "tenant analytics dashboard",
+    "event ingestion library",
+    "inventory synchronization worker"
+  ],
+  "cases": [
+    {
+      "id": "release-final-candidate",
+      "template": "Assess whether the {project} candidate is ready for its production release.",
+      "release": true
+    },
+    {
+      "id": "release-go-no-go",
+      "template": "Run a go or no-go review before we ship the {project}.",
+      "release": true
+    },
+    {
+      "id": "release-publish-preflight",
+      "template": "Do the full preflight we need before publishing the {project}.",
+      "release": true
+    },
+    {
+      "id": "release-risk-signoff",
+      "template": "Evaluate the remaining quality and operational risks before the {project} goes live.",
+      "release": true
+    },
+    {
+      "id": "release-deployment-readiness",
+      "template": "Can the {project} safely proceed to the scheduled production rollout?",
+      "release": true
+    },
+    {
+      "id": "release-candidate-audit",
+      "template": "Audit this exact {project} build and give me a release-readiness verdict.",
+      "release": true
+    },
+    {
+      "id": "release-launch-blockers",
+      "template": "Find any blockers that should stop tomorrow's launch of the {project}.",
+      "release": true
+    },
+    {
+      "id": "release-store-submission",
+      "template": "Check whether the {project} is ready for final store submission and customer availability.",
+      "release": true
+    },
+    {
+      "id": "release-hotfix-readiness",
+      "template": "Before the emergency hotfix ships, verify the {project} release candidate end to end.",
+      "release": true
+    },
+    {
+      "id": "release-approval-brief",
+      "template": "Prepare the evidence-based readiness brief for approving the {project} release.",
+      "release": true
+    },
+    {
+      "id": "reference-release-notes-copy",
+      "template": "Rewrite the release notes paragraph that mentions the {project}.",
+      "release": false
+    },
+    {
+      "id": "reference-release-branch-doc",
+      "template": "Explain how our release branch naming convention applies to the {project}.",
+      "release": false
+    },
+    {
+      "id": "reference-publish-docs",
+      "template": "Publish the internal architecture documentation for the {project} to the team wiki.",
+      "release": false
+    },
+    {
+      "id": "reference-ready-state-label",
+      "template": "Rename the {project} status label from ready to queued in the admin screen.",
+      "release": false
+    },
+    {
+      "id": "reference-ship-address",
+      "template": "Fix validation of the shipping address form used by the {project}.",
+      "release": false
+    },
+    {
+      "id": "reference-production-bug",
+      "template": "Investigate the production-only timeout reported in the {project}.",
+      "release": false
+    },
+    {
+      "id": "reference-launch-button",
+      "template": "Change the launch button color in the {project} onboarding dialog.",
+      "release": false
+    },
+    {
+      "id": "reference-deployment-history",
+      "template": "Add a read-only deployment history page to the {project}.",
+      "release": false
+    },
+    {
+      "id": "reference-package-publish-test",
+      "template": "Write a unit test for the publishPackage helper in the {project}.",
+      "release": false
+    },
+    {
+      "id": "reference-release-lock",
+      "template": "Repair the stale release lock cleanup routine in the {project} without preparing a release.",
+      "release": false
+    }
+  ]
+}
