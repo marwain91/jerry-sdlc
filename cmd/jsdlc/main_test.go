@@ -1067,21 +1067,88 @@ func TestAdapterProtocolValidationCannotUpgradeAssurance(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	policyHash, roleHash := sha256.Sum256(policy), sha256.Sum256(role)
-	record := adapterRecord{SchemaVersion: 1, ProtocolVersion: 1, AdapterName: "generic-test", RunID: "run", Candidate: "candidate", Role: "qa-executor", RepositoryDigest: strings.Repeat("a", 64), PolicyDigest: fmt.Sprintf("%x", policyHash), RoleContractDigest: fmt.Sprintf("%x", roleHash), WorkerInstanceID: "worker", ResultDigest: strings.Repeat("b", 64), Mode: "READ_ONLY", Capabilities: adapterCapabilities{EphemeralWorkersObserved: true, StructuredOutputObserved: true}, Trust: "OBSERVED_UNATTESTED", RecordedAt: "2026-01-01T00:00:00Z"}
+	schemaBytes, err := os.ReadFile(filepath.Join(pluginRoot, "schemas", "worker-result.schema.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	resultBytes := []byte(`{"disposition":"CLEAN","evidence":["observed"],"findings":[],"limitations":[],"domains":[]}`)
+	assignmentBytes := []byte("execute the bounded QA assignment")
+	resultPath, assignmentPath := filepath.Join(t.TempDir(), "result.json"), filepath.Join(t.TempDir(), "assignment.txt")
+	if err := os.WriteFile(resultPath, resultBytes, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(assignmentPath, assignmentBytes, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	policyHash, roleHash, schemaHash := sha256.Sum256(policy), sha256.Sum256(role), sha256.Sum256(schemaBytes)
+	resultHash, assignmentHash := sha256.Sum256(resultBytes), sha256.Sum256(assignmentBytes)
+	contractHasher := sha256.New()
+	_, _ = contractHasher.Write(policy)
+	_, _ = contractHasher.Write(schemaBytes)
+	_, _ = contractHasher.Write([]byte("qa-executor\x00"))
+	_, _ = contractHasher.Write(role)
+	record := adapterRecord{SchemaVersion: 2, ProtocolVersion: 2, AdapterName: "generic-test", RunID: "run", Candidate: "candidate", Workflow: "release-readiness", WorkflowVersion: 1, Role: "qa-executor", AssignmentID: "qa-execution", AssignmentDigest: fmt.Sprintf("%x", assignmentHash), RepositoryDigest: strings.Repeat("a", 64), PolicyDigest: fmt.Sprintf("%x", policyHash), RoleContractDigest: fmt.Sprintf("%x", roleHash), ContractSetDigest: fmt.Sprintf("%x", contractHasher.Sum(nil)), SchemaDigest: fmt.Sprintf("%x", schemaHash), WorkerInstanceID: "worker", ResultDigest: fmt.Sprintf("%x", resultHash), Mode: "READ_ONLY", Capabilities: adapterCapabilities{EphemeralWorkersObserved: true, StructuredOutputObserved: true}, Trust: "OBSERVED_UNATTESTED", RecordedAt: "2026-01-01T00:00:00Z"}
+	record.ReplayID = adapterReplayID(record)
+	validRecord := record
 	b, _ := json.Marshal(record)
 	path := filepath.Join(t.TempDir(), "adapter.json")
 	if err := os.WriteFile(path, b, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	got, err := validateAdapter([]string{"--file", path})
+	validate := func() (result, error) {
+		return validateAdapter([]string{"--file", path, "--result", resultPath, "--assignment", assignmentPath})
+	}
+	got, err := validate()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got["valid"] != true || got["activationAllowed"] != false || got["assuranceEffect"] != "EVIDENCE_ONLY" {
+	if got["valid"] != true || got["activationAllowed"] != false || got["assuranceEffect"] != "EVIDENCE_ONLY" || got["provenance"] != "CALLER_SUPPLIED_UNATTESTED_BYTES" || got["replayId"] != record.ReplayID {
 		t.Fatalf("adapter protocol overstated assurance: %#v", got)
 	}
 	var raw map[string]any
+	if err := json.Unmarshal(b, &raw); err != nil {
+		t.Fatal(err)
+	}
+	raw["unknown"] = true
+	unknown, _ := json.Marshal(raw)
+	if err := os.WriteFile(path, unknown, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := validate(); err == nil {
+		t.Fatal("adapter record with unknown field was accepted")
+	}
+	if err := os.WriteFile(path, append(b, []byte(" {}")...), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := validate(); err == nil {
+		t.Fatal("adapter record with trailing JSON was accepted")
+	}
+	if err := os.WriteFile(path, b, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(resultPath, []byte(`{"disposition":"CLEAN","evidence":[],"findings":[],"limitations":[],"domains":[]}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := validate(); err == nil {
+		t.Fatal("invalid worker result was accepted")
+	}
+	if err := os.WriteFile(resultPath, resultBytes, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	resultLink := filepath.Join(t.TempDir(), "result-link.json")
+	if err := os.Symlink(resultPath, resultLink); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := validateAdapter([]string{"--file", path, "--result", resultLink, "--assignment", assignmentPath}); err == nil {
+		t.Fatal("symlinked worker result was accepted")
+	}
+	oversizedAssignment := filepath.Join(t.TempDir(), "oversized-assignment")
+	if err := os.WriteFile(oversizedAssignment, make([]byte, 256*1024+1), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := validateAdapter([]string{"--file", path, "--result", resultPath, "--assignment", oversizedAssignment}); err == nil {
+		t.Fatal("oversized assignment was accepted")
+	}
 	if err := json.Unmarshal(b, &raw); err != nil {
 		t.Fatal(err)
 	}
@@ -1090,7 +1157,7 @@ func TestAdapterProtocolValidationCannotUpgradeAssurance(t *testing.T) {
 	if err := os.WriteFile(path, omitted, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := validateAdapter([]string{"--file", path}); err == nil {
+	if _, err := validate(); err == nil {
 		t.Fatal("adapter record omitted capabilities")
 	}
 	if err := json.Unmarshal(b, &raw); err != nil {
@@ -1106,7 +1173,7 @@ func TestAdapterProtocolValidationCannotUpgradeAssurance(t *testing.T) {
 		if err := os.WriteFile(path, omitted, 0o600); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := validateAdapter([]string{"--file", path}); err == nil {
+		if _, err := validate(); err == nil {
 			t.Fatalf("adapter record omitted capability %s", key)
 		}
 	}
@@ -1115,8 +1182,62 @@ func TestAdapterProtocolValidationCannotUpgradeAssurance(t *testing.T) {
 	if err := os.WriteFile(path, b, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := validateAdapter([]string{"--file", path}); err == nil {
+	if _, err := validate(); err == nil {
 		t.Fatal("self-reported adapter claimed attested isolation")
+	}
+
+	// Restore the valid record, then prove each supplied byte stream is bound.
+	record.Capabilities.WriteIsolationAttested = false
+	b, _ = json.Marshal(record)
+	if err := os.WriteFile(path, b, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(resultPath, append(resultBytes, '\n'), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := validate(); err == nil {
+		t.Fatal("tampered result bytes were accepted")
+	}
+	if err := os.WriteFile(resultPath, resultBytes, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(assignmentPath, append(assignmentBytes, '.'), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := validate(); err == nil {
+		t.Fatal("tampered assignment bytes were accepted")
+	}
+	if err := os.WriteFile(assignmentPath, assignmentBytes, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	record.ReplayID = strings.Repeat("f", 64)
+	b, _ = json.Marshal(record)
+	if err := os.WriteFile(path, b, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := validate(); err == nil {
+		t.Fatal("incorrect replay identity was accepted")
+	}
+	for name, mutate := range map[string]func(*adapterRecord){
+		"policy":       func(r *adapterRecord) { r.PolicyDigest = strings.Repeat("0", 64) },
+		"role":         func(r *adapterRecord) { r.RoleContractDigest = strings.Repeat("0", 64) },
+		"contract set": func(r *adapterRecord) { r.ContractSetDigest = strings.Repeat("0", 64) },
+		"schema":       func(r *adapterRecord) { r.SchemaDigest = strings.Repeat("0", 64) },
+		"workflow":     func(r *adapterRecord) { r.WorkflowVersion = 2 },
+		"assignment":   func(r *adapterRecord) { r.AssignmentID = "qa-architecture" },
+	} {
+		t.Run("reject "+name+" drift", func(t *testing.T) {
+			changed := validRecord
+			mutate(&changed)
+			changed.ReplayID = adapterReplayID(changed)
+			changedBytes, _ := json.Marshal(changed)
+			if err := os.WriteFile(path, changedBytes, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := validate(); err == nil {
+				t.Fatal("drifted adapter contract was accepted")
+			}
+		})
 	}
 }
 
@@ -2052,6 +2173,121 @@ func TestDoctorReportsSeparatePassesWhenCodexIsAvailable(t *testing.T) {
 	if !validSHA256(got["workflowContractDigest"].(string)) {
 		t.Fatalf("doctor omitted workflow validation: %#v", got)
 	}
+}
+
+func installLifecycleFakeCodex(t *testing.T, binDir string, finding bool) {
+	t.Helper()
+	disposition := `report='{\"disposition\":\"CLEAN\",\"evidence\":[\"candidate inspected\"],\"findings\":[],\"limitations\":[],\"domains\":[]}'`
+	if finding {
+		disposition = `report='{\"disposition\":\"FINDINGS\",\"evidence\":[\"defect.txt contains BROKEN\"],\"findings\":[{\"id\":\"QA-KNOWN-DEFECT\",\"severity\":\"HIGH\",\"confidence\":\"HIGH\",\"requirement\":\"release candidate must not contain the known blocking marker\",\"location\":\"defect.txt:1\",\"evidence\":\"observed BROKEN marker\",\"recommendation\":\"replace the marker within defect.txt\"}],\"limitations\":[],\"domains\":[]}'`
+	}
+	script := `#!/bin/sh
+if [ "$1" = "--version" ]; then echo "codex-fixture 1.0"; exit 0; fi
+input=
+while IFS= read -r line; do input="$input $line"; done
+case "$input" in
+  *"Stable assignment ID: specialist-security."*) domain=security ;;
+  *"Stable assignment ID: specialist-supply-chain."*) domain=supply-chain ;;
+  *"Stable assignment ID: specialist-api-compatibility."*) domain=api-compatibility ;;
+  *"Stable assignment ID: specialist-data-migration."*) domain=data-migration ;;
+  *"Stable assignment ID: specialist-reliability."*) domain=reliability ;;
+  *"Stable assignment ID: specialist-observability."*) domain=observability ;;
+  *"Stable assignment ID: specialist-documentation."*) domain=documentation ;;
+  *"Stable assignment ID: qa-execution."*) domain=qa-execution ;;
+  *"Stable assignment ID: independent-verification."*) domain=independent-verification ;;
+  *) domain=qa-architecture ;;
+esac
+case "$domain" in
+  specialist-*) exit 9 ;;
+esac
+if [ "$domain" = "qa-execution" ]; then
+  ` + disposition + `
+elif [ "$domain" = "qa-architecture" ]; then
+  report='{\"disposition\":\"CLEAN\",\"evidence\":[\"candidate inspected\"],\"findings\":[],\"limitations\":[],\"domains\":[]}'
+elif [ "$domain" = "independent-verification" ]; then
+  report='{\"disposition\":\"INCONCLUSIVE\",\"evidence\":[],\"findings\":[],\"limitations\":[\"local fake adapter cannot attest checks or independence\"],\"domains\":[]}'
+else
+  case "$domain" in
+    security) report='{\"disposition\":\"CLEAN\",\"evidence\":[\"lens inspected\"],\"findings\":[],\"limitations\":[],\"domains\":[{\"domain\":\"security\",\"status\":\"BLOCKED\",\"evidence\":\"no attested check available\",\"evidenceIds\":[]}]}' ;;
+    supply-chain) report='{\"disposition\":\"CLEAN\",\"evidence\":[\"lens inspected\"],\"findings\":[],\"limitations\":[],\"domains\":[{\"domain\":\"supply-chain\",\"status\":\"BLOCKED\",\"evidence\":\"no attested check available\",\"evidenceIds\":[]}]}' ;;
+    api-compatibility) report='{\"disposition\":\"CLEAN\",\"evidence\":[\"lens inspected\"],\"findings\":[],\"limitations\":[],\"domains\":[{\"domain\":\"api-compatibility\",\"status\":\"BLOCKED\",\"evidence\":\"no attested check available\",\"evidenceIds\":[]}]}' ;;
+    data-migration) report='{\"disposition\":\"CLEAN\",\"evidence\":[\"lens inspected\"],\"findings\":[],\"limitations\":[],\"domains\":[{\"domain\":\"data-migration\",\"status\":\"BLOCKED\",\"evidence\":\"no attested check available\",\"evidenceIds\":[]}]}' ;;
+    reliability) report='{\"disposition\":\"CLEAN\",\"evidence\":[\"lens inspected\"],\"findings\":[],\"limitations\":[],\"domains\":[{\"domain\":\"reliability\",\"status\":\"BLOCKED\",\"evidence\":\"no attested check available\",\"evidenceIds\":[]}]}' ;;
+    observability) report='{\"disposition\":\"CLEAN\",\"evidence\":[\"lens inspected\"],\"findings\":[],\"limitations\":[],\"domains\":[{\"domain\":\"observability\",\"status\":\"BLOCKED\",\"evidence\":\"no attested check available\",\"evidenceIds\":[]}]}' ;;
+    documentation) report='{\"disposition\":\"CLEAN\",\"evidence\":[\"lens inspected\"],\"findings\":[],\"limitations\":[],\"domains\":[{\"domain\":\"documentation\",\"status\":\"BLOCKED\",\"evidence\":\"no attested check available\",\"evidenceIds\":[]}]}' ;;
+  esac
+fi
+printf '%s\n' "{\"type\":\"thread.started\",\"thread_id\":\"thread-$$\"}" "{\"type\":\"item.completed\",\"item\":{\"type\":\"agent_message\",\"text\":\"$report\"}}"
+`
+	if err := os.WriteFile(filepath.Join(binDir, "codex"), []byte(script), 0o700); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestFakeAdapterReleaseReadinessLifecycle(t *testing.T) {
+	t.Setenv("XDG_STATE_HOME", t.TempDir())
+	workingDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("JSDLC_PLUGIN_ROOT", filepath.Clean(filepath.Join(workingDir, "..", "..", "plugins", "jerry-sdlc")))
+	binDir := t.TempDir()
+	t.Setenv("PATH", binDir)
+	repo := t.TempDir()
+	defectPath := filepath.Join(repo, "defect.txt")
+	if err := os.WriteFile(defectPath, []byte("BROKEN\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := start([]string{"--repo", repo, "--candidate", "fixture-broken"}); err != nil {
+		t.Fatal(err)
+	}
+	installLifecycleFakeCodex(t, binDir, true)
+	first, err := team([]string{"--repo", repo, "--candidate", "fixture-broken", "--objective", "Assess the known blocking fixture without release actions"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first["verdict"] != "NOT_READY" {
+		t.Fatalf("known blocking defect did not block: %#v", first)
+	}
+	decisionPath := filepath.Join(t.TempDir(), "adjudication.json")
+	decision, _ := json.Marshal(adjudicationInput{SchemaVersion: 1, TeamDigest: first["evidenceDigest"].(string), Decisions: []adjudicationDecision{{Kind: "FINDING", ID: "QA-KNOWN-DEFECT", Disposition: "ACCEPTED", Rationale: "fixture intentionally confirms this defect", EvidenceIDs: []string{}}}})
+	if err := os.WriteFile(decisionPath, decision, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := adjudicate([]string{"--repo", repo, "--candidate", "fixture-broken", "--file", decisionPath, "--authorized"}); err != nil {
+		t.Fatal(err)
+	}
+	correctionPath := filepath.Join(t.TempDir(), "correction.json")
+	correction, _ := json.Marshal(correctionInput{SchemaVersion: 1, TeamDigest: first["evidenceDigest"].(string), FindingIDs: []string{"QA-KNOWN-DEFECT"}, AllowedPaths: []string{"defect.txt"}})
+	if err := os.WriteFile(correctionPath, correction, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	authorized, err := authorizeCorrection([]string{"--repo", repo, "--candidate", "fixture-broken", "--file", correctionPath, "--authorized"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(defectPath, []byte("FIXED\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := finishCorrection([]string{"--repo", repo, "--candidate", "fixture-broken", "--new-candidate", "fixture-corrected", "--authorization", authorized["authorizationDigest"].(string), "--authorized"}); err != nil {
+		t.Fatal(err)
+	}
+	installLifecycleFakeCodex(t, binDir, false)
+	second, err := team([]string{"--repo", repo, "--candidate", "fixture-corrected", "--objective", "Re-review the corrected fixture without release actions"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if second["verdict"] != "INCONCLUSIVE" || second["assurance"] != "MANAGED_SEPARATE_PASSES" {
+		t.Fatalf("local re-review exceeded its assurance: %#v", second)
+	}
+	verified, err := verify([]string{"--repo", repo, "--candidate", "fixture-corrected"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if verified["verdict"] != "INCONCLUSIVE" || verified["reproduced"] != true {
+		t.Fatalf("corrected lifecycle did not reproduce safely: %#v", verified)
+	}
+	t.Logf("fixture outcomes: initial=%s corrected=%s verified=%s assurance=%s", first["verdict"], second["verdict"], verified["verdict"], second["assurance"])
 }
 
 func TestDoctorFailsClosedOnWorkflowDrift(t *testing.T) {

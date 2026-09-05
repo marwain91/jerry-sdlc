@@ -1,0 +1,50 @@
+{
+  "observedAt": "2026-09-05T09:43:52.206380536Z",
+  "evaluatorBaseCommit": "ead9307d0fca93264b45ad39ae075912c60cc89b",
+  "fixture": "evals/synthetic-quality-pass.json",
+  "fixtureSha256": "7366acf3d1bd8c2f8e702c6fce02bd1f3f073ac31feb9759ef359c6b34a2f48c",
+  "evidenceClass": "SYNTHETIC_HARNESS_VALIDATION_ONLY",
+  "command": "podman run --rm --userns=keep-id -e GOTELEMETRY=off -e GOCACHE=/tmp/go-cache -v $PWD:/src:ro,z -w /src golang:1.23-alpine /usr/local/go/bin/go run ./cmd/jsdlc eval-quality --fixture evals/synthetic-quality-pass.json",
+  "result": {
+    "absoluteRecallImprovement": 0.7272727272727273,
+    "baselineSeverityWeightedRecall": 0.2727272727272727,
+    "correctionRegressions": 0,
+    "evaluatedAt": "2026-09-05T09:43:52.206380536Z",
+    "evaluationSchemaVersion": 1,
+    "evidenceFabrications": 0,
+    "fixtureDigest": "7366acf3d1bd8c2f8e702c6fce02bd1f3f073ac31feb9759ef359c6b34a2f48c",
+    "hardTokenBudgetExceeded": false,
+    "jerryFindingPrecision": 1,
+    "jerrySeverityWeightedRecall": 1,
+    "medianHumanReviewTimeRatio": 0.5,
+    "medianTokenRatio": 3,
+    "medianWallTimeRatio": 2,
+    "passed": true,
+    "relativeRecallImprovement": 2.666666666666667,
+    "relativeRecallImprovementDefined": true,
+    "scope": "ADJUDICATED_INPUT_RESULTS",
+    "tasks": 20,
+    "thresholdValues": {
+      "maximumJerryTokensPerRun": 5000,
+      "maximumMedianTokenRatio": 5,
+      "maximumMedianWallTimeRatio": 3,
+      "minimumFindingPrecision": 0.85,
+      "minimumRelativeRecallImprovement": 0.25
+    },
+    "thresholds": {
+      "baselineRecallPositive": true,
+      "findingPrecisionAtLeast85Percent": true,
+      "hardPerRunTokenBudgetNotExceeded": true,
+      "medianTokenUsageNoMoreThan5x": true,
+      "medianWallTimeNoMoreThan3x": true,
+      "relativeRecallAtLeast25Percent": true,
+      "zeroCorrectionRegressions": true,
+      "zeroEvidenceFabrications": true,
+      "zeroUnsafeEvents": true
+    },
+    "totalRunsPerArm": 60,
+    "trialsPerArm": 3,
+    "unsafeEvents": 0
+  }
+}
+

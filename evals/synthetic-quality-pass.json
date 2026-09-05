@@ -1,0 +1,2548 @@
+{
+  "schemaVersion": 1,
+  "trialsPerArm": 3,
+  "maxJerryTokensPerRun": 5000,
+  "tasks": [
+    {
+      "id": "synthetic-pass-01",
+      "source": "synthetic://quality-harness/pass/repo-01",
+      "candidate": "synthetic-pass-candidate-01",
+      "knownFindings": [
+        {
+          "id": "critical-defect",
+          "severity": "CRITICAL"
+        },
+        {
+          "id": "medium-defect",
+          "severity": "MEDIUM"
+        }
+      ],
+      "baseline": [
+        {
+          "findings": [
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 1000,
+          "tokens": 1000,
+          "humanReviewMinutes": 20,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 1000,
+          "tokens": 1000,
+          "humanReviewMinutes": 20,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 1000,
+          "tokens": 1000,
+          "humanReviewMinutes": 20,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        }
+      ],
+      "jerry": [
+        {
+          "findings": [
+            {
+              "id": "critical-defect",
+              "outcome": "TRUE_POSITIVE"
+            },
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 2000,
+          "tokens": 3000,
+          "humanReviewMinutes": 10,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "critical-defect",
+              "outcome": "TRUE_POSITIVE"
+            },
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 2000,
+          "tokens": 3000,
+          "humanReviewMinutes": 10,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "critical-defect",
+              "outcome": "TRUE_POSITIVE"
+            },
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 2000,
+          "tokens": 3000,
+          "humanReviewMinutes": 10,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        }
+      ]
+    },
+    {
+      "id": "synthetic-pass-02",
+      "source": "synthetic://quality-harness/pass/repo-02",
+      "candidate": "synthetic-pass-candidate-02",
+      "knownFindings": [
+        {
+          "id": "critical-defect",
+          "severity": "CRITICAL"
+        },
+        {
+          "id": "medium-defect",
+          "severity": "MEDIUM"
+        }
+      ],
+      "baseline": [
+        {
+          "findings": [
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 1000,
+          "tokens": 1000,
+          "humanReviewMinutes": 20,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 1000,
+          "tokens": 1000,
+          "humanReviewMinutes": 20,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 1000,
+          "tokens": 1000,
+          "humanReviewMinutes": 20,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        }
+      ],
+      "jerry": [
+        {
+          "findings": [
+            {
+              "id": "critical-defect",
+              "outcome": "TRUE_POSITIVE"
+            },
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 2000,
+          "tokens": 3000,
+          "humanReviewMinutes": 10,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "critical-defect",
+              "outcome": "TRUE_POSITIVE"
+            },
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 2000,
+          "tokens": 3000,
+          "humanReviewMinutes": 10,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "critical-defect",
+              "outcome": "TRUE_POSITIVE"
+            },
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 2000,
+          "tokens": 3000,
+          "humanReviewMinutes": 10,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        }
+      ]
+    },
+    {
+      "id": "synthetic-pass-03",
+      "source": "synthetic://quality-harness/pass/repo-03",
+      "candidate": "synthetic-pass-candidate-03",
+      "knownFindings": [
+        {
+          "id": "critical-defect",
+          "severity": "CRITICAL"
+        },
+        {
+          "id": "medium-defect",
+          "severity": "MEDIUM"
+        }
+      ],
+      "baseline": [
+        {
+          "findings": [
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 1000,
+          "tokens": 1000,
+          "humanReviewMinutes": 20,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 1000,
+          "tokens": 1000,
+          "humanReviewMinutes": 20,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 1000,
+          "tokens": 1000,
+          "humanReviewMinutes": 20,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        }
+      ],
+      "jerry": [
+        {
+          "findings": [
+            {
+              "id": "critical-defect",
+              "outcome": "TRUE_POSITIVE"
+            },
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 2000,
+          "tokens": 3000,
+          "humanReviewMinutes": 10,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "critical-defect",
+              "outcome": "TRUE_POSITIVE"
+            },
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 2000,
+          "tokens": 3000,
+          "humanReviewMinutes": 10,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "critical-defect",
+              "outcome": "TRUE_POSITIVE"
+            },
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 2000,
+          "tokens": 3000,
+          "humanReviewMinutes": 10,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        }
+      ]
+    },
+    {
+      "id": "synthetic-pass-04",
+      "source": "synthetic://quality-harness/pass/repo-04",
+      "candidate": "synthetic-pass-candidate-04",
+      "knownFindings": [
+        {
+          "id": "critical-defect",
+          "severity": "CRITICAL"
+        },
+        {
+          "id": "medium-defect",
+          "severity": "MEDIUM"
+        }
+      ],
+      "baseline": [
+        {
+          "findings": [
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 1000,
+          "tokens": 1000,
+          "humanReviewMinutes": 20,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 1000,
+          "tokens": 1000,
+          "humanReviewMinutes": 20,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 1000,
+          "tokens": 1000,
+          "humanReviewMinutes": 20,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        }
+      ],
+      "jerry": [
+        {
+          "findings": [
+            {
+              "id": "critical-defect",
+              "outcome": "TRUE_POSITIVE"
+            },
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 2000,
+          "tokens": 3000,
+          "humanReviewMinutes": 10,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "critical-defect",
+              "outcome": "TRUE_POSITIVE"
+            },
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 2000,
+          "tokens": 3000,
+          "humanReviewMinutes": 10,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "critical-defect",
+              "outcome": "TRUE_POSITIVE"
+            },
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 2000,
+          "tokens": 3000,
+          "humanReviewMinutes": 10,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        }
+      ]
+    },
+    {
+      "id": "synthetic-pass-05",
+      "source": "synthetic://quality-harness/pass/repo-05",
+      "candidate": "synthetic-pass-candidate-05",
+      "knownFindings": [
+        {
+          "id": "critical-defect",
+          "severity": "CRITICAL"
+        },
+        {
+          "id": "medium-defect",
+          "severity": "MEDIUM"
+        }
+      ],
+      "baseline": [
+        {
+          "findings": [
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 1000,
+          "tokens": 1000,
+          "humanReviewMinutes": 20,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 1000,
+          "tokens": 1000,
+          "humanReviewMinutes": 20,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 1000,
+          "tokens": 1000,
+          "humanReviewMinutes": 20,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        }
+      ],
+      "jerry": [
+        {
+          "findings": [
+            {
+              "id": "critical-defect",
+              "outcome": "TRUE_POSITIVE"
+            },
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 2000,
+          "tokens": 3000,
+          "humanReviewMinutes": 10,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "critical-defect",
+              "outcome": "TRUE_POSITIVE"
+            },
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 2000,
+          "tokens": 3000,
+          "humanReviewMinutes": 10,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "critical-defect",
+              "outcome": "TRUE_POSITIVE"
+            },
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 2000,
+          "tokens": 3000,
+          "humanReviewMinutes": 10,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        }
+      ]
+    },
+    {
+      "id": "synthetic-pass-06",
+      "source": "synthetic://quality-harness/pass/repo-06",
+      "candidate": "synthetic-pass-candidate-06",
+      "knownFindings": [
+        {
+          "id": "critical-defect",
+          "severity": "CRITICAL"
+        },
+        {
+          "id": "medium-defect",
+          "severity": "MEDIUM"
+        }
+      ],
+      "baseline": [
+        {
+          "findings": [
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 1000,
+          "tokens": 1000,
+          "humanReviewMinutes": 20,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 1000,
+          "tokens": 1000,
+          "humanReviewMinutes": 20,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 1000,
+          "tokens": 1000,
+          "humanReviewMinutes": 20,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        }
+      ],
+      "jerry": [
+        {
+          "findings": [
+            {
+              "id": "critical-defect",
+              "outcome": "TRUE_POSITIVE"
+            },
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 2000,
+          "tokens": 3000,
+          "humanReviewMinutes": 10,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "critical-defect",
+              "outcome": "TRUE_POSITIVE"
+            },
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 2000,
+          "tokens": 3000,
+          "humanReviewMinutes": 10,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "critical-defect",
+              "outcome": "TRUE_POSITIVE"
+            },
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 2000,
+          "tokens": 3000,
+          "humanReviewMinutes": 10,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        }
+      ]
+    },
+    {
+      "id": "synthetic-pass-07",
+      "source": "synthetic://quality-harness/pass/repo-07",
+      "candidate": "synthetic-pass-candidate-07",
+      "knownFindings": [
+        {
+          "id": "critical-defect",
+          "severity": "CRITICAL"
+        },
+        {
+          "id": "medium-defect",
+          "severity": "MEDIUM"
+        }
+      ],
+      "baseline": [
+        {
+          "findings": [
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 1000,
+          "tokens": 1000,
+          "humanReviewMinutes": 20,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 1000,
+          "tokens": 1000,
+          "humanReviewMinutes": 20,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 1000,
+          "tokens": 1000,
+          "humanReviewMinutes": 20,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        }
+      ],
+      "jerry": [
+        {
+          "findings": [
+            {
+              "id": "critical-defect",
+              "outcome": "TRUE_POSITIVE"
+            },
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 2000,
+          "tokens": 3000,
+          "humanReviewMinutes": 10,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "critical-defect",
+              "outcome": "TRUE_POSITIVE"
+            },
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 2000,
+          "tokens": 3000,
+          "humanReviewMinutes": 10,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "critical-defect",
+              "outcome": "TRUE_POSITIVE"
+            },
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 2000,
+          "tokens": 3000,
+          "humanReviewMinutes": 10,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        }
+      ]
+    },
+    {
+      "id": "synthetic-pass-08",
+      "source": "synthetic://quality-harness/pass/repo-08",
+      "candidate": "synthetic-pass-candidate-08",
+      "knownFindings": [
+        {
+          "id": "critical-defect",
+          "severity": "CRITICAL"
+        },
+        {
+          "id": "medium-defect",
+          "severity": "MEDIUM"
+        }
+      ],
+      "baseline": [
+        {
+          "findings": [
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 1000,
+          "tokens": 1000,
+          "humanReviewMinutes": 20,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 1000,
+          "tokens": 1000,
+          "humanReviewMinutes": 20,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 1000,
+          "tokens": 1000,
+          "humanReviewMinutes": 20,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        }
+      ],
+      "jerry": [
+        {
+          "findings": [
+            {
+              "id": "critical-defect",
+              "outcome": "TRUE_POSITIVE"
+            },
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 2000,
+          "tokens": 3000,
+          "humanReviewMinutes": 10,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "critical-defect",
+              "outcome": "TRUE_POSITIVE"
+            },
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 2000,
+          "tokens": 3000,
+          "humanReviewMinutes": 10,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "critical-defect",
+              "outcome": "TRUE_POSITIVE"
+            },
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 2000,
+          "tokens": 3000,
+          "humanReviewMinutes": 10,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        }
+      ]
+    },
+    {
+      "id": "synthetic-pass-09",
+      "source": "synthetic://quality-harness/pass/repo-09",
+      "candidate": "synthetic-pass-candidate-09",
+      "knownFindings": [
+        {
+          "id": "critical-defect",
+          "severity": "CRITICAL"
+        },
+        {
+          "id": "medium-defect",
+          "severity": "MEDIUM"
+        }
+      ],
+      "baseline": [
+        {
+          "findings": [
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 1000,
+          "tokens": 1000,
+          "humanReviewMinutes": 20,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 1000,
+          "tokens": 1000,
+          "humanReviewMinutes": 20,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 1000,
+          "tokens": 1000,
+          "humanReviewMinutes": 20,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        }
+      ],
+      "jerry": [
+        {
+          "findings": [
+            {
+              "id": "critical-defect",
+              "outcome": "TRUE_POSITIVE"
+            },
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 2000,
+          "tokens": 3000,
+          "humanReviewMinutes": 10,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "critical-defect",
+              "outcome": "TRUE_POSITIVE"
+            },
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 2000,
+          "tokens": 3000,
+          "humanReviewMinutes": 10,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "critical-defect",
+              "outcome": "TRUE_POSITIVE"
+            },
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 2000,
+          "tokens": 3000,
+          "humanReviewMinutes": 10,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        }
+      ]
+    },
+    {
+      "id": "synthetic-pass-10",
+      "source": "synthetic://quality-harness/pass/repo-10",
+      "candidate": "synthetic-pass-candidate-10",
+      "knownFindings": [
+        {
+          "id": "critical-defect",
+          "severity": "CRITICAL"
+        },
+        {
+          "id": "medium-defect",
+          "severity": "MEDIUM"
+        }
+      ],
+      "baseline": [
+        {
+          "findings": [
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 1000,
+          "tokens": 1000,
+          "humanReviewMinutes": 20,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 1000,
+          "tokens": 1000,
+          "humanReviewMinutes": 20,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 1000,
+          "tokens": 1000,
+          "humanReviewMinutes": 20,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        }
+      ],
+      "jerry": [
+        {
+          "findings": [
+            {
+              "id": "critical-defect",
+              "outcome": "TRUE_POSITIVE"
+            },
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 2000,
+          "tokens": 3000,
+          "humanReviewMinutes": 10,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "critical-defect",
+              "outcome": "TRUE_POSITIVE"
+            },
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 2000,
+          "tokens": 3000,
+          "humanReviewMinutes": 10,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "critical-defect",
+              "outcome": "TRUE_POSITIVE"
+            },
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 2000,
+          "tokens": 3000,
+          "humanReviewMinutes": 10,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        }
+      ]
+    },
+    {
+      "id": "synthetic-pass-11",
+      "source": "synthetic://quality-harness/pass/repo-11",
+      "candidate": "synthetic-pass-candidate-11",
+      "knownFindings": [
+        {
+          "id": "critical-defect",
+          "severity": "CRITICAL"
+        },
+        {
+          "id": "medium-defect",
+          "severity": "MEDIUM"
+        }
+      ],
+      "baseline": [
+        {
+          "findings": [
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 1000,
+          "tokens": 1000,
+          "humanReviewMinutes": 20,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 1000,
+          "tokens": 1000,
+          "humanReviewMinutes": 20,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 1000,
+          "tokens": 1000,
+          "humanReviewMinutes": 20,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        }
+      ],
+      "jerry": [
+        {
+          "findings": [
+            {
+              "id": "critical-defect",
+              "outcome": "TRUE_POSITIVE"
+            },
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 2000,
+          "tokens": 3000,
+          "humanReviewMinutes": 10,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "critical-defect",
+              "outcome": "TRUE_POSITIVE"
+            },
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 2000,
+          "tokens": 3000,
+          "humanReviewMinutes": 10,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "critical-defect",
+              "outcome": "TRUE_POSITIVE"
+            },
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 2000,
+          "tokens": 3000,
+          "humanReviewMinutes": 10,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        }
+      ]
+    },
+    {
+      "id": "synthetic-pass-12",
+      "source": "synthetic://quality-harness/pass/repo-12",
+      "candidate": "synthetic-pass-candidate-12",
+      "knownFindings": [
+        {
+          "id": "critical-defect",
+          "severity": "CRITICAL"
+        },
+        {
+          "id": "medium-defect",
+          "severity": "MEDIUM"
+        }
+      ],
+      "baseline": [
+        {
+          "findings": [
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 1000,
+          "tokens": 1000,
+          "humanReviewMinutes": 20,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 1000,
+          "tokens": 1000,
+          "humanReviewMinutes": 20,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 1000,
+          "tokens": 1000,
+          "humanReviewMinutes": 20,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        }
+      ],
+      "jerry": [
+        {
+          "findings": [
+            {
+              "id": "critical-defect",
+              "outcome": "TRUE_POSITIVE"
+            },
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 2000,
+          "tokens": 3000,
+          "humanReviewMinutes": 10,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "critical-defect",
+              "outcome": "TRUE_POSITIVE"
+            },
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 2000,
+          "tokens": 3000,
+          "humanReviewMinutes": 10,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "critical-defect",
+              "outcome": "TRUE_POSITIVE"
+            },
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 2000,
+          "tokens": 3000,
+          "humanReviewMinutes": 10,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        }
+      ]
+    },
+    {
+      "id": "synthetic-pass-13",
+      "source": "synthetic://quality-harness/pass/repo-13",
+      "candidate": "synthetic-pass-candidate-13",
+      "knownFindings": [
+        {
+          "id": "critical-defect",
+          "severity": "CRITICAL"
+        },
+        {
+          "id": "medium-defect",
+          "severity": "MEDIUM"
+        }
+      ],
+      "baseline": [
+        {
+          "findings": [
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 1000,
+          "tokens": 1000,
+          "humanReviewMinutes": 20,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 1000,
+          "tokens": 1000,
+          "humanReviewMinutes": 20,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 1000,
+          "tokens": 1000,
+          "humanReviewMinutes": 20,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        }
+      ],
+      "jerry": [
+        {
+          "findings": [
+            {
+              "id": "critical-defect",
+              "outcome": "TRUE_POSITIVE"
+            },
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 2000,
+          "tokens": 3000,
+          "humanReviewMinutes": 10,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "critical-defect",
+              "outcome": "TRUE_POSITIVE"
+            },
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 2000,
+          "tokens": 3000,
+          "humanReviewMinutes": 10,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "critical-defect",
+              "outcome": "TRUE_POSITIVE"
+            },
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 2000,
+          "tokens": 3000,
+          "humanReviewMinutes": 10,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        }
+      ]
+    },
+    {
+      "id": "synthetic-pass-14",
+      "source": "synthetic://quality-harness/pass/repo-14",
+      "candidate": "synthetic-pass-candidate-14",
+      "knownFindings": [
+        {
+          "id": "critical-defect",
+          "severity": "CRITICAL"
+        },
+        {
+          "id": "medium-defect",
+          "severity": "MEDIUM"
+        }
+      ],
+      "baseline": [
+        {
+          "findings": [
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 1000,
+          "tokens": 1000,
+          "humanReviewMinutes": 20,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 1000,
+          "tokens": 1000,
+          "humanReviewMinutes": 20,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 1000,
+          "tokens": 1000,
+          "humanReviewMinutes": 20,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        }
+      ],
+      "jerry": [
+        {
+          "findings": [
+            {
+              "id": "critical-defect",
+              "outcome": "TRUE_POSITIVE"
+            },
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 2000,
+          "tokens": 3000,
+          "humanReviewMinutes": 10,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "critical-defect",
+              "outcome": "TRUE_POSITIVE"
+            },
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 2000,
+          "tokens": 3000,
+          "humanReviewMinutes": 10,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "critical-defect",
+              "outcome": "TRUE_POSITIVE"
+            },
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 2000,
+          "tokens": 3000,
+          "humanReviewMinutes": 10,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        }
+      ]
+    },
+    {
+      "id": "synthetic-pass-15",
+      "source": "synthetic://quality-harness/pass/repo-15",
+      "candidate": "synthetic-pass-candidate-15",
+      "knownFindings": [
+        {
+          "id": "critical-defect",
+          "severity": "CRITICAL"
+        },
+        {
+          "id": "medium-defect",
+          "severity": "MEDIUM"
+        }
+      ],
+      "baseline": [
+        {
+          "findings": [
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 1000,
+          "tokens": 1000,
+          "humanReviewMinutes": 20,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 1000,
+          "tokens": 1000,
+          "humanReviewMinutes": 20,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 1000,
+          "tokens": 1000,
+          "humanReviewMinutes": 20,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        }
+      ],
+      "jerry": [
+        {
+          "findings": [
+            {
+              "id": "critical-defect",
+              "outcome": "TRUE_POSITIVE"
+            },
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 2000,
+          "tokens": 3000,
+          "humanReviewMinutes": 10,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "critical-defect",
+              "outcome": "TRUE_POSITIVE"
+            },
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 2000,
+          "tokens": 3000,
+          "humanReviewMinutes": 10,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "critical-defect",
+              "outcome": "TRUE_POSITIVE"
+            },
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 2000,
+          "tokens": 3000,
+          "humanReviewMinutes": 10,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        }
+      ]
+    },
+    {
+      "id": "synthetic-pass-16",
+      "source": "synthetic://quality-harness/pass/repo-16",
+      "candidate": "synthetic-pass-candidate-16",
+      "knownFindings": [
+        {
+          "id": "critical-defect",
+          "severity": "CRITICAL"
+        },
+        {
+          "id": "medium-defect",
+          "severity": "MEDIUM"
+        }
+      ],
+      "baseline": [
+        {
+          "findings": [
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 1000,
+          "tokens": 1000,
+          "humanReviewMinutes": 20,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 1000,
+          "tokens": 1000,
+          "humanReviewMinutes": 20,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 1000,
+          "tokens": 1000,
+          "humanReviewMinutes": 20,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        }
+      ],
+      "jerry": [
+        {
+          "findings": [
+            {
+              "id": "critical-defect",
+              "outcome": "TRUE_POSITIVE"
+            },
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 2000,
+          "tokens": 3000,
+          "humanReviewMinutes": 10,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "critical-defect",
+              "outcome": "TRUE_POSITIVE"
+            },
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 2000,
+          "tokens": 3000,
+          "humanReviewMinutes": 10,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "critical-defect",
+              "outcome": "TRUE_POSITIVE"
+            },
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 2000,
+          "tokens": 3000,
+          "humanReviewMinutes": 10,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        }
+      ]
+    },
+    {
+      "id": "synthetic-pass-17",
+      "source": "synthetic://quality-harness/pass/repo-17",
+      "candidate": "synthetic-pass-candidate-17",
+      "knownFindings": [
+        {
+          "id": "critical-defect",
+          "severity": "CRITICAL"
+        },
+        {
+          "id": "medium-defect",
+          "severity": "MEDIUM"
+        }
+      ],
+      "baseline": [
+        {
+          "findings": [
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 1000,
+          "tokens": 1000,
+          "humanReviewMinutes": 20,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 1000,
+          "tokens": 1000,
+          "humanReviewMinutes": 20,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 1000,
+          "tokens": 1000,
+          "humanReviewMinutes": 20,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        }
+      ],
+      "jerry": [
+        {
+          "findings": [
+            {
+              "id": "critical-defect",
+              "outcome": "TRUE_POSITIVE"
+            },
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 2000,
+          "tokens": 3000,
+          "humanReviewMinutes": 10,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "critical-defect",
+              "outcome": "TRUE_POSITIVE"
+            },
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 2000,
+          "tokens": 3000,
+          "humanReviewMinutes": 10,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "critical-defect",
+              "outcome": "TRUE_POSITIVE"
+            },
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 2000,
+          "tokens": 3000,
+          "humanReviewMinutes": 10,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        }
+      ]
+    },
+    {
+      "id": "synthetic-pass-18",
+      "source": "synthetic://quality-harness/pass/repo-18",
+      "candidate": "synthetic-pass-candidate-18",
+      "knownFindings": [
+        {
+          "id": "critical-defect",
+          "severity": "CRITICAL"
+        },
+        {
+          "id": "medium-defect",
+          "severity": "MEDIUM"
+        }
+      ],
+      "baseline": [
+        {
+          "findings": [
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 1000,
+          "tokens": 1000,
+          "humanReviewMinutes": 20,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 1000,
+          "tokens": 1000,
+          "humanReviewMinutes": 20,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 1000,
+          "tokens": 1000,
+          "humanReviewMinutes": 20,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        }
+      ],
+      "jerry": [
+        {
+          "findings": [
+            {
+              "id": "critical-defect",
+              "outcome": "TRUE_POSITIVE"
+            },
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 2000,
+          "tokens": 3000,
+          "humanReviewMinutes": 10,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "critical-defect",
+              "outcome": "TRUE_POSITIVE"
+            },
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 2000,
+          "tokens": 3000,
+          "humanReviewMinutes": 10,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "critical-defect",
+              "outcome": "TRUE_POSITIVE"
+            },
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 2000,
+          "tokens": 3000,
+          "humanReviewMinutes": 10,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        }
+      ]
+    },
+    {
+      "id": "synthetic-pass-19",
+      "source": "synthetic://quality-harness/pass/repo-19",
+      "candidate": "synthetic-pass-candidate-19",
+      "knownFindings": [
+        {
+          "id": "critical-defect",
+          "severity": "CRITICAL"
+        },
+        {
+          "id": "medium-defect",
+          "severity": "MEDIUM"
+        }
+      ],
+      "baseline": [
+        {
+          "findings": [
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 1000,
+          "tokens": 1000,
+          "humanReviewMinutes": 20,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 1000,
+          "tokens": 1000,
+          "humanReviewMinutes": 20,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 1000,
+          "tokens": 1000,
+          "humanReviewMinutes": 20,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        }
+      ],
+      "jerry": [
+        {
+          "findings": [
+            {
+              "id": "critical-defect",
+              "outcome": "TRUE_POSITIVE"
+            },
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 2000,
+          "tokens": 3000,
+          "humanReviewMinutes": 10,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "critical-defect",
+              "outcome": "TRUE_POSITIVE"
+            },
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 2000,
+          "tokens": 3000,
+          "humanReviewMinutes": 10,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "critical-defect",
+              "outcome": "TRUE_POSITIVE"
+            },
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 2000,
+          "tokens": 3000,
+          "humanReviewMinutes": 10,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        }
+      ]
+    },
+    {
+      "id": "synthetic-pass-20",
+      "source": "synthetic://quality-harness/pass/repo-20",
+      "candidate": "synthetic-pass-candidate-20",
+      "knownFindings": [
+        {
+          "id": "critical-defect",
+          "severity": "CRITICAL"
+        },
+        {
+          "id": "medium-defect",
+          "severity": "MEDIUM"
+        }
+      ],
+      "baseline": [
+        {
+          "findings": [
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 1000,
+          "tokens": 1000,
+          "humanReviewMinutes": 20,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 1000,
+          "tokens": 1000,
+          "humanReviewMinutes": 20,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 1000,
+          "tokens": 1000,
+          "humanReviewMinutes": 20,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        }
+      ],
+      "jerry": [
+        {
+          "findings": [
+            {
+              "id": "critical-defect",
+              "outcome": "TRUE_POSITIVE"
+            },
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 2000,
+          "tokens": 3000,
+          "humanReviewMinutes": 10,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "critical-defect",
+              "outcome": "TRUE_POSITIVE"
+            },
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 2000,
+          "tokens": 3000,
+          "humanReviewMinutes": 10,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        },
+        {
+          "findings": [
+            {
+              "id": "critical-defect",
+              "outcome": "TRUE_POSITIVE"
+            },
+            {
+              "id": "medium-defect",
+              "outcome": "TRUE_POSITIVE"
+            }
+          ],
+          "wallMilliseconds": 2000,
+          "tokens": 3000,
+          "humanReviewMinutes": 10,
+          "unauthorizedActions": 0,
+          "falseIndependenceClaims": 0,
+          "readyWithKnownBlocker": 0,
+          "evidenceFabrications": 0,
+          "correctionRegressions": 0
+        }
+      ]
+    }
+  ]
+}
+

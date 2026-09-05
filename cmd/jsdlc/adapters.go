@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"flag"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -31,12 +32,19 @@ type adapterRecord struct {
 	AdapterName        string              `json:"adapterName"`
 	RunID              string              `json:"runId"`
 	Candidate          string              `json:"candidateLabel"`
+	Workflow           string              `json:"workflow"`
+	WorkflowVersion    int                 `json:"workflowVersion"`
 	Role               string              `json:"role"`
+	AssignmentID       string              `json:"assignmentId"`
+	AssignmentDigest   string              `json:"assignmentDigest"`
 	RepositoryDigest   string              `json:"repositoryDigest"`
 	PolicyDigest       string              `json:"policyDigest"`
 	RoleContractDigest string              `json:"roleContractDigest"`
+	ContractSetDigest  string              `json:"contractSetDigest"`
+	SchemaDigest       string              `json:"schemaDigest"`
 	WorkerInstanceID   string              `json:"workerInstanceId"`
 	ResultDigest       string              `json:"resultDigest"`
+	ReplayID           string              `json:"replayId"`
 	Mode               string              `json:"mode"`
 	Capabilities       adapterCapabilities `json:"capabilities"`
 	Trust              string              `json:"trust"`
@@ -124,7 +132,7 @@ func adapters(args []string) (result, error) {
 	seen := map[string]bool{}
 	for _, adapter := range catalog.Adapters {
 		name := normalizeFixtureText(adapter.Name)
-		if name == "" || seen[name] || adapter.ProtocolVersion != 1 || !adapter.Capabilities.complete || !contains([]string{"EXPERIMENTAL", "GATED", "UNAVAILABLE"}, adapter.Status) || adapter.PolicySource != "../workflows/release-readiness.json" || strings.TrimSpace(adapter.Reason) == "" {
+		if name == "" || seen[name] || adapter.ProtocolVersion != 2 || !adapter.Capabilities.complete || !contains([]string{"EXPERIMENTAL", "GATED", "UNAVAILABLE"}, adapter.Status) || adapter.PolicySource != "../workflows/release-readiness.json" || strings.TrimSpace(adapter.Reason) == "" {
 			return nil, errors.New("adapter descriptor is invalid")
 		}
 		if adapter.Capabilities.AttestedWorkerIdentity || adapter.Capabilities.WriteIsolationAttested || adapter.Capabilities.SecretIsolationAttested || adapter.Capabilities.NetworkIsolationAttested {
@@ -138,11 +146,13 @@ func adapters(args []string) (result, error) {
 func validateAdapter(args []string) (result, error) {
 	fs := flag.NewFlagSet("validate-adapter", flag.ContinueOnError)
 	path := fs.String("file", "", "adapter protocol record JSON")
+	resultPath := fs.String("result", "", "exact worker result bytes")
+	assignmentPath := fs.String("assignment", "", "exact assignment input bytes")
 	if err := fs.Parse(args); err != nil {
 		return nil, err
 	}
-	if *path == "" || fs.NArg() != 0 {
-		return nil, errors.New("--file is required and positional arguments are forbidden")
+	if *path == "" || *resultPath == "" || *assignmentPath == "" || fs.NArg() != 0 {
+		return nil, errors.New("--file, --result, and --assignment are required and positional arguments are forbidden")
 	}
 	b, err := readBoundedRegularFile(*path, 256*1024)
 	if err != nil {
@@ -158,7 +168,7 @@ func validateAdapter(args []string) (result, error) {
 	if err := dec.Decode(&trailing); err != io.EOF {
 		return nil, errors.New("adapter record contains trailing JSON")
 	}
-	if record.SchemaVersion != 1 || record.ProtocolVersion != 1 || normalizeFixtureText(record.AdapterName) == "" || record.RunID == "" || record.Candidate == "" || !contains([]string{"qa-architect", "qa-executor", "specialist-reviewer", "independent-verifier"}, record.Role) || !validSHA256(record.RepositoryDigest) || !validSHA256(record.PolicyDigest) || !validSHA256(record.RoleContractDigest) || !validSHA256(record.ResultDigest) || record.WorkerInstanceID == "" || record.Mode != "READ_ONLY" || !record.Capabilities.complete || record.Trust != "OBSERVED_UNATTESTED" || parseRFC3339(record.RecordedAt) != nil {
+	if record.SchemaVersion != 2 || record.ProtocolVersion != 2 || normalizeFixtureText(record.AdapterName) == "" || strings.TrimSpace(record.AdapterName) != record.AdapterName || len(record.AdapterName) > 128 || strings.TrimSpace(record.RunID) == "" || strings.TrimSpace(record.RunID) != record.RunID || len(record.RunID) > 256 || strings.TrimSpace(record.Candidate) == "" || strings.TrimSpace(record.Candidate) != record.Candidate || len(record.Candidate) > 256 || record.Workflow != "release-readiness" || record.WorkflowVersion != 1 || !contains([]string{"qa-architect", "qa-executor", "specialist-reviewer", "independent-verifier"}, record.Role) || !validRoleAssignment(record.Role, record.AssignmentID) || !validSHA256(record.AssignmentDigest) || !validSHA256(record.RepositoryDigest) || !validSHA256(record.PolicyDigest) || !validSHA256(record.RoleContractDigest) || !validSHA256(record.ContractSetDigest) || !validSHA256(record.SchemaDigest) || !validSHA256(record.ResultDigest) || !validSHA256(record.ReplayID) || strings.TrimSpace(record.WorkerInstanceID) == "" || strings.TrimSpace(record.WorkerInstanceID) != record.WorkerInstanceID || len(record.WorkerInstanceID) > 256 || record.Mode != "READ_ONLY" || !record.Capabilities.complete || record.Trust != "OBSERVED_UNATTESTED" || parseRFC3339(record.RecordedAt) != nil {
 		return nil, errors.New("adapter record envelope is invalid")
 	}
 	if record.Capabilities.AttestedWorkerIdentity || record.Capabilities.WriteIsolationAttested || record.Capabilities.SecretIsolationAttested || record.Capabilities.NetworkIsolationAttested {
@@ -173,11 +183,48 @@ func validateAdapter(args []string) (result, error) {
 	if err != nil {
 		return nil, err
 	}
-	policyHash, roleHash := sha256.Sum256(policy), sha256.Sum256(roleContract)
-	if record.PolicyDigest != hex.EncodeToString(policyHash[:]) || record.RoleContractDigest != hex.EncodeToString(roleHash[:]) {
-		return nil, errors.New("adapter record is not bound to the canonical policy and role contract")
+	schemaBytes, err := readBoundedRegularFile(filepath.Join(pluginRoot, "schemas", "worker-result.schema.json"), 128*1024)
+	if err != nil {
+		return nil, err
 	}
-	return result{"record": record, "valid": true, "assuranceEffect": "EVIDENCE_ONLY", "activationAllowed": false, "reason": "protocol validation does not authenticate the adapter or attest isolation"}, nil
+	resultBytes, err := readBoundedRegularFile(*resultPath, 4*1024*1024)
+	if err != nil {
+		return nil, err
+	}
+	if err := validateWorkerReport(string(resultBytes)); err != nil {
+		return nil, fmt.Errorf("worker result does not match the canonical result contract: %w", err)
+	}
+	assignmentBytes, err := readBoundedRegularFile(*assignmentPath, 256*1024)
+	if err != nil {
+		return nil, err
+	}
+	policyHash, roleHash, schemaHash := sha256.Sum256(policy), sha256.Sum256(roleContract), sha256.Sum256(schemaBytes)
+	resultHash, assignmentHash := sha256.Sum256(resultBytes), sha256.Sum256(assignmentBytes)
+	contractHasher := sha256.New()
+	_, _ = contractHasher.Write(policy)
+	_, _ = contractHasher.Write(schemaBytes)
+	_, _ = io.WriteString(contractHasher, record.Role+"\x00")
+	_, _ = contractHasher.Write(roleContract)
+	contractSetDigest := hex.EncodeToString(contractHasher.Sum(nil))
+	if record.PolicyDigest != hex.EncodeToString(policyHash[:]) || record.RoleContractDigest != hex.EncodeToString(roleHash[:]) || record.SchemaDigest != hex.EncodeToString(schemaHash[:]) || record.ContractSetDigest != contractSetDigest || record.ResultDigest != hex.EncodeToString(resultHash[:]) || record.AssignmentDigest != hex.EncodeToString(assignmentHash[:]) {
+		return nil, errors.New("adapter record is not bound to the supplied bytes and canonical contract set")
+	}
+	replayID := adapterReplayID(record)
+	if record.ReplayID != replayID {
+		return nil, errors.New("adapter replay identity does not match the bound evidence")
+	}
+	recordHash := sha256.Sum256(b)
+	return result{"record": record, "valid": true, "assuranceEffect": "EVIDENCE_ONLY", "activationAllowed": false, "recordDigest": hex.EncodeToString(recordHash[:]), "resultDigest": record.ResultDigest, "assignmentDigest": record.AssignmentDigest, "replayId": replayID, "provenance": "CALLER_SUPPLIED_UNATTESTED_BYTES", "reason": "protocol validation checks bytes and canonical contracts but does not authenticate the adapter, prevent replay, or attest isolation"}, nil
+}
+
+func adapterReplayID(record adapterRecord) string {
+	values := []string{record.AdapterName, record.RunID, record.Candidate, record.Workflow, fmt.Sprint(record.WorkflowVersion), record.Role, record.AssignmentID, record.RepositoryDigest, record.AssignmentDigest, record.PolicyDigest, record.RoleContractDigest, record.ContractSetDigest, record.SchemaDigest, record.WorkerInstanceID, record.ResultDigest, record.Mode, record.Trust,
+		fmt.Sprint(record.Capabilities.EphemeralWorkersObserved), fmt.Sprint(record.Capabilities.WriteBlockingObserved), fmt.Sprint(record.Capabilities.AttestedWorkerIdentity), fmt.Sprint(record.Capabilities.WriteIsolationAttested), fmt.Sprint(record.Capabilities.SecretIsolationAttested), fmt.Sprint(record.Capabilities.NetworkIsolationAttested), fmt.Sprint(record.Capabilities.StructuredOutputObserved)}
+	h := sha256.New()
+	for _, value := range values {
+		_, _ = io.WriteString(h, value+"\x00")
+	}
+	return hex.EncodeToString(h.Sum(nil))
 }
 
 func packs(args []string) (result, error) {

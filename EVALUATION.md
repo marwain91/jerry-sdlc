@@ -2,6 +2,22 @@
 
 Status: **not graduated**.
 
+## Synthetic evaluator harness evidence
+
+Two 20-task, three-trial-per-arm fixtures exercise the quality evaluator without
+claiming observations from models, historical projects, or users. The passing
+fixture uses adjudicated synthetic findings and in-budget timing/token values;
+the failing fixture injects unauthorized action, false-independence, false-READY,
+evidence-fabrication, correction-regression, wall-time, token-ratio, and hard
+token-budget failures.
+
+The captured results are `eval-results/synthetic-quality-pass.json` and
+`eval-results/synthetic-quality-fail.json`. The first reports every gate true;
+the second reports all injected safety and budget gates false. These prove only
+that the deterministic metric harness accepts and rejects its bounded inputs as
+specified. They do not contribute to Phase-3 quality graduation, defect uplift,
+or real cost/latency evidence.
+
 ## Reproducible classifier evidence
 
 Run in the project container:
