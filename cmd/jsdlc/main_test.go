@@ -503,6 +503,8 @@ func TestReleaseIntentCoversRiskAndReadinessLanguage(t *testing.T) {
 		"check whether the app is ready for final store submission and customer availability",
 		"finish hardening the worker so I can confidently promote it to production",
 		"turn the library into a release candidate we can send to customers this week",
+		"treat the current build as a release candidate and provide a readiness verdict",
+		"before I cut the release build, confirm whether the service meets the bar to ship",
 	} {
 		if !releaseIntent(request) {
 			t.Errorf("expected release intent: %q", request)
@@ -510,6 +512,9 @@ func TestReleaseIntentCoversRiskAndReadinessLanguage(t *testing.T) {
 	}
 	if releaseIntent("find where the production endpoint is defined") {
 		t.Fatal("referential production lookup must not trigger release readiness")
+	}
+	if releaseIntent("turn the sentence 'the app is ready to ship' into a concise slide heading") {
+		t.Fatal("quoted release language transformation must not trigger release readiness")
 	}
 }
 
