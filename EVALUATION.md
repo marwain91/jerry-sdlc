@@ -20,7 +20,7 @@ go run ./cmd/jsdlc eval-triggers --fixture evals/holdout-2-trigger-suite.json --
 | Holdout 3 | 100 | 300 | 60% | 30% | 100% / 100% after tuning; first result remains failed |
 | Holdout 4 | 100 | 300 | 58.8% | 100% | 100% / 100% after tuning; first result remains failed |
 | Holdout 5 | 100 | 300 | 0% | 0% | 100% / 100% after tuning; first result remains failed |
-| Holdout 6 | 100 | 300 | 87.5% | 70% | failed; independently frozen provenance-grade result at `1a5590d` |
+| Holdout 6 | 100 | 300 | 87.5% | 70% | 100% / 70% after safety fix; first result remains failed |
 
 The command evaluates the deterministic `jsdlc classify` router only. It does not measure implicit Codex skill selection.
 
