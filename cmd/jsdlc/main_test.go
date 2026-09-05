@@ -471,13 +471,19 @@ func TestReleaseIntentRejectsReferentialReleaseLanguage(t *testing.T) {
 }
 
 func TestReleaseIntentHandlesMixedCommandsNegationAndIncidentalLanguage(t *testing.T) {
-	if !releaseIntent("update the dependencies, then release the service") {
-		t.Fatal("explicit release after preparatory work must trigger")
+	for _, request := range []string{
+		"update the dependencies, then release the service",
+		"do not deploy the old service; instead release the replacement",
+	} {
+		if !releaseIntent(request) {
+			t.Errorf("explicit release clause must trigger: %q", request)
+		}
 	}
 	for _, request := range []string{
 		"do not deploy the service",
 		"where is the production config?",
 		"publish the internal architecture documentation for the service to the team wiki",
+		"explain the difference between deploy and release workflows",
 	} {
 		if releaseIntent(request) {
 			t.Errorf("unexpected release intent: %q", request)

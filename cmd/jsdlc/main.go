@@ -231,12 +231,22 @@ func classify(args []string) (result, error) {
 
 func releaseIntent(text string) bool {
 	text = strings.TrimSpace(text)
+	separated := strings.NewReplacer(", then ", "\n", "; then ", "\n", "; instead ", "\n", ";", "\n").Replace(text)
+	for _, clause := range strings.Split(separated, "\n") {
+		clause = strings.TrimSpace(clause)
+		clause = strings.TrimPrefix(clause, "then ")
+		clause = strings.TrimPrefix(clause, "instead ")
+		if releaseIntentClause(clause) {
+			return true
+		}
+	}
+	return false
+}
+
+func releaseIntentClause(text string) bool {
 	nonActionPrefix := []string{"add ", "build ", "change ", "compare ", "create ", "delete ", "deserialize ", "diagram ", "disable ", "display ", "document ", "explain ", "fix ", "handle ", "investigate ", "list ", "localize ", "mock ", "parse ", "persist ", "read ", "refactor ", "rename ", "render ", "search ", "show ", "store ", "style ", "summarize ", "test ", "translate ", "update ", "what ", "why ", "write "}
 	if hasAny(text, "do not deploy", "do not publish", "do not release", "do not ship", "don't deploy", "don't publish", "don't release", "don't ship", "never deploy", "never publish", "never release", "never ship", "cannot ship", "can't ship") {
 		return false
-	}
-	if hasAny(text, "then deploy ", "then publish ", "then release ", "then ship ", "and deploy ", "and publish ", "and release ", "and ship ") {
-		return true
 	}
 	nonAction := hasAny(text, "shipping address")
 	for _, prefix := range nonActionPrefix {
