@@ -2,12 +2,13 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Jerry SDLC workflow contract",
   "type": "object",
-  "required": ["schemaVersion", "name", "terminalStates", "roles", "states", "transitions", "requiredDomains", "forbiddenActions"],
+  "required": ["schemaVersion", "name", "terminalStates", "roles", "specialistAssignments", "states", "transitions", "requiredDomains", "forbiddenActions"],
   "properties": {
     "schemaVersion": {"const": 1},
     "name": {"const": "release-readiness"},
     "terminalStates": {"const": ["NOT_READY", "INCONCLUSIVE", "CANCELLED", "BLOCKED"]},
     "roles": {"const": ["orchestrator", "qa-architect", "qa-executor", "specialist-reviewer", "independent-verifier"]},
+    "specialistAssignments": {"const": ["specialist-security", "specialist-supply-chain", "specialist-api-compatibility", "specialist-data-migration", "specialist-reliability", "specialist-observability", "specialist-documentation"]},
     "states": {"const": ["BASELINED", "STRATEGY_READY", "EVIDENCE_COLLECTED", "REVIEWED", "ADJUDICATED", "VERIFIED"]},
     "transitions": {
       "const": {

@@ -1456,6 +1456,27 @@ func TestShippedWorkflowContractExactlyMatchesRuntime(t *testing.T) {
 	if got["valid"] != true || got["runtimeParity"] != "EXACT" || got["activationAllowed"] != false || !validSHA256(got["contractDigest"].(string)) {
 		t.Fatalf("unexpected workflow validation: %#v", got)
 	}
+	schemaBytes, err := os.ReadFile(filepath.Join(pluginRoot, "schemas", "workflow-contract.schema.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var schema struct {
+		Required   []string `json:"required"`
+		Properties map[string]struct {
+			Const json.RawMessage `json:"const"`
+		} `json:"properties"`
+	}
+	if err := json.Unmarshal(schemaBytes, &schema); err != nil {
+		t.Fatal(err)
+	}
+	assignmentProperty, declared := schema.Properties["specialistAssignments"]
+	var declaredAssignments []string
+	if err := json.Unmarshal(assignmentProperty.Const, &declaredAssignments); err != nil {
+		t.Fatal(err)
+	}
+	if !declared || !contains(schema.Required, "specialistAssignments") || !equalStrings(declaredAssignments, specialistAssignments) {
+		t.Fatalf("shipped workflow schema drifted from specialist assignments: %#v", schema)
+	}
 }
 
 func TestWorkflowContractDriftFailsClosed(t *testing.T) {
