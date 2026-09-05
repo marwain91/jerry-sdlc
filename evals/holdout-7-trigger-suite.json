@@ -1,0 +1,112 @@
+{
+  "schemaVersion": 1,
+  "subjects": [
+    "a Rust command-line tool that converts legacy configuration files",
+    "a Kotlin Android app for offline field inspections",
+    "a Python service that reconciles subscription invoices",
+    "a TypeScript library for rendering accessible data tables",
+    "a Go operator that rotates database credentials in Kubernetes"
+  ],
+  "templates": [
+    {
+      "id": "readiness-01",
+      "label": "release-readiness",
+      "request": "Review {subject} and tell me whether it is ready to ship to users."
+    },
+    {
+      "id": "readiness-02",
+      "label": "release-readiness",
+      "request": "Can you assess {subject} for production readiness and call out anything that should block launch?"
+    },
+    {
+      "id": "readiness-03",
+      "label": "release-readiness",
+      "request": "We hope to release {subject} this week; give me a go or no-go recommendation based on the project as it stands."
+    },
+    {
+      "id": "readiness-04",
+      "label": "release-readiness",
+      "request": "Audit {subject} before deployment and identify the risks we need to resolve first."
+    },
+    {
+      "id": "readiness-05",
+      "label": "release-readiness",
+      "request": "Is {subject} in good enough shape for a public release? Please justify your verdict."
+    },
+    {
+      "id": "readiness-06",
+      "label": "release-readiness",
+      "request": "Perform a pre-release check of {subject}, including tests, security, operations, and rollback concerns."
+    },
+    {
+      "id": "readiness-07",
+      "label": "release-readiness",
+      "request": "Look over {subject} as the final reviewer and decide whether we should promote it to production."
+    },
+    {
+      "id": "readiness-08",
+      "label": "release-readiness",
+      "request": "What would prevent {subject} from being safely released today?"
+    },
+    {
+      "id": "readiness-09",
+      "label": "release-readiness",
+      "request": "Evaluate the current state of {subject} against a practical ship checklist and report the launch blockers."
+    },
+    {
+      "id": "readiness-10",
+      "label": "release-readiness",
+      "request": "Before I approve the rollout, inspect {subject} and tell me if you would sign off on it."
+    },
+    {
+      "id": "reference-01",
+      "label": "not-release-readiness",
+      "request": "Add a deployment section to the README for {subject}."
+    },
+    {
+      "id": "reference-02",
+      "label": "not-release-readiness",
+      "request": "Rename the release branch used by {subject} from stable to main."
+    },
+    {
+      "id": "reference-03",
+      "label": "not-release-readiness",
+      "request": "Explain how the production configuration differs from local development for {subject}."
+    },
+    {
+      "id": "reference-04",
+      "label": "not-release-readiness",
+      "request": "Fix the typo in the launch announcement for {subject}."
+    },
+    {
+      "id": "reference-05",
+      "label": "not-release-readiness",
+      "request": "Write a script that prints the deployed version of {subject}."
+    },
+    {
+      "id": "reference-06",
+      "label": "not-release-readiness",
+      "request": "Summarize the last three release notes for {subject}."
+    },
+    {
+      "id": "reference-07",
+      "label": "not-release-readiness",
+      "request": "Change the production log format in {subject} from plain text to JSON."
+    },
+    {
+      "id": "reference-08",
+      "label": "not-release-readiness",
+      "request": "Why does {subject} use a canary deployment instead of a blue-green rollout?"
+    },
+    {
+      "id": "reference-09",
+      "label": "not-release-readiness",
+      "request": "Update the release workflow for {subject} so tags include the package version."
+    },
+    {
+      "id": "reference-10",
+      "label": "not-release-readiness",
+      "request": "Find where the production endpoint is defined in {subject}."
+    }
+  ]
+}
