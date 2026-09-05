@@ -304,7 +304,7 @@ func releaseIntentClause(text string) bool {
 	if hasAny(text, "release the ", "ship the ", "publish the ", "tag the ", "publish this ", "publish now") {
 		return true
 	}
-	action := hasAny(text, "approve ", "assess ", "audit ", "block ", "certify ", "check ", "complete ", "conduct ", "decide ", "determine ", "do ", "evaluate ", "give ", "i need ", "inspect ", "look over ", "make ", "perform ", "prepare ", "put ", "review ", "run ", "sign off ", "tell me ", "validate ", "verify ")
+	action := hasAny(text, "approve ", "assess ", "audit ", "block ", "certify ", "check ", "complete ", "conduct ", "decide ", "determine ", "do ", "evaluate ", "finish ", "give ", "harden ", "i need ", "inspect ", "look over ", "make ", "perform ", "prepare ", "promote ", "put ", "review ", "run ", "sign off ", "tell me ", "turn ", "validate ", "verify ")
 	releaseConcept := hasAny(text, "customer availability", "deploy", "general availability", "go live", "goes live", "go/no-go", "go or no-go", "launch", "preflight", "production", "publish", "release", "rollout", "ship", "store submission")
 	readinessQuestion := (strings.HasPrefix(text, "can ") || strings.HasPrefix(text, "is ")) && hasAny(text, "good enough", "ready", "safe", "go live", "proceed")
 	readinessQuestion = readinessQuestion || strings.HasPrefix(text, "what would prevent ")

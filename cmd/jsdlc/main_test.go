@@ -501,6 +501,8 @@ func TestReleaseIntentCoversRiskAndReadinessLanguage(t *testing.T) {
 		"before rollout, inspect the API and tell me whether to sign off",
 		"find blockers that should stop tomorrow's launch of the service",
 		"check whether the app is ready for final store submission and customer availability",
+		"finish hardening the worker so I can confidently promote it to production",
+		"turn the library into a release candidate we can send to customers this week",
 	} {
 		if !releaseIntent(request) {
 			t.Errorf("expected release intent: %q", request)
