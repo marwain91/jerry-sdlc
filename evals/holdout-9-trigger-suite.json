@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "subjects": [
+    "the Atlas billing API",
+    "our Northstar iOS app",
+    "the Cedar data pipeline",
+    "the Lantern browser extension",
+    "the Harbor admin portal"
+  ],
+  "cases": [
+    {"id":"release-go-no-go","template":"Assess whether {project} is ready for release and give me a go/no-go decision.","release":true},
+    {"id":"release-production-check","template":"Can you run a final production-readiness check for {project} before we ship?","release":true},
+    {"id":"release-signoff","template":"Review {project} for release blockers and tell me whether you can sign off on it.","release":true},
+    {"id":"release-launch-tomorrow","template":"We plan to launch {project} tomorrow; verify that it is safe to deploy.","release":true},
+    {"id":"release-candidate-verdict","template":"Treat the current build of {project} as a release candidate and provide a readiness verdict.","release":true},
+    {"id":"release-preflight","template":"Do the pre-release preflight for {project} and flag anything that must be fixed before rollout.","release":true},
+    {"id":"release-publish-ready","template":"Is {project} ready to publish to customers now? Please check it end to end.","release":true},
+    {"id":"release-deployment-approval","template":"Evaluate {project} for deployment approval and identify any remaining showstoppers.","release":true},
+    {"id":"release-cut-build","template":"Before I cut the release build, confirm whether {project} meets the bar to ship.","release":true},
+    {"id":"release-rollout-confidence","template":"Give me a final ship-readiness assessment for {project} so we can decide on the rollout.","release":true},
+    {"id":"reference-explain-checklist","template":"Explain what the phrase 'release-readiness check' means in the documentation for {project}.","release":false},
+    {"id":"reference-quote-for-slide","template":"Turn the sentence '{project} is ready to ship' into a concise slide heading.","release":false},
+    {"id":"reference-retrospective","template":"Write a retrospective paragraph about why the previous release of {project} was delayed.","release":false},
+    {"id":"reference-rename-command","template":"Rename the menu item 'Release readiness' to 'Launch checklist' in {project}.","release":false},
+    {"id":"reference-compare-processes","template":"Compare blue-green deployment with canary rollout as possible future strategies for {project}.","release":false},
+    {"id":"reference-test-copy","template":"Draft sample notification copy that says the deployment of {project} has finished.","release":false},
+    {"id":"reference-hypothetical","template":"If {project} were ever prepared for production, what would the term 'go/no-go meeting' refer to?","release":false},
+    {"id":"reference-search-history","template":"Find where the release notes for {project} mention a readiness review; do not perform one.","release":false},
+    {"id":"reference-backlog-ticket","template":"Create wording for a future backlog ticket titled 'Prepare {project} for release.'","release":false},
+    {"id":"reference-grammar","template":"Proofread this label without assessing the software: '{project} — production ready'.","release":false}
+  ]
+}
