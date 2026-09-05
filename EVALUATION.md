@@ -41,8 +41,8 @@ go run ./cmd/jsdlc eval-triggers --fixture evals/holdout-7-trigger-suite.json --
 | Holdout 3 | 100 | 300 | 60% | 30% | 100% / 100% after tuning; first result remains failed |
 | Holdout 4 | 100 | 300 | 58.8% | 100% | 100% / 100% after tuning; first result remains failed |
 | Holdout 5 | 100 | 300 | 0% | 0% | 100% / 100% after tuning; first result remains failed |
-| Holdout 6 | 100 | 300 | 87.5% | 70% | 100% / 70% after safety fix; first result remains failed |
-| Holdout 7 | 100 | 300 | 100% | 50% | failed; independently authored provenance-grade result at `279d378` |
+| Holdout 6 | 100 | 300 | 87.5% | 70% | 100% / 100% after tuning; first result remains failed |
+| Holdout 7 | 100 | 300 | 100% | 50% | 100% / 100% after tuning; first result remains failed |
 
 The command evaluates the deterministic `jsdlc classify` router only. It does not measure implicit Codex skill selection.
 
@@ -50,8 +50,8 @@ The command evaluates the deterministic `jsdlc classify` router only. It does no
 
 - 20–50 historical baseline-versus-Jerry task runs and withheld defect fixtures
 - severity-weighted defect recall and adjudicated false-positive rate
-- unauthorized-action and false-independence adversarial runs
-- correction-regression and interruption/recovery runs
+- repeated model/workflow observations for unauthorized actions and false-independence (the synthetic harness gates are validated)
+- repeated model/workflow correction-regression observations and interruption/recovery runs (the synthetic regression gate is validated)
 - median wall time, token usage, and human review time
 - three-repeat implicit activation measurements on every supported Codex surface
 

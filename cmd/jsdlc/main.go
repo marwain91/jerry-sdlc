@@ -281,7 +281,7 @@ func releaseIntent(text string) bool {
 }
 
 func releaseIntentClause(text string) bool {
-	nonActionPrefix := []string{"add ", "build ", "change ", "compare ", "create ", "delete ", "deserialize ", "diagram ", "disable ", "display ", "document ", "explain ", "fix ", "handle ", "investigate ", "list ", "localize ", "mock ", "parse ", "persist ", "read ", "refactor ", "rename ", "render ", "search ", "show ", "store ", "style ", "summarize ", "test ", "translate ", "update ", "what ", "why ", "write "}
+	nonActionPrefix := []string{"add ", "build ", "change ", "compare ", "create ", "delete ", "deserialize ", "diagram ", "disable ", "display ", "document ", "explain ", "fix ", "handle ", "investigate ", "list ", "localize ", "mock ", "parse ", "persist ", "read ", "refactor ", "rename ", "render ", "search ", "show ", "store ", "style ", "summarize ", "test ", "translate ", "update ", "why ", "write "}
 	if hasAny(text, "do not deploy", "do not publish", "do not release", "do not ship", "don't deploy", "don't publish", "don't release", "don't ship", "never deploy", "never publish", "never release", "never ship", "cannot ship", "can't ship") {
 		return false
 	}
@@ -304,9 +304,11 @@ func releaseIntentClause(text string) bool {
 	if hasAny(text, "release the ", "ship the ", "publish the ", "tag the ", "publish this ", "publish now") {
 		return true
 	}
-	action := hasAny(text, "approve ", "assess ", "block ", "certify ", "check ", "complete ", "conduct ", "decide ", "determine ", "do ", "give ", "i need ", "make ", "perform ", "prepare ", "put ", "review ", "run ", "sign off ", "tell me ", "validate ", "verify ")
-	releaseConcept := hasAny(text, "deploy", "general availability", "go live", "goes live", "go/no-go", "go or no-go", "launch", "preflight", "production", "publish", "release", "ship")
-	readinessQuestion := (strings.HasPrefix(text, "can ") || strings.HasPrefix(text, "is ")) && hasAny(text, "ready", "safe", "go live", "proceed")
+	action := hasAny(text, "approve ", "assess ", "audit ", "block ", "certify ", "check ", "complete ", "conduct ", "decide ", "determine ", "do ", "evaluate ", "give ", "i need ", "inspect ", "look over ", "make ", "perform ", "prepare ", "put ", "review ", "run ", "sign off ", "tell me ", "validate ", "verify ")
+	releaseConcept := hasAny(text, "customer availability", "deploy", "general availability", "go live", "goes live", "go/no-go", "go or no-go", "launch", "preflight", "production", "publish", "release", "rollout", "ship", "store submission")
+	readinessQuestion := (strings.HasPrefix(text, "can ") || strings.HasPrefix(text, "is ")) && hasAny(text, "good enough", "ready", "safe", "go live", "proceed")
+	readinessQuestion = readinessQuestion || strings.HasPrefix(text, "what would prevent ")
+	readinessQuestion = readinessQuestion || strings.HasPrefix(text, "find ") && hasAny(text, "blocker", "risk")
 	return (action || readinessQuestion) && releaseConcept
 }
 

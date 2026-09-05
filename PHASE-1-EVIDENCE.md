@@ -13,7 +13,7 @@ Status: in progress
 - Local marketplace add and plugin install: PASS
 - Reproducible disposable Linux CLI matrix (discovery, checksum-verifying wrapper, writable external state, process-exit resume, caller-evidenced collision refusal, migration/rollback, and truthful runtime degradation): PASS. See `evidence/LINUX-CLI-MATRIX.md`.
 - Fresh-session implicit trigger for “Prepare this project for release”: PASS (1 observation; formal trigger suite pending)
-- Correct read-only-sandbox degradation to `ADVISORY_ONLY`: PASS
+- Truthful doctor degradation: `MANAGED_SEPARATE_PASSES` when Codex is available without trusted isolation, `UNAVAILABLE` when Codex is absent, and `ADVISORY_ONLY` when external state is unwritable: PASS
 - Repository mutation during zero-init activation: none
 - State resume, legal-transition, candidate-drift, incompatible-schema, lock-contention, symlink-identity, terminal rollover, reversible v1→v2 migration, migration traversal/tamper/drift rejection, interrupted-temp tolerance, deterministic pre- and post-rename `SIGKILL` create/replace safety, and CLI/persisted-state false-READY tests: PASS. The post-rename test proves a complete file is visible after process death; actual power-loss durability before directory fsync remains unproven.
 - `MANAGED_INDEPENDENT` is fail-closed until cryptographic/runtime adapter attestation exists: PASS

@@ -1,5 +1,20 @@
 {
-  "$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","required":["schemaVersion","status","packs","activationRule"],
-  "properties":{"schemaVersion":{"const":1},"status":{"const":"GATED_BY_PHASE_3"},"packs":{"type":"array","minItems":1,"items":{"type":"object","required":["name","domains"],"properties":{"name":{"type":"string","minLength":1},"domains":{"type":"array","minItems":1,"uniqueItems":true,"items":{"enum":["functional","security","supply-chain","api-compatibility","data-migration","reliability","observability","documentation","candidate-identity"]}},"extraLenses":{"type":"array","uniqueItems":true,"items":{"type":"string","minLength":1}}},"additionalProperties":false}},"activationRule":{"const":"Do not activate packs or additional workflows until Phase-3 graduation evidence passes."}},
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "type":"object",
+  "required":["schemaVersion","status","lenses","packs","activationRule"],
+  "properties":{
+    "schemaVersion":{"const":2},
+    "status":{"const":"GATED_BY_PHASE_3"},
+    "lenses":{"type":"array","minItems":1,"items":{"$ref":"#/$defs/lens"}},
+    "packs":{"type":"array","minItems":1,"items":{"$ref":"#/$defs/pack"}},
+    "activationRule":{"const":"Do not activate packs or additional workflows until Phase-3 graduation evidence passes."}
+  },
+  "$defs":{
+    "id":{"type":"string","pattern":"^[a-z0-9]+(?:-[a-z0-9]+)*$","maxLength":80},
+    "domain":{"enum":["functional","security","supply-chain","api-compatibility","data-migration","reliability","observability","documentation","candidate-identity"]},
+    "compatibility":{"type":"object","required":["pluginSchema","workflow","workflowVersion"],"properties":{"pluginSchema":{"const":1},"workflow":{"const":"release-readiness"},"workflowVersion":{"const":1}},"additionalProperties":false},
+    "lens":{"type":"object","required":["id","version","status","domain","objective","contractSource","policySource","policyDigest"],"properties":{"id":{"$ref":"#/$defs/id"},"version":{"const":1},"status":{"const":"GATED_BY_PHASE_3"},"domain":{"$ref":"#/$defs/domain"},"objective":{"type":"string","minLength":1,"maxLength":512},"contractSource":{"const":"../roles/specialist-reviewer.md"},"policySource":{"const":"../workflows/release-readiness.json"},"policyDigest":{"type":"string","pattern":"^[a-f0-9]{64}$"}},"additionalProperties":false},
+    "pack":{"type":"object","required":["id","version","status","compatibility","triggers","domains","lenses","dependencies","conflicts","policySource","policyDigest"],"properties":{"id":{"$ref":"#/$defs/id"},"version":{"const":1},"status":{"const":"GATED_BY_PHASE_3"},"compatibility":{"$ref":"#/$defs/compatibility"},"triggers":{"type":"array","minItems":1,"uniqueItems":true,"items":{"$ref":"#/$defs/id"}},"domains":{"type":"array","minItems":1,"uniqueItems":true,"items":{"$ref":"#/$defs/domain"}},"lenses":{"type":"array","uniqueItems":true,"items":{"$ref":"#/$defs/id"}},"dependencies":{"type":"array","uniqueItems":true,"items":{"$ref":"#/$defs/id"}},"conflicts":{"type":"array","uniqueItems":true,"items":{"$ref":"#/$defs/id"}},"policySource":{"const":"../workflows/release-readiness.json"},"policyDigest":{"type":"string","pattern":"^[a-f0-9]{64}$"}},"additionalProperties":false}
+  },
   "additionalProperties":false
 }

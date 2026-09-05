@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
 	"sync"
@@ -488,6 +489,25 @@ func TestReleaseIntentHandlesMixedCommandsNegationAndIncidentalLanguage(t *testi
 		if releaseIntent(request) {
 			t.Errorf("unexpected release intent: %q", request)
 		}
+	}
+}
+
+func TestReleaseIntentCoversRiskAndReadinessLanguage(t *testing.T) {
+	for _, request := range []string{
+		"audit the service before deployment and identify unresolved risks",
+		"is the library in good enough shape for a public release?",
+		"what would prevent the app from being safely released today?",
+		"evaluate the worker against a practical ship checklist",
+		"before rollout, inspect the API and tell me whether to sign off",
+		"find blockers that should stop tomorrow's launch of the service",
+		"check whether the app is ready for final store submission and customer availability",
+	} {
+		if !releaseIntent(request) {
+			t.Errorf("expected release intent: %q", request)
+		}
+	}
+	if releaseIntent("find where the production endpoint is defined") {
+		t.Fatal("referential production lookup must not trigger release readiness")
 	}
 }
 
@@ -1049,6 +1069,112 @@ func TestAdapterCatalogFailsClosed(t *testing.T) {
 	}
 	if packResult["activationAllowed"] != false || packResult["status"] != "GATED_BY_PHASE_3" {
 		t.Fatalf("packs must remain gated: %#v", packResult)
+	}
+}
+
+func TestPackCatalogParityAndDeterministicMerge(t *testing.T) {
+	workingDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	root := filepath.Clean(filepath.Join(workingDir, "..", "..", "plugins", "jerry-sdlc"))
+	t.Setenv("JSDLC_PLUGIN_ROOT", root)
+	first, err := packs([]string{"--conform-set", "frontend,database"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := packs([]string{"--conform-set", "database,frontend"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(first["merged"], second["merged"]) || first["activationAllowed"] != false || first["conformanceOnly"] != true {
+		t.Fatalf("pack merge is non-deterministic or activated: %#v %#v", first, second)
+	}
+	merged := first["merged"].(result)
+	if strings.Join(merged["packs"].([]string), ",") != "database,frontend" || merged["conflictFree"] != true {
+		t.Fatalf("unexpected inert merge: %#v", merged)
+	}
+}
+
+func TestPackCatalogRejectsDriftAndValidatesRelations(t *testing.T) {
+	workingDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	root := filepath.Clean(filepath.Join(workingDir, "..", "..", "plugins", "jerry-sdlc"))
+	b, err := os.ReadFile(filepath.Join(root, "packs", "catalog.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var base packCatalog
+	if err := json.Unmarshal(b, &base); err != nil {
+		t.Fatal(err)
+	}
+	clone := func() packCatalog {
+		encoded, _ := json.Marshal(base)
+		var copied packCatalog
+		if err := json.Unmarshal(encoded, &copied); err != nil {
+			t.Fatal(err)
+		}
+		return copied
+	}
+	for name, mutate := range map[string]func(*packCatalog){
+		"gate":          func(c *packCatalog) { c.Packs[0].Status = "ACTIVE" },
+		"policy digest": func(c *packCatalog) { c.Packs[0].PolicyDigest = strings.Repeat("0", 64) },
+		"lens digest":   func(c *packCatalog) { c.Lenses[0].PolicyDigest = strings.Repeat("0", 64) },
+		"unknown lens":  func(c *packCatalog) { c.Packs[0].Lenses = []string{"unknown"} },
+		"duplicate ID":  func(c *packCatalog) { c.Packs[1].ID = c.Packs[0].ID },
+		"dangling dep":  func(c *packCatalog) { c.Packs[0].Dependencies = []string{"unknown"} },
+		"self conflict": func(c *packCatalog) { c.Packs[0].Conflicts = []string{c.Packs[0].ID} },
+	} {
+		t.Run(name, func(t *testing.T) {
+			changed := clone()
+			mutate(&changed)
+			if err := validatePackCatalog(root, changed); err == nil {
+				t.Fatal("invalid pack catalog was accepted")
+			}
+		})
+	}
+	dependent := clone()
+	dependent.Packs[0].Dependencies = []string{"backend"}
+	if err := validatePackCatalog(root, dependent); err != nil {
+		t.Fatal(err)
+	}
+	merged, _, err := conformPackSet(dependent, "frontend")
+	if err != nil || strings.Join(merged["packs"].([]string), ",") != "backend,frontend" {
+		t.Fatalf("dependency closure is not deterministic: %#v %v", merged, err)
+	}
+	cyclic := clone()
+	cyclic.Packs[0].Dependencies, cyclic.Packs[1].Dependencies = []string{"backend"}, []string{"frontend"}
+	if err := validatePackCatalog(root, cyclic); err == nil {
+		t.Fatal("dependency cycle was accepted")
+	}
+	conflicting := clone()
+	conflicting.Packs[0].Conflicts, conflicting.Packs[1].Conflicts = []string{"backend"}, []string{"frontend"}
+	if err := validatePackCatalog(root, conflicting); err != nil {
+		t.Fatal(err)
+	}
+	merged, conflicts, err := conformPackSet(conflicting, "backend,frontend")
+	if err != nil || merged["conflictFree"] != false || strings.Join(conflicts, ",") != "backend:frontend" {
+		t.Fatalf("conflict was not reported deterministically: %#v %#v %v", merged, conflicts, err)
+	}
+}
+
+func TestPluginMetadataReferencesStayInRootAndExist(t *testing.T) {
+	workingDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	root := filepath.Clean(filepath.Join(workingDir, "..", "..", "plugins", "jerry-sdlc"))
+	if err := validatePluginJSONReferences(root); err != nil {
+		t.Fatal(err)
+	}
+	for name, reference := range map[string]string{"escape": "../../outside.json", "dangling": "missing.json"} {
+		t.Run(name, func(t *testing.T) {
+			if err := validateJSONReferences(root, filepath.Join(root, "schemas"), map[string]any{"$ref": reference}); err == nil {
+				t.Fatal("invalid metadata reference was accepted")
+			}
+		})
 	}
 }
 

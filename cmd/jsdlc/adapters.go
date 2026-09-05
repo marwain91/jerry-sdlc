@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 )
 
@@ -94,13 +95,37 @@ func (c *adapterCapabilities) UnmarshalJSON(data []byte) error {
 type packCatalog struct {
 	SchemaVersion  int              `json:"schemaVersion"`
 	Status         string           `json:"status"`
+	Lenses         []lensDescriptor `json:"lenses"`
 	Packs          []packDescriptor `json:"packs"`
 	ActivationRule string           `json:"activationRule"`
 }
+type packCompatibility struct {
+	PluginSchema    int    `json:"pluginSchema"`
+	Workflow        string `json:"workflow"`
+	WorkflowVersion int    `json:"workflowVersion"`
+}
+type lensDescriptor struct {
+	ID             string `json:"id"`
+	Version        int    `json:"version"`
+	Status         string `json:"status"`
+	Domain         string `json:"domain"`
+	Objective      string `json:"objective"`
+	ContractSource string `json:"contractSource"`
+	PolicySource   string `json:"policySource"`
+	PolicyDigest   string `json:"policyDigest"`
+}
 type packDescriptor struct {
-	Name        string   `json:"name"`
-	Domains     []string `json:"domains"`
-	ExtraLenses []string `json:"extraLenses,omitempty"`
+	ID            string            `json:"id"`
+	Version       int               `json:"version"`
+	Status        string            `json:"status"`
+	Compatibility packCompatibility `json:"compatibility"`
+	Triggers      []string          `json:"triggers"`
+	Domains       []string          `json:"domains"`
+	Lenses        []string          `json:"lenses"`
+	Dependencies  []string          `json:"dependencies"`
+	Conflicts     []string          `json:"conflicts"`
+	PolicySource  string            `json:"policySource"`
+	PolicyDigest  string            `json:"policyDigest"`
 }
 
 func adapters(args []string) (result, error) {
@@ -229,6 +254,7 @@ func adapterReplayID(record adapterRecord) string {
 
 func packs(args []string) (result, error) {
 	fs := flag.NewFlagSet("packs", flag.ContinueOnError)
+	conformSet := fs.String("conform-set", "", "comma-separated inert pack IDs to merge-check")
 	if err := fs.Parse(args); err != nil {
 		return nil, err
 	}
@@ -249,30 +275,265 @@ func packs(args []string) (result, error) {
 	if err := dec.Decode(&trailing); err != io.EOF {
 		return nil, errors.New("pack catalog contains trailing JSON")
 	}
-	if catalog.SchemaVersion != 1 || catalog.Status != "GATED_BY_PHASE_3" || catalog.ActivationRule != "Do not activate packs or additional workflows until Phase-3 graduation evidence passes." || len(catalog.Packs) == 0 {
-		return nil, errors.New("pack catalog is not safely gated")
+	root := os.Getenv("JSDLC_PLUGIN_ROOT")
+	if err := validatePluginJSONReferences(root); err != nil {
+		return nil, err
+	}
+	if err := validatePackCatalog(root, catalog); err != nil {
+		return nil, err
+	}
+	merged, conflicts, err := conformPackSet(catalog, *conformSet)
+	if err != nil {
+		return nil, err
+	}
+	return result{"schemaVersion": catalog.SchemaVersion, "status": catalog.Status, "packs": catalog.Packs, "lenses": catalog.Lenses, "activationAllowed": false, "conformanceOnly": true, "merged": merged, "conflicts": conflicts}, nil
+}
+
+func validatePackCatalog(root string, catalog packCatalog) error {
+	if catalog.SchemaVersion != 2 || catalog.Status != "GATED_BY_PHASE_3" || catalog.ActivationRule != "Do not activate packs or additional workflows until Phase-3 graduation evidence passes." || len(catalog.Packs) == 0 || len(catalog.Lenses) == 0 {
+		return errors.New("pack catalog is not safely gated")
+	}
+	policyPath := filepath.Join(root, "workflows", "release-readiness.json")
+	policy, err := readBoundedRegularFile(policyPath, 128*1024)
+	if err != nil {
+		return err
+	}
+	policyHash := sha256.Sum256(policy)
+	expectedPolicyDigest := hex.EncodeToString(policyHash[:])
+	lenses := map[string]bool{}
+	for _, lens := range catalog.Lenses {
+		id := normalizeFixtureText(lens.ID)
+		if id == "" || id != lens.ID || lenses[id] || lens.Version != 1 || lens.Status != "GATED_BY_PHASE_3" || !contains(requiredReleaseDomains, lens.Domain) || strings.TrimSpace(lens.Objective) == "" || strings.TrimSpace(lens.Objective) != lens.Objective || len(lens.Objective) > 512 || lens.ContractSource != "../roles/specialist-reviewer.md" || lens.PolicySource != "../workflows/release-readiness.json" || lens.PolicyDigest != expectedPolicyDigest {
+			return errors.New("lens descriptor is invalid, duplicated, or not canonically bound")
+		}
+		lenses[id] = true
 	}
 	seen := map[string]bool{}
 	for _, pack := range catalog.Packs {
-		name := normalizeFixtureText(pack.Name)
-		if name == "" || seen[name] || len(pack.Domains) == 0 {
-			return nil, errors.New("pack descriptor is invalid")
+		id := normalizeFixtureText(pack.ID)
+		if id == "" || id != pack.ID || seen[id] || pack.Version != 1 || pack.Status != "GATED_BY_PHASE_3" || pack.Compatibility != (packCompatibility{PluginSchema: 1, Workflow: "release-readiness", WorkflowVersion: 1}) || len(pack.Triggers) == 0 || len(pack.Domains) == 0 || pack.Lenses == nil || pack.Dependencies == nil || pack.Conflicts == nil || pack.PolicySource != "../workflows/release-readiness.json" || pack.PolicyDigest != expectedPolicyDigest {
+			return errors.New("pack descriptor is invalid")
 		}
-		seen[name] = true
+		seen[id] = true
 		values := map[string]bool{}
+		for _, trigger := range pack.Triggers {
+			normalized := normalizeFixtureText(trigger)
+			if normalized == "" || normalized != trigger || values["trigger:"+normalized] {
+				return errors.New("pack has invalid or duplicate trigger")
+			}
+			values["trigger:"+normalized] = true
+		}
 		for _, domain := range pack.Domains {
 			if !contains(requiredReleaseDomains, domain) || values[domain] {
-				return nil, errors.New("pack has invalid or duplicate domain")
+				return errors.New("pack has invalid or duplicate domain")
 			}
 			values[domain] = true
 		}
-		for _, lens := range pack.ExtraLenses {
-			lens = normalizeFixtureText(lens)
-			if lens == "" || values["lens:"+lens] {
-				return nil, errors.New("pack has blank or duplicate lens")
+		for _, lens := range pack.Lenses {
+			if !lenses[lens] || values["lens:"+lens] {
+				return errors.New("pack has unknown or duplicate lens")
 			}
 			values["lens:"+lens] = true
 		}
 	}
-	return result{"schemaVersion": catalog.SchemaVersion, "status": catalog.Status, "packs": catalog.Packs, "activationAllowed": false}, nil
+	for _, pack := range catalog.Packs {
+		for _, relation := range append(append([]string{}, pack.Dependencies...), pack.Conflicts...) {
+			if !seen[relation] || relation == pack.ID {
+				return errors.New("pack dependency or conflict is dangling or self-referential")
+			}
+		}
+		if duplicateNormalized(pack.Dependencies) || duplicateNormalized(pack.Conflicts) {
+			return errors.New("pack dependencies or conflicts are duplicated")
+		}
+		for _, dependency := range pack.Dependencies {
+			if contains(pack.Conflicts, dependency) {
+				return errors.New("a pack cannot both depend on and conflict with the same pack")
+			}
+		}
+		for _, conflict := range pack.Conflicts {
+			other := findPack(catalog.Packs, conflict)
+			if other == nil || !contains(other.Conflicts, pack.ID) {
+				return errors.New("pack conflict must be symmetric")
+			}
+		}
+	}
+	if packDependencyCycle(catalog.Packs) {
+		return errors.New("pack dependencies contain a cycle")
+	}
+	return nil
+}
+
+func duplicateNormalized(values []string) bool {
+	seen := map[string]bool{}
+	for _, value := range values {
+		normalized := normalizeFixtureText(value)
+		if normalized == "" || normalized != value || seen[normalized] {
+			return true
+		}
+		seen[normalized] = true
+	}
+	return false
+}
+
+func findPack(packs []packDescriptor, id string) *packDescriptor {
+	for i := range packs {
+		if packs[i].ID == id {
+			return &packs[i]
+		}
+	}
+	return nil
+}
+
+func packDependencyCycle(packs []packDescriptor) bool {
+	visiting, visited := map[string]bool{}, map[string]bool{}
+	var visit func(string) bool
+	visit = func(id string) bool {
+		if visiting[id] {
+			return true
+		}
+		if visited[id] {
+			return false
+		}
+		visiting[id] = true
+		pack := findPack(packs, id)
+		if pack != nil {
+			for _, dependency := range pack.Dependencies {
+				if visit(dependency) {
+					return true
+				}
+			}
+		}
+		delete(visiting, id)
+		visited[id] = true
+		return false
+	}
+	for _, pack := range packs {
+		if visit(pack.ID) {
+			return true
+		}
+	}
+	return false
+}
+
+func conformPackSet(catalog packCatalog, requested string) (result, []string, error) {
+	selected := map[string]bool{}
+	var add func(string) error
+	add = func(id string) error {
+		pack := findPack(catalog.Packs, id)
+		if pack == nil {
+			return fmt.Errorf("unknown pack %q", id)
+		}
+		if selected[id] {
+			return nil
+		}
+		selected[id] = true
+		for _, dependency := range pack.Dependencies {
+			if err := add(dependency); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	if requested != "" {
+		for _, id := range strings.Split(requested, ",") {
+			if id == "" || normalizeFixtureText(id) != id {
+				return nil, nil, errors.New("pack set contains a blank or non-canonical ID")
+			}
+			if err := add(id); err != nil {
+				return nil, nil, err
+			}
+		}
+	}
+	packIDs, domains, lenses, conflicts := []string{}, []string{}, []string{}, []string{}
+	domainSet, lensSet := map[string]bool{}, map[string]bool{}
+	for _, pack := range catalog.Packs {
+		if !selected[pack.ID] {
+			continue
+		}
+		packIDs = append(packIDs, pack.ID)
+		for _, domain := range pack.Domains {
+			domainSet[domain] = true
+		}
+		for _, lens := range pack.Lenses {
+			lensSet[lens] = true
+		}
+		for _, conflict := range pack.Conflicts {
+			if selected[conflict] && pack.ID < conflict {
+				conflicts = append(conflicts, pack.ID+":"+conflict)
+			}
+		}
+	}
+	for domain := range domainSet {
+		domains = append(domains, domain)
+	}
+	for lens := range lensSet {
+		lenses = append(lenses, lens)
+	}
+	sort.Strings(packIDs)
+	sort.Strings(domains)
+	sort.Strings(lenses)
+	sort.Strings(conflicts)
+	return result{"packs": packIDs, "domains": domains, "lenses": lenses, "conflictFree": len(conflicts) == 0}, conflicts, nil
+}
+
+func validatePluginJSONReferences(root string) error {
+	absRoot, err := filepath.Abs(root)
+	if err != nil || root == "" {
+		return errors.New("plugin root is unavailable")
+	}
+	for _, directory := range []string{"adapters", "packs", "schemas", "workflows"} {
+		err := filepath.Walk(filepath.Join(absRoot, directory), func(path string, info os.FileInfo, walkErr error) error {
+			if walkErr != nil {
+				return walkErr
+			}
+			if info.Mode()&os.ModeSymlink != 0 {
+				return fmt.Errorf("plugin metadata path is a symlink: %s", path)
+			}
+			if info.IsDir() || filepath.Ext(path) != ".json" {
+				return nil
+			}
+			b, readErr := readBoundedRegularFile(path, 256*1024)
+			if readErr != nil {
+				return readErr
+			}
+			var document any
+			if err := json.Unmarshal(b, &document); err != nil {
+				return fmt.Errorf("invalid shipped JSON %s: %w", path, err)
+			}
+			return validateJSONReferences(absRoot, filepath.Dir(path), document)
+		})
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func validateJSONReferences(root, base string, value any) error {
+	switch typed := value.(type) {
+	case []any:
+		for _, item := range typed {
+			if err := validateJSONReferences(root, base, item); err != nil {
+				return err
+			}
+		}
+	case map[string]any:
+		for key, item := range typed {
+			if text, ok := item.(string); ok && (key == "$ref" || strings.HasSuffix(key, "Source")) && !strings.HasPrefix(text, "#") && !strings.Contains(text, "://") {
+				target := strings.SplitN(text, "#", 2)[0]
+				resolved := filepath.Clean(filepath.Join(base, target))
+				rel, err := filepath.Rel(root, resolved)
+				if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+					return fmt.Errorf("metadata reference escapes plugin root: %s", text)
+				}
+				if _, err := readBoundedRegularFile(resolved, 256*1024); err != nil {
+					return fmt.Errorf("metadata reference is invalid: %s: %w", text, err)
+				}
+			}
+			if err := validateJSONReferences(root, base, item); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }

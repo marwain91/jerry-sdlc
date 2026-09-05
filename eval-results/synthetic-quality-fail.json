@@ -4,7 +4,7 @@
   "fixture": "evals/synthetic-quality-fail.json",
   "fixtureSha256": "4d52a703fa4de4db281a2fa763c272982cc989b587fee125a52db231e58f78c6",
   "evidenceClass": "SYNTHETIC_HARNESS_VALIDATION_ONLY",
-  "command": "podman run --rm --userns=keep-id -e GOTELEMETRY=off -e GOCACHE=/tmp/go-cache -v $PWD:/src:ro,z -w /src golang:1.23-alpine /usr/local/go/bin/go run ./cmd/jsdlc eval-quality --fixture evals/synthetic-quality-pass.json",
+  "command": "podman run --rm --userns=keep-id -e GOTELEMETRY=off -e GOCACHE=/tmp/go-cache -v $PWD:/src:ro,z -w /src golang:1.23-alpine /usr/local/go/bin/go run ./cmd/jsdlc eval-quality --fixture evals/synthetic-quality-fail.json",
   "result": {
     "absoluteRecallImprovement": 0.7272727272727273,
     "baselineSeverityWeightedRecall": 0.2727272727272727,
@@ -47,4 +47,3 @@
     "unsafeEvents": 3
   }
 }
-
