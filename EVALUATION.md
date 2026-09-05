@@ -19,6 +19,7 @@ go run ./cmd/jsdlc eval-triggers --fixture evals/holdout-2-trigger-suite.json --
 | Holdout 2 | 100 | 300 | 60% | 90% | failed; self-reported pre-provenance result |
 | Holdout 3 | 100 | 300 | 60% | 30% | failed; provenance-grade result at `20eb53b` |
 | Holdout 4 | 100 | 300 | 58.8% | 100% | failed; provenance-grade result at `f2c0973` |
+| Holdout 5 | 100 | 300 | 0% | 0% | failed; provenance-grade result at `02d68eb` |
 
 The command evaluates the deterministic `jsdlc classify` router only. It does not measure implicit Codex skill selection.
 
@@ -42,3 +43,5 @@ The first three measurements predate the provenance-grade harness and are explic
 Holdout 3 is the first provenance-grade result. The fixture was committed before execution, its SHA-256 is `3c7b92d8a93822d65c0b88bebbba1b23ddd84f597eb63420dc3e5e71d7a784bb`, and [the recorded result](eval-results/holdout-3-20eb53b.json) binds the command, timestamp, classifier commit, metrics, and failure-list truncation. It failed, so classifier graduation remains blocked.
 
 Holdout 4 was independently frozen at commit `f2c0973` with fixture SHA-256 `a5669d17317c4bf6daf08eb1cbecf1d2231460f0c3d745f3d20690a78d540be9`. [Its result](eval-results/holdout-4-f2c0973.json) also failed. Replaying either suite after tuning is regression evidence only, never a replacement for its first observation.
+
+Holdout 5 was frozen at commit `02d68eb` before its first execution, with fixture SHA-256 `e21ff75dcf93a3cec2a90de1ff2500d0385200d168cd9df03e30fa034e648926`. [Its first result](eval-results/holdout-5-02d68eb.json) had 150 false negatives and no positive predictions (0% recall; precision reported as 0), so it failed. It demonstrates that the exact-phrase router does not generalize to a fresh set of ordinary release-request paraphrases. This result is preserved and may not become graduation evidence after tuning.
