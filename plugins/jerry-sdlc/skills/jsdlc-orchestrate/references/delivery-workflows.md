@@ -1,6 +1,6 @@
 # Everyday delivery workflows
 
-These workflows are experimental Codex-native coordination patterns. They do not produce the persisted, candidate-bound release verdict provided by `release-readiness`.
+These workflows are experimental Codex-native coordination patterns. At the review boundary they persist candidate-bound local role reports through the dedicated `delivery-*` CLI namespace. That evidence is locally owned and unattested. It never produces or affects the formal release verdict provided by `release-readiness`.
 
 ## Routing
 
@@ -32,6 +32,8 @@ Run project checks only through the execution environment authorized by reposito
 - `incident`: impact and timeline are recorded, mitigation is verified, destructive or production actions retain their normal authorization gates, and follow-up work is explicit.
 
 Do not call any everyday reviewer independent unless the runtime actually provides independent identity and isolation. Say `separate review pass` when that is all that is known.
+
+After implementation is frozen—or immediately for read-only diagnosis and PR review—start the matching everyday delivery record, persist one report for every selected role, and run `delivery-verify`. `COMPLETE` means the everyday contract is complete for that exact repository content only. `ISSUES`, `INCOMPLETE`, and `BLOCKED` are not release verdicts; all everyday outcomes have no release-readiness effect.
 
 ## Role contracts
 

@@ -26,7 +26,7 @@ type result map[string]any
 
 func main() {
 	if len(os.Args) < 2 {
-		fail(errors.New("usage: jsdlc <adapters|validate-adapter|packs|inspect-codex-plugins|resolve-collision|validate-workflow|doctor|classify|eval-triggers|eval-workflows|eval-quality|roles|start|status|transition|upgrade-state|rollback-state|check|recover-check|worker|team|adjudicate|authorize-correction|finish-correction|verify>"))
+		fail(errors.New("usage: jsdlc <adapters|validate-adapter|packs|inspect-codex-plugins|resolve-collision|validate-workflow|doctor|classify|eval-triggers|eval-workflows|eval-quality|roles|delivery-start|delivery-status|delivery-check|delivery-recover-check|delivery-record|delivery-verify|delivery-cancel|start|status|transition|upgrade-state|rollback-state|check|recover-check|worker|team|adjudicate|authorize-correction|finish-correction|verify>"))
 	}
 	var out result
 	var err error
@@ -55,6 +55,20 @@ func main() {
 		out, err = evalQuality(os.Args[2:])
 	case "roles":
 		out, err = roles(os.Args[2:])
+	case "delivery-start":
+		out, err = deliveryStart(os.Args[2:])
+	case "delivery-status":
+		out, err = deliveryStatus(os.Args[2:])
+	case "delivery-check":
+		out, err = deliveryCheck(os.Args[2:])
+	case "delivery-recover-check":
+		out, err = deliveryRecoverCheck(os.Args[2:])
+	case "delivery-record":
+		out, err = deliveryRecordPass(os.Args[2:])
+	case "delivery-verify":
+		out, err = deliveryVerify(os.Args[2:])
+	case "delivery-cancel":
+		out, err = deliveryCancel(os.Args[2:])
 	case "start":
 		out, err = start(os.Args[2:])
 	case "status":

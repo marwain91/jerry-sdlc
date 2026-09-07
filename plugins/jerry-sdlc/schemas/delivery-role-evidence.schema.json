@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Jerry SDLC persisted everyday role evidence",
+  "type": "object",
+  "required": ["schemaVersion", "runId", "workflow", "role", "producerMode", "repository", "candidate", "contentDigest", "contractDigest", "reportDigest", "report", "recordedAt"],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "runId": {"type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-z0-9_-]+$"},
+    "workflow": {"enum": ["feature", "bug-fix", "bug-diagnosis", "pr-review", "trivial-change", "incident"]},
+    "role": {"type": "string", "minLength": 1},
+    "producerMode": {"enum": ["SELF_REVIEW", "SEPARATE_PASS"]},
+    "repository": {"type": "string", "minLength": 1, "maxLength": 4096, "pattern": "^/"},
+    "candidate": {"type": "string", "minLength": 1, "maxLength": 256, "pattern": "^\\S(?:[\\s\\S]{0,254}\\S)?$"},
+    "contentDigest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "contractDigest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "reportDigest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "report": {"$ref": "delivery-report-input.schema.json"},
+    "recordedAt": {"type": "string", "format": "date-time"}
+  },
+  "additionalProperties": false
+}

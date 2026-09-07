@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Jerry SDLC everyday delivery run",
+  "type": "object",
+  "required": ["schemaVersion", "id", "workflow", "risk", "state", "repository", "candidate", "contentDigest", "contractDigest", "requiredRoles", "createdAt", "updatedAt"],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "id": {"type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-z0-9_-]+$"},
+    "workflow": {"enum": ["feature", "bug-fix", "bug-diagnosis", "pr-review", "trivial-change", "incident"]},
+    "risk": {"enum": ["LOW", "NORMAL", "HIGH"]},
+    "state": {"enum": ["ACTIVE", "COMPLETE", "ISSUES", "INCOMPLETE", "BLOCKED", "CANCELLED"]},
+    "repository": {"type": "string", "minLength": 1, "maxLength": 4096, "pattern": "^/"},
+    "candidate": {"type": "string", "minLength": 1, "maxLength": 256, "pattern": "^\\S(?:[\\s\\S]{0,254}\\S)?$"},
+    "contentDigest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "contractDigest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "requiredRoles": {"type": "array", "minItems": 2, "maxItems": 5, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "evidenceDigest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "createdAt": {"type": "string", "format": "date-time"},
+    "updatedAt": {"type": "string", "format": "date-time"}
+  },
+  "allOf": [
+    {"if": {"properties": {"workflow": {"const": "feature"}}}, "then": {"properties": {"requiredRoles": {"const": ["delivery-planner", "implementer", "qa-executor", "code-reviewer", "verifier"]}}}},
+    {"if": {"properties": {"workflow": {"const": "bug-fix"}}}, "then": {"properties": {"requiredRoles": {"const": ["debugger", "implementer", "qa-executor", "code-reviewer", "verifier"]}}}},
+    {"if": {"properties": {"workflow": {"const": "bug-diagnosis"}}}, "then": {"properties": {"requiredRoles": {"const": ["debugger", "code-reviewer"]}}}},
+    {"if": {"properties": {"workflow": {"const": "pr-review"}}}, "then": {"properties": {"requiredRoles": {"const": ["code-reviewer", "qa-executor", "verifier"]}}}},
+    {"if": {"properties": {"workflow": {"const": "trivial-change"}}}, "then": {"properties": {"requiredRoles": {"const": ["implementer", "verifier"]}}}},
+    {"if": {"properties": {"workflow": {"const": "incident"}}}, "then": {"properties": {"requiredRoles": {"const": ["incident-commander", "debugger", "qa-executor", "verifier"]}}}},
+    {"if": {"properties": {"risk": {"const": "HIGH"}}}, "then": {"properties": {"workflow": {"const": "incident"}}}},
+    {"if": {"properties": {"state": {"enum": ["COMPLETE", "ISSUES", "INCOMPLETE", "BLOCKED"]}}}, "then": {"required": ["evidenceDigest"]}}
+  ],
+  "additionalProperties": false
+}

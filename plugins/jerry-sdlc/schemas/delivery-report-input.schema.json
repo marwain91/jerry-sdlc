@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Jerry SDLC everyday role report input",
+  "type": "object",
+  "required": ["disposition", "summary", "evidence", "checkIds", "findings", "limitations"],
+  "properties": {
+    "disposition": {"enum": ["CLEAN", "FINDINGS", "INCONCLUSIVE", "BLOCKED"]},
+    "summary": {"type": "string", "minLength": 1, "maxLength": 4096},
+    "evidence": {"type": "array", "maxItems": 100, "items": {"type": "string", "minLength": 1, "maxLength": 4096}},
+    "checkIds": {"type": "array", "maxItems": 100, "uniqueItems": true, "items": {"type": "string", "pattern": "^[a-z0-9_-]{1,80}$"}},
+    "findings": {
+      "type": "array",
+      "maxItems": 100,
+      "items": {
+        "type": "object",
+        "required": ["id", "severity", "location", "evidence", "recommendation"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^[a-z0-9_-]{1,80}$"},
+          "severity": {"enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW"]},
+          "location": {"type": "string", "minLength": 1},
+          "evidence": {"type": "string", "minLength": 1},
+          "recommendation": {"type": "string", "minLength": 1}
+        },
+        "additionalProperties": false
+      }
+    },
+    "limitations": {"type": "array", "maxItems": 100, "items": {"type": "string", "minLength": 1, "maxLength": 4096}}
+  },
+  "additionalProperties": false
+}

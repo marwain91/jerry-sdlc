@@ -354,7 +354,7 @@ Exit criterion: thresholds pass across repeated runs and the results, including 
 
 ### Phase 4: portability and ecosystem
 
-- Add experimental Codex-native trivial-change, diagnosis, bug-fix, feature, PR-review, and incident workflows for practical iteration. Do not represent them as graduated or as having the release workflow's persisted evidence contract until evaluation is satisfactory.
+- Add experimental Codex-native trivial-change, diagnosis, bug-fix, feature, PR-review, and incident workflows for practical iteration. Their dedicated local role/check evidence may be persisted after candidate freeze, but it must remain separate from the release contract and must not be represented as graduated, independently attested, or release-affecting until evaluation is satisfactory.
 - Add Claude Code and generic adapters without duplicating canonical policy.
 - Add frontend, backend, mobile, database, infrastructure, and incident packs.
 - Add optional CI enforcement and persistent audit artefacts.

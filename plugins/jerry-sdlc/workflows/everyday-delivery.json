@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "workflows": {
+    "feature": {
+      "roles": ["delivery-planner", "implementer", "qa-executor", "code-reviewer", "verifier"],
+      "completionMeaning": "The everyday feature workflow contract is satisfied for this frozen repository candidate.",
+      "releaseReadinessEffect": "NONE"
+    },
+    "bug-fix": {
+      "roles": ["debugger", "implementer", "qa-executor", "code-reviewer", "verifier"],
+      "completionMeaning": "The everyday bug-fix workflow contract is satisfied for this frozen repository candidate.",
+      "releaseReadinessEffect": "NONE"
+    },
+    "bug-diagnosis": {
+      "roles": ["debugger", "code-reviewer"],
+      "completionMeaning": "The repository-side diagnosis evidence is complete for this frozen candidate; no fix is implied.",
+      "releaseReadinessEffect": "NONE"
+    },
+    "pr-review": {
+      "roles": ["code-reviewer", "qa-executor", "verifier"],
+      "completionMeaning": "The everyday PR-review contract is satisfied for this frozen repository candidate.",
+      "releaseReadinessEffect": "NONE"
+    },
+    "trivial-change": {
+      "roles": ["implementer", "verifier"],
+      "completionMeaning": "The everyday trivial-change workflow contract is satisfied for this frozen repository candidate.",
+      "releaseReadinessEffect": "NONE"
+    },
+    "incident": {
+      "roles": ["incident-commander", "debugger", "qa-executor", "verifier"],
+      "completionMeaning": "Repository-side incident workflow evidence is complete; production mitigation or resolution is not implied.",
+      "releaseReadinessEffect": "NONE"
+    }
+  }
+}

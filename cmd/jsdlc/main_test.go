@@ -1586,6 +1586,289 @@ func TestCodexPluginInventoryUsesBundledRegistryByDefault(t *testing.T) {
 	}
 }
 
+func TestEverydayDeliveryContractsCompleteWithoutReleaseEffect(t *testing.T) {
+	t.Setenv("XDG_STATE_HOME", t.TempDir())
+	workingDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("JSDLC_PLUGIN_ROOT", filepath.Clean(filepath.Join(workingDir, "..", "..", "plugins", "jerry-sdlc")))
+	for workflow, roles := range deliveryWorkflowRoles {
+		t.Run(workflow, func(t *testing.T) {
+			repo := t.TempDir()
+			if err := os.WriteFile(filepath.Join(repo, "candidate.txt"), []byte(workflow), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			risk := "NORMAL"
+			if workflow == "incident" {
+				risk = "HIGH"
+			}
+			started, err := deliveryStart([]string{"--repo", repo, "--candidate", "candidate-1", "--workflow", workflow, "--risk", risk})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if started["releaseReadinessEffect"] != "NONE" || started["scope"] != "EVERYDAY_DELIVERY" {
+				t.Fatalf("unsafe start result: %#v", started)
+			}
+			qaCheckIDs, verifierCheckIDs := "[]", "[]"
+			if contains(roles, "qa-executor") || contains(roles, "verifier") {
+				checked, checkErr := deliveryCheck([]string{"--repo", repo, "--candidate", "candidate-1", "--id", "test-suite", "--authorized", "--", "/bin/true"})
+				if checkErr != nil || checked["reportedPass"] != true {
+					t.Fatalf("delivery check failed: %#v %v", checked, checkErr)
+				}
+				verifierCheckIDs = `["test-suite"]`
+			}
+			if contains(roles, "qa-executor") {
+				checked, checkErr := deliveryCheck([]string{"--repo", repo, "--candidate", "candidate-1", "--id", "qa-suite", "--authorized", "--", "/bin/true"})
+				if checkErr != nil || checked["reportedPass"] != true {
+					t.Fatalf("QA check failed: %#v %v", checked, checkErr)
+				}
+				qaCheckIDs = `["qa-suite"]`
+			}
+			for _, role := range roles {
+				reportPath := filepath.Join(t.TempDir(), "report.json")
+				roleChecks := "[]"
+				if role == "qa-executor" {
+					roleChecks = qaCheckIDs
+				}
+				if role == "verifier" {
+					roleChecks = verifierCheckIDs
+				}
+				report := `{"disposition":"CLEAN","summary":"bounded pass completed","evidence":["observed repository evidence"],"checkIds":` + roleChecks + `,"findings":[],"limitations":[]}`
+				if err := os.WriteFile(reportPath, []byte(report), 0o600); err != nil {
+					t.Fatal(err)
+				}
+				if _, err := deliveryRecordPass([]string{"--repo", repo, "--candidate", "candidate-1", "--role", role, "--file", reportPath, "--producer-mode", "SEPARATE_PASS"}); err != nil {
+					t.Fatal(err)
+				}
+			}
+			verified, err := deliveryVerify([]string{"--repo", repo, "--candidate", "candidate-1"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if verified["outcome"] != "COMPLETE" || verified["releaseReadinessEffect"] != "NONE" || len(verified["roleEvidenceDigests"].([]string)) != len(roles) {
+				t.Fatalf("unexpected delivery verdict: %#v", verified)
+			}
+		})
+	}
+}
+
+func TestEverydayDeliveryFailsClosed(t *testing.T) {
+	t.Setenv("XDG_STATE_HOME", t.TempDir())
+	workingDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("JSDLC_PLUGIN_ROOT", filepath.Clean(filepath.Join(workingDir, "..", "..", "plugins", "jerry-sdlc")))
+	repo := t.TempDir()
+	file := filepath.Join(repo, "candidate.txt")
+	if err := os.WriteFile(file, []byte("before"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := deliveryStart([]string{"--repo", repo, "--candidate", "candidate-1", "--workflow", "trivial-change", "--risk", "LOW"}); err != nil {
+		t.Fatal(err)
+	}
+	reportPath := filepath.Join(t.TempDir(), "report.json")
+	if err := os.WriteFile(reportPath, []byte(`{"disposition":"CLEAN","summary":"done","evidence":["checked"],"checkIds":[],"findings":[],"limitations":[]}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := deliveryRecordPass([]string{"--repo", repo, "--candidate", "candidate-1", "--role", "implementer", "--file", reportPath}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := deliveryRecordPass([]string{"--repo", repo, "--candidate", "candidate-1", "--role", "implementer", "--file", reportPath}); err == nil {
+		t.Fatal("duplicate role evidence was accepted")
+	}
+	if err := os.WriteFile(file, []byte("after"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	verified, err := deliveryVerify([]string{"--repo", repo, "--candidate", "candidate-1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if verified["outcome"] != "BLOCKED" || verified["releaseReadinessEffect"] != "NONE" {
+		t.Fatalf("candidate drift did not block: %#v", verified)
+	}
+}
+
+func TestEverydayAndReleaseRunsCanCoexist(t *testing.T) {
+	t.Setenv("XDG_STATE_HOME", t.TempDir())
+	workingDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("JSDLC_PLUGIN_ROOT", filepath.Clean(filepath.Join(workingDir, "..", "..", "plugins", "jerry-sdlc")))
+	repo := t.TempDir()
+	if err := os.WriteFile(filepath.Join(repo, "candidate.txt"), []byte("same candidate"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := start([]string{"--repo", repo, "--candidate", "candidate-1", "--workflow", "release-readiness"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := deliveryStart([]string{"--repo", repo, "--candidate", "candidate-1", "--workflow", "bug-diagnosis", "--risk", "NORMAL"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := status([]string{"--repo", repo, "--candidate", "candidate-1"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := deliveryStatus([]string{"--repo", repo, "--candidate", "candidate-1"}); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestEverydayDeliveryIncompleteRunCanContinueAndFinalEvidenceIsFrozen(t *testing.T) {
+	t.Setenv("XDG_STATE_HOME", t.TempDir())
+	workingDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("JSDLC_PLUGIN_ROOT", filepath.Clean(filepath.Join(workingDir, "..", "..", "plugins", "jerry-sdlc")))
+	repo := t.TempDir()
+	if err := os.WriteFile(filepath.Join(repo, "candidate.txt"), []byte("candidate"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := deliveryStart([]string{"--repo", repo, "--candidate", "candidate-1", "--workflow", "trivial-change", "--risk", "LOW"}); err != nil {
+		t.Fatal(err)
+	}
+	early, err := deliveryVerify([]string{"--repo", repo, "--candidate", "candidate-1"})
+	if err != nil || early["outcome"] != "INCOMPLETE" || early["run"].(deliveryRun).State != "ACTIVE" {
+		t.Fatalf("premature verification was not recoverable: %#v %v", early, err)
+	}
+	checked, err := deliveryCheck([]string{"--repo", repo, "--candidate", "candidate-1", "--id", "test-suite", "--authorized", "--", "/bin/true"})
+	if err != nil || checked["reportedPass"] != true {
+		t.Fatalf("check failed: %#v %v", checked, err)
+	}
+	paths := map[string]string{}
+	for _, role := range []string{"implementer", "verifier"} {
+		checks := "[]"
+		if role == "verifier" {
+			checks = `["test-suite"]`
+		}
+		reportPath := filepath.Join(t.TempDir(), role+".json")
+		report := `{"disposition":"CLEAN","summary":"done","evidence":["observed"],"checkIds":` + checks + `,"findings":[],"limitations":[]}`
+		if err := os.WriteFile(reportPath, []byte(report), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		recorded, err := deliveryRecordPass([]string{"--repo", repo, "--candidate", "candidate-1", "--role", role, "--file", reportPath})
+		if err != nil {
+			t.Fatal(err)
+		}
+		paths[role] = recorded["evidencePath"].(string)
+	}
+	complete, err := deliveryVerify([]string{"--repo", repo, "--candidate", "candidate-1"})
+	if err != nil || complete["outcome"] != "COMPLETE" || !validSHA256(complete["evidenceDigest"].(string)) {
+		t.Fatalf("completion failed: %#v %v", complete, err)
+	}
+	b, err := os.ReadFile(paths["verifier"])
+	if err != nil {
+		t.Fatal(err)
+	}
+	var record deliveryRoleRecord
+	if err := json.Unmarshal(b, &record); err != nil {
+		t.Fatal(err)
+	}
+	record.Report.Summary = "replaced after completion"
+	canonical, _ := json.Marshal(record.Report)
+	digest := sha256.Sum256(canonical)
+	record.ReportDigest = fmt.Sprintf("%x", digest)
+	if err := writeDeliveryJSON(paths["verifier"], record); err != nil {
+		t.Fatal(err)
+	}
+	blocked, err := deliveryVerify([]string{"--repo", repo, "--candidate", "candidate-1"})
+	if err != nil || blocked["outcome"] != "BLOCKED" {
+		t.Fatalf("post-finalization replacement was not detected: %#v %v", blocked, err)
+	}
+}
+
+func TestEverydayHighRiskCannotClaimCompletionWithoutSpecialists(t *testing.T) {
+	t.Setenv("XDG_STATE_HOME", t.TempDir())
+	workingDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("JSDLC_PLUGIN_ROOT", filepath.Clean(filepath.Join(workingDir, "..", "..", "plugins", "jerry-sdlc")))
+	if _, err := deliveryStart([]string{"--repo", t.TempDir(), "--candidate", "candidate-1", "--workflow", "feature", "--risk", "HIGH"}); err == nil {
+		t.Fatal("HIGH-risk workflow was accepted without specialist persistence")
+	}
+}
+
+func TestClassifiedIncidentCanStartPersistedDelivery(t *testing.T) {
+	t.Setenv("XDG_STATE_HOME", t.TempDir())
+	workingDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("JSDLC_PLUGIN_ROOT", filepath.Clean(filepath.Join(workingDir, "..", "..", "plugins", "jerry-sdlc")))
+	classified, err := classify([]string{"--request", "Production is down; investigate the active outage"})
+	if err != nil || classified["workflow"] != "incident" || classified["risk"] != "HIGH" {
+		t.Fatalf("unexpected classification: %#v %v", classified, err)
+	}
+	if _, err := deliveryStart([]string{"--repo", t.TempDir(), "--candidate", "incident-1", "--workflow", classified["workflow"].(string), "--risk", classified["risk"].(string)}); err != nil {
+		t.Fatalf("classified incident could not start persisted delivery: %v", err)
+	}
+}
+
+func TestEverydayPersistedRunIDTraversalFailsClosed(t *testing.T) {
+	stateRoot := t.TempDir()
+	t.Setenv("XDG_STATE_HOME", stateRoot)
+	workingDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("JSDLC_PLUGIN_ROOT", filepath.Clean(filepath.Join(workingDir, "..", "..", "plugins", "jerry-sdlc")))
+	repo := t.TempDir()
+	started, err := deliveryStart([]string{"--repo", repo, "--candidate", "candidate-1", "--workflow", "bug-diagnosis", "--risk", "NORMAL"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	run := started["run"].(deliveryRun)
+	run.ID = "../../escape"
+	path := started["path"].(string)
+	if err := writeDeliveryJSON(path, run); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := deliveryStatus([]string{"--repo", repo, "--candidate", "candidate-1"}); err == nil {
+		t.Fatal("traversal delivery run ID was accepted")
+	}
+	if _, err := deliveryStart([]string{"--repo", repo, "--candidate", "candidate-2", "--workflow", "bug-diagnosis", "--risk", "NORMAL"}); err == nil {
+		t.Fatal("start archived a traversal delivery run ID")
+	}
+	if _, err := os.Stat(filepath.Join(filepath.Dir(filepath.Dir(path)), "escape.json")); !os.IsNotExist(err) {
+		t.Fatal("traversal target was created")
+	}
+}
+
+func TestEverydayInterruptedCheckReservationCanBeRecovered(t *testing.T) {
+	stateRoot := t.TempDir()
+	t.Setenv("XDG_STATE_HOME", stateRoot)
+	workingDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("JSDLC_PLUGIN_ROOT", filepath.Clean(filepath.Join(workingDir, "..", "..", "plugins", "jerry-sdlc")))
+	repo := t.TempDir()
+	started, err := deliveryStart([]string{"--repo", repo, "--candidate", "candidate-1", "--workflow", "trivial-change", "--risk", "LOW"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	run := started["run"].(deliveryRun)
+	_, key, root, err := stateLocation(repo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(root, key, "delivery", "check-reservations", run.ID, "stale-check.json")
+	reservation := checkReservation{SchemaVersion: 1, RunID: run.ID, ID: "stale-check", OwnerPID: 999999, ProcessGroupID: 999999, CreatedAt: time.Now().UTC().Format(time.RFC3339Nano)}
+	if err := createCheckReservation(path, reservation); err != nil {
+		t.Fatal(err)
+	}
+	recovered, err := deliveryRecoverCheck([]string{"--repo", repo, "--candidate", "candidate-1", "--id", "stale-check", "--authorized"})
+	if err != nil || recovered["recovered"] != true {
+		t.Fatalf("recovery failed: %#v %v", recovered, err)
+	}
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Fatal("recovered reservation remains")
+	}
+}
+
 func TestShippedWorkflowContractExactlyMatchesRuntime(t *testing.T) {
 	workingDir, err := os.Getwd()
 	if err != nil {

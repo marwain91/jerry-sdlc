@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Jerry SDLC everyday workflow catalogue",
+  "type": "object",
+  "required": ["schemaVersion", "workflows"],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "workflows": {
+      "type": "object",
+      "required": ["feature", "bug-fix", "bug-diagnosis", "pr-review", "trivial-change", "incident"],
+      "propertyNames": {"enum": ["feature", "bug-fix", "bug-diagnosis", "pr-review", "trivial-change", "incident"]},
+      "additionalProperties": {
+        "type": "object",
+        "required": ["roles", "completionMeaning", "releaseReadinessEffect"],
+        "properties": {
+          "roles": {"type": "array", "minItems": 2, "maxItems": 5, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+          "completionMeaning": {"type": "string", "minLength": 1},
+          "releaseReadinessEffect": {"const": "NONE"}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
