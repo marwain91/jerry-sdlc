@@ -11,6 +11,8 @@ This matrix distinguishes implementation from graduation evidence. A phase is no
 
 Current overall status: **publicly available but not graduated or released**. The public GitHub repository tracks `main`; no tag, GitHub Release, deployment, or production change has been performed.
 
+The [packaged everyday lifecycle](evidence/PACKAGED-EVERYDAY-LIFECYCLE.md) now exercises all six everyday workflows and real check interruption/recovery through the Linux wrapper in CI. Reports remain synthetic; this closes a packaged-command integration gap without satisfying the deferred model-quality or native-platform gates.
+
 External evidence limits on this VPS are recorded rather than waived: native macOS execution and complete Codex IDE/app behavior cannot be proven here; historical-task quality evaluation needs an adjudicated corpus and repeated model runs; trusted worker identity/secret/network attestation is not exposed by the current CLI boundary.
 
 ## Remaining gate ownership
