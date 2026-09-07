@@ -44,3 +44,11 @@ Read [references/control-contract.md](references/control-contract.md) before any
 ## Completion
 
 Run `../../scripts/jsdlc verify --repo <repo> --candidate <candidate>` before reporting the terminal status. It reproduces the latest persisted verdict against the current candidate, checked evidence, reports, receipts, and contracts. `READY` additionally requires `MANAGED_INDEPENDENT`; clean separate passes remain `INCONCLUSIVE`. `NOT_APPLICABLE` remains `INCONCLUSIVE` until adjudication exists. Any finding produces `NOT_READY`; missing, failed, stale, or blocked evidence produces `INCONCLUSIVE` or `BLOCKED`. A readiness verdict never authorizes deployment, publishing, tagging, or release.
+
+Report the engineering result separately from the assurance level:
+
+- Lead with what passed, failed, or remains an actionable product risk. Do not let an independence/attestation limitation obscure successful tests and live checks.
+- When `INCONCLUSIVE` is caused only by unavailable independent attestation, say concisely: “Engineering checks passed; high-assurance independent attestation is unavailable.” Do not imply that the software result itself is unknown, recommend rollback, or ask for a manual `READY` override.
+- When actual test coverage, behavior, or applicable risk is unknown, identify that concrete gap; this is a substantively inconclusive engineering result.
+- Mention archived/stale runs or repaired workflow tooling only when they affect the user's requested outcome.
+- Tell the user to start a new thread only when this turn actually reinstalled or updated the active Codex plugin. Never repeat that instruction merely because a run was repaired, resumed, or ended `INCONCLUSIVE`.
