@@ -1515,6 +1515,77 @@ func TestCollisionInputFailsClosed(t *testing.T) {
 	}
 }
 
+func TestCodexPluginInventoryUsesExactRegistryIDs(t *testing.T) {
+	write := func(name, content string) string {
+		path := filepath.Join(t.TempDir(), name)
+		if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		return path
+	}
+	inventory := `{"installed":[
+		{"pluginId":"jerry-sdlc@personal","name":"jerry-sdlc","marketplaceName":"personal","version":"1","installed":true,"enabled":true,"source":{"source":"local","path":"../../must-not-open"},"installPolicy":"AVAILABLE","authPolicy":"ON_INSTALL"},
+		{"pluginId":"broad-agent@test","name":"broad-agent","marketplaceName":"test","version":"1","installed":true,"enabled":true,"source":{"source":"local","path":"/must-not-open"},"installPolicy":"AVAILABLE","authPolicy":"ON_INSTALL"},
+		{"pluginId":"review-helper@test","name":"review-helper","marketplaceName":"test","version":"1","installed":true,"enabled":true,"source":{"source":"remote","id":"x"},"installPolicy":"AVAILABLE","authPolicy":"ON_USE"},
+		{"pluginId":"disabled-agent@test","name":"disabled-agent","marketplaceName":"test","version":"1","installed":true,"enabled":false,"source":{"source":"remote","id":"y"},"installPolicy":"AVAILABLE","authPolicy":"ON_USE"}
+	],"available":[]}`
+	registry := `{"schemaVersion":1,"jerryPluginId":"jerry-sdlc@personal","broadOrchestratorPluginIds":["broad-agent@test","disabled-agent@test"]}`
+	got, err := inspectCodexPlugins([]string{"--file", write("inventory.json", inventory), "--registry", write("registry.json", registry)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(got["competingBroadOrchestrators"], []string{"broad-agent@test"}) || !reflect.DeepEqual(got["unclassifiedPluginIds"], []string{"review-helper@test"}) || got["sourcePathsOpened"] != false || got["completeSemanticDiscovery"] != false {
+		t.Fatalf("unexpected inspection result: %#v", got)
+	}
+	if !validSHA256(got["inventoryDigest"].(string)) || !validSHA256(got["registryDigest"].(string)) {
+		t.Fatalf("missing provenance: %#v", got)
+	}
+}
+
+func TestCodexPluginInventoryFailsClosed(t *testing.T) {
+	write := func(content string) string {
+		path := filepath.Join(t.TempDir(), "input.json")
+		if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		return path
+	}
+	registry := write(`{"schemaVersion":1,"jerryPluginId":"jerry-sdlc@personal","broadOrchestratorPluginIds":[]}`)
+	invalid := []string{
+		`{"installed":null,"available":[]}`,
+		`{"installed":[],"available":[]}`,
+		`{"installed":[],"available":[],"unknown":true}`,
+		`{"installed":[{"pluginId":"Jerry-SDLC@personal","name":"Jerry-SDLC","marketplaceName":"personal","version":"1","installed":true,"enabled":true,"source":{},"installPolicy":"A","authPolicy":"B"}],"available":[]}`,
+		`{"installed":[{"pluginId":"x@test","name":"different","marketplaceName":"test","version":"1","installed":true,"enabled":true,"source":{},"installPolicy":"A","authPolicy":"B"}],"available":[]}`,
+		`{"installed":[],"available":[]} {}`,
+	}
+	for _, content := range invalid {
+		if _, err := inspectCodexPlugins([]string{"--file", write(content), "--registry", registry}); err == nil {
+			t.Fatalf("invalid inventory accepted: %s", content)
+		}
+	}
+}
+
+func TestCodexPluginInventoryUsesBundledRegistryByDefault(t *testing.T) {
+	workingDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("JSDLC_PLUGIN_ROOT", filepath.Clean(filepath.Join(workingDir, "..", "..", "plugins", "jerry-sdlc")))
+	path := filepath.Join(t.TempDir(), "inventory.json")
+	content := `{"installed":[{"pluginId":"jerry-sdlc@personal","name":"jerry-sdlc","marketplaceName":"personal","version":"1","installed":true,"enabled":true,"source":{},"installPolicy":"A","authPolicy":"B"}],"available":[]}`
+	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	got, err := inspectCodexPlugins([]string{"--file", path})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got["jerryPluginDetected"] != true || len(got["competingBroadOrchestrators"].([]string)) != 0 {
+		t.Fatalf("unexpected result: %#v", got)
+	}
+}
+
 func TestShippedWorkflowContractExactlyMatchesRuntime(t *testing.T) {
 	workingDir, err := os.Getwd()
 	if err != nil {

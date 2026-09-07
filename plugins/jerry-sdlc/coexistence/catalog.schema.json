@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Jerry SDLC exact-ID coexistence registry",
+  "type": "object",
+  "required": ["schemaVersion", "jerryPluginId", "broadOrchestratorPluginIds"],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "jerryPluginId": {"type": "string", "minLength": 3, "maxLength": 260},
+    "broadOrchestratorPluginIds": {"type": "array", "maxItems": 100, "uniqueItems": true, "items": {"type": "string", "minLength": 3, "maxLength": 260}}
+  },
+  "additionalProperties": false
+}
