@@ -335,7 +335,7 @@ Exit criterion: “prepare this for release” selects the QA team, produces a d
 - Add adversarial tests for false independence, stale inputs, invented test results, ignored failures, and unauthorized release.
 - Add coexistence tests for repository skills and competing broad orchestration plugins.
 - Gate changes to roles and skills on eval results.
-- Add the read-only PR-review workflow after the release slice meets its quality gates.
+- Evaluate the experimental read-only PR-review workflow before treating it as graduated or enabling release enforcement from its output.
 
 Initial graduation thresholds:
 
@@ -354,7 +354,7 @@ Exit criterion: thresholds pass across repeated runs and the results, including 
 
 ### Phase 4: portability and ecosystem
 
-- Add trivial-change, bug-fix, and feature workflows only after release/PR evidence is satisfactory.
+- Add experimental Codex-native trivial-change, diagnosis, bug-fix, feature, PR-review, and incident workflows for practical iteration. Do not represent them as graduated or as having the release workflow's persisted evidence contract until evaluation is satisfactory.
 - Add Claude Code and generic adapters without duplicating canonical policy.
 - Add frontend, backend, mobile, database, infrastructure, and incident packs.
 - Add optional CI enforcement and persistent audit artefacts.

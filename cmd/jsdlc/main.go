@@ -223,7 +223,7 @@ func classify(args []string) (result, error) {
 		return nil, err
 	}
 	text := strings.ToLower(*req + " " + *files)
-	workflow, risk := "feature", "NORMAL"
+	workflow, risk := classifyDeliveryWorkflow(text), "NORMAL"
 	if releaseIntent(text) {
 		workflow, risk = "release-readiness", "HIGH"
 	}
@@ -240,6 +240,22 @@ func classify(args []string) (result, error) {
 		}
 	}
 	return result{"workflow": workflow, "risk": risk, "triggers": triggers, "semanticReviewRequired": true}, nil
+}
+
+func classifyDeliveryWorkflow(text string) string {
+	if hasAny(text, "pull request", "pr review", "review this pr", "review the diff", "code review") {
+		return "pr-review"
+	}
+	if hasAny(text, "investigate this bug", "diagnose the bug", "root cause", "why is this failing") {
+		return "bug-diagnosis"
+	}
+	if hasAny(text, "fix this bug", "fix the bug", "bug fix", "regression", "broken behavior", "fix this error", "fix the failure") {
+		return "bug-fix"
+	}
+	if hasAny(text, "typo", "spelling", "small docs change", "tiny change", "trivial change") {
+		return "trivial-change"
+	}
+	return "feature"
 }
 
 func triggerPresent(text, trigger string) bool {
@@ -323,10 +339,20 @@ func roles(args []string) (result, error) {
 	if err := fs.Parse(args); err != nil {
 		return nil, err
 	}
-	if *wf == "release-readiness" {
-		return result{"workflow": *wf, "roles": []string{"orchestrator", "qa-architect", "qa-executor", "specialist-reviewer", "independent-verifier"}}, nil
+	workflowRoles := map[string][]string{
+		"release-readiness": {"orchestrator", "qa-architect", "qa-executor", "specialist-reviewer", "independent-verifier"},
+		"feature":           {"delivery-planner", "implementer", "qa-executor", "code-reviewer", "verifier"},
+		"bug-fix":           {"debugger", "implementer", "qa-executor", "code-reviewer", "verifier"},
+		"bug-diagnosis":     {"debugger", "code-reviewer"},
+		"pr-review":         {"code-reviewer", "qa-executor", "verifier"},
+		"trivial-change":    {"implementer", "verifier"},
+		"incident":          {"incident-commander", "debugger", "qa-executor", "verifier"},
 	}
-	return result{"workflow": *wf, "roles": []string{"orchestrator", "qa-executor", "independent-verifier"}}, nil
+	selected, ok := workflowRoles[*wf]
+	if !ok {
+		return nil, fmt.Errorf("unsupported workflow %q", *wf)
+	}
+	return result{"workflow": *wf, "roles": selected}, nil
 }
 
 type runState struct {

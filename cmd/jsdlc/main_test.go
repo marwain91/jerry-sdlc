@@ -442,6 +442,53 @@ func TestClassifyRelease(t *testing.T) {
 	}
 }
 
+func TestClassifyEverydayWorkflows(t *testing.T) {
+	tests := map[string]string{
+		"Fix this bug in the account exporter":            "bug-fix",
+		"Investigate this bug and explain the root cause": "bug-diagnosis",
+		"Review this PR for correctness":                  "pr-review",
+		"Fix this typo in the README":                     "trivial-change",
+		"Implement account export":                        "feature",
+		"Investigate the production outage":               "incident",
+		"Prepare this project for release":                "release-readiness",
+	}
+	for request, want := range tests {
+		got, err := classify([]string{"--request", request})
+		if err != nil {
+			t.Fatalf("classify %q: %v", request, err)
+		}
+		if got["workflow"] != want {
+			t.Errorf("classify %q = %q, want %q", request, got["workflow"], want)
+		}
+	}
+}
+
+func TestRolesMatchEverydayWorkflowTeams(t *testing.T) {
+	for workflow, want := range map[string]string{
+		"feature":        "delivery-planner,implementer,qa-executor,code-reviewer,verifier",
+		"bug-fix":        "debugger,implementer,qa-executor,code-reviewer,verifier",
+		"bug-diagnosis":  "debugger,code-reviewer",
+		"pr-review":      "code-reviewer,qa-executor,verifier",
+		"trivial-change": "implementer,verifier",
+		"incident":       "incident-commander,debugger,qa-executor,verifier",
+	} {
+		got, err := roles([]string{"--workflow", workflow})
+		if err != nil {
+			t.Fatalf("roles %s: %v", workflow, err)
+		}
+		if strings.Join(got["roles"].([]string), ",") != want {
+			t.Errorf("roles %s = %#v, want %s", workflow, got["roles"], want)
+		}
+	}
+	if _, err := roles([]string{"--workflow", "invented"}); err == nil {
+		t.Fatal("unknown workflow roles must fail")
+	}
+	t.Setenv("XDG_STATE_HOME", t.TempDir())
+	if _, err := start([]string{"--repo", t.TempDir(), "--candidate", "candidate-a", "--workflow", "feature"}); err == nil {
+		t.Fatal("Codex-native workflow must not claim the persisted release contract")
+	}
+}
+
 func TestReleaseIntentComposesActionAndReleaseConcept(t *testing.T) {
 	for _, request := range []string{
 		"Decide whether the gateway can be promoted to production",

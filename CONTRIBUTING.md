@@ -20,7 +20,7 @@ Keep canonical policy in `plugins/jerry-sdlc/workflows`, role contracts in `plug
 - Explain the user-visible outcome and trust-boundary impact.
 - Add behavioral tests for success, malformed input, stale identity, replay, and interruption where applicable.
 - Never turn an observed or self-reported capability into attested assurance.
-- Keep packs and additional workflows gated until the published Phase 3 thresholds pass on fresh evidence.
+- Keep packs gated. Changes to experimental everyday workflows must preserve their explicit non-graduated status until the published Phase 3 thresholds pass on fresh evidence.
 - Update `PHASE-STATUS.md` truthfully. Implementation is not graduation evidence.
 - Do not include tokens, credentials, production data, or model transcripts containing secrets.
 - Do not publish, tag, deploy, or create a release as part of an ordinary contribution.

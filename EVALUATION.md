@@ -2,6 +2,8 @@
 
 Status: **not graduated**.
 
+The owner deferred the 120-run formal benchmark on 2026-09-07 to avoid consuming a disproportionate weekly Codex allowance. Everyday workflows may iterate experimentally through normal use, but no quality-uplift or graduation claim follows from that decision. Real task outcomes should be collected gradually and the formal repeated benchmark resumed before a stable release claim.
+
 ## Synthetic evaluator harness evidence
 
 Two 20-task, three-trial-per-arm fixtures exercise the quality evaluator without
@@ -59,7 +61,7 @@ The command evaluates the deterministic `jsdlc classify` router only. It does no
 - median wall time, token usage, and human review time
 - three-repeat implicit activation measurements on every supported Codex surface
 
-Phase 4 workflow activation and a stable release remain gated on these results. No failed measurement may be replaced by a tuned replay; a fresh holdout is required after classifier changes.
+Graduated workflow claims, active packs, and a stable release remain gated on these results. Experimental everyday routing may iterate without implying graduation. No failed measurement may be replaced by a tuned replay; a fresh holdout is required after classifier changes.
 
 Both evaluators now include the raw fixture SHA-256, evaluation timestamp, and evaluation-output schema version in their JSON. Trigger results also include the total failure count and whether the displayed failure list was truncated. These fields make a captured result self-identifying, but the committed fixture and evaluator commit still have to be recorded externally; the CLI cannot prove that a fixture was frozen before its first execution.
 
