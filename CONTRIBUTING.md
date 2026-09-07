@@ -29,6 +29,8 @@ Generated binaries under `plugins/jerry-sdlc/assets/bin` must be rebuilt from th
 
 ## Evaluation integrity
 
+Ordinary task observations may use the [private-by-default capture template](evidence/REAL-TASK-CAPTURE.md). Do not submit raw private-project records; public examples require data-owner approval and a manual privacy review.
+
 Freeze holdout fixtures in a commit before first execution. Preserve the first result even when it fails, including the fixture digest, evaluator commit, command, timestamp, metrics, and truncated-output status. Tuned replays are regression evidence, not fresh holdouts. Historical quality datasets require human-adjudicated ground truth and may not be replaced with invented passing samples.
 
 ## Licensing gate

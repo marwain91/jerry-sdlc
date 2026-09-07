@@ -15,6 +15,8 @@ The [packaged everyday lifecycle](evidence/PACKAGED-EVERYDAY-LIFECYCLE.md) now e
 
 External evidence limits on this VPS are recorded rather than waived: native macOS execution and complete Codex IDE/app behavior cannot be proven here; historical-task quality evaluation needs an adjudicated corpus and repeated model runs; trusted worker identity/secret/network attestation is not exposed by the current CLI boundary.
 
+An optional [private real-task capture template](evidence/REAL-TASK-CAPTURE.md) supports learning during ordinary work without extra model trials. It is documentation only: no records have been collected by adding it, and no evaluation gate is closed.
+
 ## Remaining gate ownership
 
 - **Owner decision/authorization:** separately authorize any tag or release; approve the model/time budget and privacy-safe source corpus for 20–50 historical tasks with repeated baseline/Jerry trials.

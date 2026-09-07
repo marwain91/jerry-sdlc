@@ -6,6 +6,8 @@ Evaluation CLI exit codes: `0` means thresholds passed, `2` means a valid evalua
 
 The owner deferred the 120-run formal benchmark on 2026-09-07 to avoid consuming a disproportionate weekly Codex allowance. Everyday workflows may iterate experimentally through normal use, but no quality-uplift or graduation claim follows from that decision. Real task outcomes should be collected gradually and the formal repeated benchmark resumed before a stable release claim.
 
+For optional, private observations during normal work, use the [lightweight real-task template](evidence/REAL-TASK-CAPTURE.md). It adds no model runs or telemetry and is not a substitute for the formal evaluation dataset.
+
 ## Synthetic evaluator harness evidence
 
 Two 20-task, three-trial-per-arm fixtures exercise the quality evaluator without
