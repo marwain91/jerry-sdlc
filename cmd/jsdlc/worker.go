@@ -273,7 +273,7 @@ func runRoleWorkerAssigned(repo, candidate, expectedRunID, role, assignmentID st
 	}
 	roleHash := sha256.Sum256(roleContract)
 	workflowHash := sha256.Sum256(workflowContract)
-	command := []string{bin, "--ask-for-approval", "never", "exec", "--ephemeral", "--ignore-user-config", "--sandbox", "read-only", "--json", "--output-schema", resultSchema, "-C", abs, "-"}
+	command := readOnlyWorkerCommand(bin, abs, resultSchema)
 	receipt := workerReceipt{SchemaVersion: 2, RunID: s.ID, Repository: abs, Candidate: s.Candidate, RepositoryDigest: repositoryDigestBefore, Role: role, AssignmentID: assignmentID, RoleContractDigest: hex.EncodeToString(roleHash[:]), WorkflowDigest: hex.EncodeToString(workflowHash[:]), SchemaDigest: contracts.schemaHash, ThreadID: threadID, SandboxModeRequested: "read-only", CodexVersion: strings.TrimSpace(string(versionBytes)), PromptDigest: hex.EncodeToString(promptHash[:]), OutputDigest: hex.EncodeToString(outputHash[:]), ReportDigest: reportDigest, StartedAt: started.Format(time.RFC3339), CompletedAt: time.Now().UTC().Format(time.RFC3339), Command: command, ExitStatus: 0}
 	receiptPath, err := persistWorkerReceipt(root, key, receipt)
 	if err != nil {
@@ -584,8 +584,13 @@ func loadContractSnapshot(root, workflow string, roles []string) (*workerContrac
 	return snapshot, cleanup, nil
 }
 
+func readOnlyWorkerCommand(bin, repo, resultSchema string) []string {
+	return []string{bin, "--ask-for-approval", "never", "exec", "--ephemeral", "--ignore-user-config", "--sandbox", "read-only", "--json", "--skip-git-repo-check", "--output-schema", resultSchema, "-C", repo, "-"}
+}
+
 func executeReadOnlyWorker(ctx context.Context, bin, repo, resultSchema, prompt string) (string, string, string, error) {
-	cmd := exec.CommandContext(ctx, bin, "--ask-for-approval", "never", "exec", "--ephemeral", "--ignore-user-config", "--sandbox", "read-only", "--json", "--output-schema", resultSchema, "-C", repo, "-")
+	command := readOnlyWorkerCommand(bin, repo, resultSchema)
+	cmd := exec.CommandContext(ctx, command[0], command[1:]...)
 	cmd.Stdin = strings.NewReader(prompt)
 	cmd.Env = workerEnvironment()
 	var stdout, stderr cappedBuffer

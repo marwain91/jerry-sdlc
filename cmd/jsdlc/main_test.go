@@ -2337,6 +2337,14 @@ func installLifecycleFakeCodex(t *testing.T, binDir string, finding bool) {
 	}
 	script := `#!/bin/sh
 if [ "$1" = "--version" ]; then echo "codex-fixture 1.0"; exit 0; fi
+git_check=no
+for argument in "$@"; do
+  if [ "$argument" = "--skip-git-repo-check" ]; then git_check=yes; fi
+done
+if [ "$git_check" != yes ]; then
+  echo "filesystem-only review requires --skip-git-repo-check" >&2
+  exit 92
+fi
 input=
 while IFS= read -r line; do input="$input $line"; done
 case "$input" in
