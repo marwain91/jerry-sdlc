@@ -192,7 +192,7 @@ func deliveryCheck(args []string) (result, error) {
 	evidencePath := filepath.Join(root, key, "delivery", "runs", run.ID, "checks", *id+".json")
 	reservationPath := filepath.Join(root, key, "delivery", "check-reservations", run.ID, *id+".json")
 	reservation := checkReservation{SchemaVersion: 1, RunID: run.ID, ID: *id, OwnerPID: os.Getpid(), CreatedAt: time.Now().UTC().Format(time.RFC3339Nano)}
-	if err := createCheckReservation(reservationPath, reservation); err != nil {
+	if err := reserveDeliveryCheck(statePath, root, key, run.ID, reservationPath, reservation); err != nil {
 		return nil, err
 	}
 	defer os.Remove(reservationPath)
@@ -264,6 +264,22 @@ func deliveryCheck(args []string) (result, error) {
 	}
 	passed := exitStatus == 0 && !evidence.TimedOut && !evidence.RepositoryChanged
 	return deliveryResult(run, result{"check": evidence, "path": evidencePath, "reportedPass": passed, "execution": "FULLY_PRIVILEGED_LOCAL_COMMAND"}), nil
+}
+
+func reserveDeliveryCheck(statePath, root, key, runID, path string, reservation checkReservation) error {
+	unlock, err := acquireLock(statePath)
+	if err != nil {
+		return err
+	}
+	defer unlock()
+	current, _, err := readDeliveryRun(root, key)
+	if err != nil {
+		return err
+	}
+	if current.ID != runID || current.State != "ACTIVE" {
+		return errors.New("delivery run finalized or changed before check reservation")
+	}
+	return createCheckReservation(path, reservation)
 }
 
 func deliveryRecoverCheck(args []string) (result, error) {
@@ -435,8 +451,14 @@ func deliveryVerify(args []string) (result, error) {
 	if err := validateDeliveryBinding(run, abs); err != nil {
 		return deliveryResult(run, result{"outcome": "BLOCKED", "reason": err.Error()}), nil
 	}
-	missing, recordDigests, checkDigests := []string{}, []string{}, []string{}
-	seenChecks := map[string]bool{}
+	if err := ensureNoCheckReservations(root, filepath.Join(key, "delivery"), run.ID); err != nil {
+		return deliveryResult(run, result{"outcome": "BLOCKED", "reason": err.Error()}), nil
+	}
+	checkDigests, err := validateAllDeliveryChecks(root, key, run)
+	if err != nil {
+		return deliveryResult(run, result{"outcome": "BLOCKED", "reason": err.Error()}), nil
+	}
+	missing, recordDigests := []string{}, []string{}
 	qaChecks := map[string]bool{}
 	outcome, reason := "COMPLETE", "all required role reports are clean and bound to the frozen candidate"
 	for _, role := range run.RequiredRoles {
@@ -456,19 +478,14 @@ func deliveryVerify(args []string) (result, error) {
 		if err := validateDeliveryRecord(record, run, role); err != nil {
 			return deliveryResult(run, result{"outcome": "BLOCKED", "reason": err.Error()}), nil
 		}
+		for _, checkID := range record.Report.CheckIDs {
+			if _, err := validateDeliveryCheck(root, key, run, checkID); err != nil {
+				return deliveryResult(run, result{"outcome": "BLOCKED", "reason": err.Error()}), nil
+			}
+		}
 		if contains([]string{"qa-executor", "verifier"}, role) && record.Report.Disposition == "CLEAN" {
 			if len(record.Report.CheckIDs) == 0 {
 				return deliveryResult(run, result{"outcome": "BLOCKED", "reason": "clean QA and verifier reports require successful delivery check evidence"}), nil
-			}
-			for _, checkID := range record.Report.CheckIDs {
-				checkDigest, err := validateDeliveryCheck(root, key, run, checkID)
-				if err != nil {
-					return deliveryResult(run, result{"outcome": "BLOCKED", "reason": err.Error()}), nil
-				}
-				if !seenChecks[checkID] {
-					seenChecks[checkID] = true
-					checkDigests = append(checkDigests, checkID+":"+checkDigest)
-				}
 			}
 			if role == "qa-executor" {
 				for _, id := range record.Report.CheckIDs {
@@ -666,6 +683,36 @@ func validateDeliveryReport(report deliveryReportInput) error {
 		}
 	}
 	return nil
+}
+
+// Bind the entire recorded check set, including evidence no role chose to cite.
+// A later successful check cannot silently erase an earlier failure.
+func validateAllDeliveryChecks(root, key string, run deliveryRun) ([]string, error) {
+	dir := filepath.Join(root, key, "delivery", "runs", run.ID, "checks")
+	entries, err := os.ReadDir(dir)
+	if os.IsNotExist(err) {
+		return []string{}, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	if len(entries) > 256 {
+		return nil, errors.New("too many delivery check records")
+	}
+	digests := make([]string, 0, len(entries))
+	for _, entry := range entries {
+		id := strings.TrimSuffix(entry.Name(), ".json")
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") || !validEvidenceID(id) {
+			return nil, errors.New("unexpected entry in delivery checks")
+		}
+		digest, err := validateDeliveryCheck(root, key, run, id)
+		if err != nil {
+			return nil, err
+		}
+		digests = append(digests, id+":"+digest)
+	}
+	sort.Strings(digests)
+	return digests, nil
 }
 
 func validateDeliveryCheck(root, key string, run deliveryRun, id string) (string, error) {
