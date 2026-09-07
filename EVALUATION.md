@@ -2,6 +2,8 @@
 
 Status: **not graduated**.
 
+Evaluation CLI exit codes: `0` means thresholds passed, `2` means a valid evaluation missed thresholds, and `1` means an input or execution error. Threshold failures still emit the complete JSON report on stdout. `go run` may translate the program's exit code to its own nonzero code; use the packaged CLI when distinguishing `1` from `2` matters. The workflow-routing CI step now fails on a negative evaluation result. Shell scripts collecting expected failing fixtures must handle that nonzero status explicitly rather than ignoring all errors.
+
 The owner deferred the 120-run formal benchmark on 2026-09-07 to avoid consuming a disproportionate weekly Codex allowance. Everyday workflows may iterate experimentally through normal use, but no quality-uplift or graduation claim follows from that decision. Real task outcomes should be collected gradually and the formal repeated benchmark resumed before a stable release claim.
 
 ## Synthetic evaluator harness evidence

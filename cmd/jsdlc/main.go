@@ -106,6 +106,11 @@ func main() {
 	if err := enc.Encode(out); err != nil {
 		fail(err)
 	}
+	// Preserve the evaluation report on stdout while making threshold failures
+	// observable to CI and shell callers. Other commands retain their semantics.
+	if contains([]string{"eval-triggers", "eval-workflows", "eval-quality"}, os.Args[1]) && out["passed"] != true {
+		os.Exit(2)
+	}
 }
 
 func fail(err error) {
