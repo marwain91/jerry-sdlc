@@ -20,6 +20,8 @@ jobs:
           cache: false
       - name: Test
         run: go test ./...
+      - name: Evaluate deterministic workflow routing
+        run: go run ./cmd/jsdlc eval-workflows --fixture evals/workflow-routing-suite.json --repeats 3
       - name: Check formatting
         run: test -z "$(gofmt -l cmd/jsdlc/*.go)"
       - name: Validate JSON syntax

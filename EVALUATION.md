@@ -22,6 +22,14 @@ or real cost/latency evidence.
 
 ## Reproducible classifier evidence
 
+The multiclass everyday-workflow regression suite began with 42 labelled requests and now contains 49, seven for each of seven workflows, including cross-domain terminology cases. Its first development run exposed 15 repeated misroutes across five prompts: incident documentation, pull-request parser tests, punctuation edits, production-down wording, and active degradation. Cross-domain expansion then exposed a diagnosis phrase that correctly avoided incident routing but fell through to feature work. Intent routing was corrected without weakening the labels or 95% per-workflow precision/recall thresholds; the current three-repeat run passes all 147 trials. This is deterministic router regression evidence, not implicit Codex skill-selection or Phase-3 graduation evidence.
+
+Run it in the project container:
+
+```sh
+go run ./cmd/jsdlc eval-workflows --fixture evals/workflow-routing-suite.json --repeats 3
+```
+
 Run in the project container:
 
 ```sh

@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "cases": [
+    {"id":"release-01","request":"Prepare the service for release","files":"","workflow":"release-readiness"},
+    {"id":"release-02","request":"Can we safely ship this build?","files":"","workflow":"release-readiness"},
+    {"id":"release-03","request":"Find blockers before tomorrow's launch","files":"","workflow":"release-readiness"},
+    {"id":"release-04","request":"Give me a go or no-go decision for deployment","files":"","workflow":"release-readiness"},
+    {"id":"release-05","request":"Treat this as a release candidate and verify readiness","files":"","workflow":"release-readiness"},
+    {"id":"release-06","request":"Audit the API before promoting it to production","files":"","workflow":"release-readiness"},
+    {"id":"release-07","request":"Prepare the incident-response library for public release","files":"incident/handler.go","workflow":"release-readiness"},
+
+    {"id":"feature-01","request":"Implement account export","files":"api/export.go","workflow":"feature"},
+    {"id":"feature-02","request":"Add pagination to the customer list","files":"web/customers.tsx","workflow":"feature"},
+    {"id":"feature-03","request":"Build a webhook delivery dashboard","files":"","workflow":"feature"},
+    {"id":"feature-04","request":"Refactor the cache interface","files":"cache/store.go","workflow":"feature"},
+    {"id":"feature-05","request":"Update the architecture documentation about incident handling","files":"docs/architecture.md","workflow":"feature"},
+    {"id":"feature-06","request":"Add tests for the pull request parser","files":"parser_test.go","workflow":"feature"},
+    {"id":"feature-07","request":"Build an incident timeline viewer","files":"web/timeline.tsx","workflow":"feature"},
+
+    {"id":"bug-fix-01","request":"Fix this bug in the account exporter","files":"api/export.go","workflow":"bug-fix"},
+    {"id":"bug-fix-02","request":"Fix the crash when the queue is empty","files":"queue/worker.go","workflow":"bug-fix"},
+    {"id":"bug-fix-03","request":"Correct the regression in session renewal","files":"auth/session.go","workflow":"bug-fix"},
+    {"id":"bug-fix-04","request":"Repair the bug that duplicates invoices","files":"billing/invoice.go","workflow":"bug-fix"},
+    {"id":"bug-fix-05","request":"Fix the failure in CSV imports","files":"import/csv.go","workflow":"bug-fix"},
+    {"id":"bug-fix-06","request":"Fix this error returned for valid requests","files":"handler.go","workflow":"bug-fix"},
+    {"id":"bug-fix-07","request":"Fix the crash in the incident handler","files":"incident/handler.go","workflow":"bug-fix"},
+
+    {"id":"diagnosis-01","request":"Investigate this bug and explain the cause","files":"api/export.go","workflow":"bug-diagnosis"},
+    {"id":"diagnosis-02","request":"Find why the worker stops after reconnecting","files":"worker.go","workflow":"bug-diagnosis"},
+    {"id":"diagnosis-03","request":"Why does this fail only on Mondays?","files":"scheduler.go","workflow":"bug-diagnosis"},
+    {"id":"diagnosis-04","request":"Investigate the memory leak without changing code","files":"cache.go","workflow":"bug-diagnosis"},
+    {"id":"diagnosis-05","request":"Determine the root cause of duplicate events","files":"events.go","workflow":"bug-diagnosis"},
+    {"id":"diagnosis-06","request":"Investigate the regression and report what broke","files":"search.go","workflow":"bug-diagnosis"},
+    {"id":"diagnosis-07","request":"Investigate why the incident parser rejects valid fixtures","files":"incident/parser.go","workflow":"bug-diagnosis"},
+
+    {"id":"pr-01","request":"Review this PR for correctness","files":"","workflow":"pr-review"},
+    {"id":"pr-02","request":"Perform a code review of the current branch","files":"","workflow":"pr-review"},
+    {"id":"pr-03","request":"Review the diff for security regressions","files":"auth.go","workflow":"pr-review"},
+    {"id":"pr-04","request":"PR review only; do not edit anything","files":"","workflow":"pr-review"},
+    {"id":"pr-05","request":"Look over this pull request and list findings","files":"","workflow":"pr-review"},
+    {"id":"pr-06","request":"Code review the database changes","files":"db/schema.sql","workflow":"pr-review"},
+    {"id":"pr-07","request":"Review this PR changing the incident dashboard","files":"web/incidents.tsx","workflow":"pr-review"},
+
+    {"id":"trivial-01","request":"Fix this typo in the README","files":"README.md","workflow":"trivial-change"},
+    {"id":"trivial-02","request":"Correct the spelling in the button label","files":"web/copy.ts","workflow":"trivial-change"},
+    {"id":"trivial-03","request":"Make this tiny change to the comment","files":"worker.go","workflow":"trivial-change"},
+    {"id":"trivial-04","request":"Apply a small docs change to the example","files":"docs/example.md","workflow":"trivial-change"},
+    {"id":"trivial-05","request":"This is a trivial change: rename the heading","files":"README.md","workflow":"trivial-change"},
+    {"id":"trivial-06","request":"Fix punctuation in the release documentation","files":"docs/release.md","workflow":"trivial-change"},
+    {"id":"trivial-07","request":"Correct a typo in the incident runbook","files":"docs/incidents.md","workflow":"trivial-change"},
+
+    {"id":"incident-01","request":"Investigate the production outage","files":"","workflow":"incident"},
+    {"id":"incident-02","request":"Production is down; determine the impact","files":"","workflow":"incident"},
+    {"id":"incident-03","request":"Coordinate this payment incident","files":"","workflow":"incident"},
+    {"id":"incident-04","request":"The API outage is ongoing; find a safe mitigation","files":"","workflow":"incident"},
+    {"id":"incident-05","request":"Investigate active production degradation","files":"","workflow":"incident"},
+    {"id":"incident-06","request":"Handle this security incident and preserve evidence","files":"","workflow":"incident"},
+    {"id":"incident-07","request":"Respond to this incident and establish a timeline","files":"","workflow":"incident"}
+  ]
+}

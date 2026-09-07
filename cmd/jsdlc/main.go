@@ -26,7 +26,7 @@ type result map[string]any
 
 func main() {
 	if len(os.Args) < 2 {
-		fail(errors.New("usage: jsdlc <adapters|validate-adapter|packs|resolve-collision|validate-workflow|doctor|classify|eval-triggers|eval-quality|roles|start|status|transition|upgrade-state|rollback-state|check|recover-check|worker|team|adjudicate|authorize-correction|finish-correction|verify>"))
+		fail(errors.New("usage: jsdlc <adapters|validate-adapter|packs|resolve-collision|validate-workflow|doctor|classify|eval-triggers|eval-workflows|eval-quality|roles|start|status|transition|upgrade-state|rollback-state|check|recover-check|worker|team|adjudicate|authorize-correction|finish-correction|verify>"))
 	}
 	var out result
 	var err error
@@ -47,6 +47,8 @@ func main() {
 		out, err = classify(os.Args[2:])
 	case "eval-triggers":
 		out, err = evalTriggers(os.Args[2:])
+	case "eval-workflows":
+		out, err = evalWorkflows(os.Args[2:])
 	case "eval-quality":
 		out, err = evalQuality(os.Args[2:])
 	case "roles":
@@ -227,7 +229,7 @@ func classify(args []string) (result, error) {
 	if releaseIntent(text) {
 		workflow, risk = "release-readiness", "HIGH"
 	}
-	if hasAny(text, "incident", "outage", "production down") {
+	if incidentIntent(text) {
 		workflow, risk = "incident", "HIGH"
 	}
 	triggers := []string{}
@@ -243,19 +245,44 @@ func classify(args []string) (result, error) {
 }
 
 func classifyDeliveryWorkflow(text string) string {
-	if hasAny(text, "pull request", "pr review", "review this pr", "review the diff", "code review") {
+	if prReviewIntent(text) {
 		return "pr-review"
 	}
-	if hasAny(text, "investigate this bug", "diagnose the bug", "root cause", "why is this failing") {
+	if hasAny(text, "investigate this bug", "diagnose the bug", "diagnose this", "root cause", "why is this failing", "why does this fail", "find why", "investigate why", "investigate the failure", "investigate the crash", "investigate the error", "investigate the regression", "investigate the memory leak") {
 		return "bug-diagnosis"
 	}
-	if hasAny(text, "fix this bug", "fix the bug", "bug fix", "regression", "broken behavior", "fix this error", "fix the failure") {
+	if hasAny(text, "fix this bug", "fix the bug", "bug fix", "fix the regression", "broken behavior", "fix this error", "fix the error", "fix the failure", "fix the crash", "repair the bug", "correct the regression") {
 		return "bug-fix"
 	}
-	if hasAny(text, "typo", "spelling", "small docs change", "tiny change", "trivial change") {
+	if hasAny(text, "typo", "spelling", "punctuation", "small docs change", "tiny change", "trivial change") {
 		return "trivial-change"
 	}
 	return "feature"
+}
+
+func prReviewIntent(text string) bool {
+	trimmed := strings.TrimSpace(text)
+	for _, prefix := range []string{"pr review", "review this pr", "review the diff", "code review"} {
+		if strings.HasPrefix(trimmed, prefix) {
+			return true
+		}
+	}
+	return hasAny(text, "perform ", "review ", "look over ", "audit ", "inspect ") && hasAny(text, "pull request", "current branch", "commit", "changes", "code review")
+}
+
+func incidentIntent(text string) bool {
+	for _, prefix := range []string{"add ", "build ", "create ", "document ", "explain ", "test ", "update ", "write "} {
+		if strings.HasPrefix(strings.TrimSpace(text), prefix) {
+			return false
+		}
+	}
+	if hasAny(text, "production is down", "service is down", "site is down", "active production degradation", "ongoing outage", "outage is ongoing") {
+		return true
+	}
+	if hasAny(text, "coordinate ", "handle ", "respond to ") && strings.Contains(text, "incident") {
+		return true
+	}
+	return hasAny(text, "investigate ", "mitigate ") && hasAny(text, "this incident", "active incident", "security incident", "payment incident", "outage", "production degradation", "production down")
 }
 
 func triggerPresent(text, trigger string) bool {
@@ -862,6 +889,10 @@ func validAssurance(v string) bool {
 
 func validWorkflow(v string) bool {
 	return v == "release-readiness"
+}
+
+func validClassifiedWorkflow(v string) bool {
+	return contains([]string{"release-readiness", "feature", "bug-fix", "bug-diagnosis", "pr-review", "trivial-change", "incident"}, v)
 }
 
 func hasAny(s string, terms ...string) bool {

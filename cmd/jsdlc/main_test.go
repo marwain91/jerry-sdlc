@@ -489,6 +489,32 @@ func TestRolesMatchEverydayWorkflowTeams(t *testing.T) {
 	}
 }
 
+func TestEvalWorkflowsRegressionSuite(t *testing.T) {
+	got, err := evalWorkflows([]string{"--fixture", "../../evals/workflow-routing-suite.json", "--repeats", "3"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got["passed"] != true || got["accuracy"] != float64(1) || got["failureCount"] != 0 || got["scope"] != "DETERMINISTIC_MULTICLASS_ROUTER_ONLY_NOT_IMPLICIT_SKILL_SELECTION" {
+		t.Fatalf("unexpected workflow evaluation: %#v", got)
+	}
+}
+
+func TestEvalWorkflowsRejectsWeakOrAmbiguousFixtures(t *testing.T) {
+	for name, body := range map[string]string{
+		"too-small": `{"schemaVersion":1,"cases":[{"id":"one","request":"fix this bug","files":"","workflow":"bug-fix"}]}`,
+		"unknown":   `{"schemaVersion":1,"cases":[{"id":"one","request":"fix this bug","files":"","workflow":"invented"}]}`,
+		"trailing":  `{"schemaVersion":1,"cases":[]} {}`,
+	} {
+		path := filepath.Join(t.TempDir(), name+".json")
+		if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := evalWorkflows([]string{"--fixture", path}); err == nil {
+			t.Errorf("accepted invalid %s fixture", name)
+		}
+	}
+}
+
 func TestReleaseIntentComposesActionAndReleaseConcept(t *testing.T) {
 	for _, request := range []string{
 		"Decide whether the gateway can be promoted to production",
