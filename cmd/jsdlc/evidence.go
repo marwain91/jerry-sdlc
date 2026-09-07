@@ -490,9 +490,22 @@ func persistTeamEvidence(root, key string, evidence teamEvidence) (string, strin
 	if err := validateTeamEvidence(evidence); err != nil {
 		return "", "", err
 	}
-	b, err := json.MarshalIndent(evidence, "", "  ")
-	if err != nil {
+	// Reports are RawMessage values whose compact bytes are bound to receipts.
+	// HTML escaping would rewrite &, < and > inside those reports after hashing.
+	var serialized bytes.Buffer
+	encoder := json.NewEncoder(&serialized)
+	encoder.SetEscapeHTML(false)
+	encoder.SetIndent("", "  ")
+	if err := encoder.Encode(evidence); err != nil {
 		return "", "", err
+	}
+	b := serialized.Bytes()
+	var persisted teamEvidence
+	if err := json.Unmarshal(b, &persisted); err != nil {
+		return "", "", err
+	}
+	if err := validateTeamEvidence(persisted); err != nil {
+		return "", "", fmt.Errorf("serialized team evidence is invalid: %w", err)
 	}
 	digest := sha256.Sum256(b)
 	digestText := hex.EncodeToString(digest[:])

@@ -2365,7 +2365,7 @@ esac
 if [ "$domain" = "qa-execution" ]; then
   ` + disposition + `
 elif [ "$domain" = "qa-architecture" ]; then
-  report='{\"disposition\":\"CLEAN\",\"evidence\":[\"candidate inspected\"],\"findings\":[],\"limitations\":[],\"domains\":[]}'
+  report='{\"disposition\":\"CLEAN\",\"evidence\":[\"candidate inspected & bounded <read-only>\"],\"findings\":[],\"limitations\":[],\"domains\":[]}'
 elif [ "$domain" = "independent-verification" ]; then
   report='{\"disposition\":\"INCONCLUSIVE\",\"evidence\":[],\"findings\":[],\"limitations\":[\"local fake adapter cannot attest checks or independence\"],\"domains\":[]}'
 else
