@@ -1,6 +1,6 @@
 # Jerry SDLC implementation plan
 
-Status: revision 5. The local control plane, release-readiness vertical slice, evaluation harness, and inert portability contracts are implemented experimentally. Graduation, workflow/pack activation, publication, and release remain gated by the exit criteria below.
+Status: revision 6. The control plane, release-readiness vertical slice, evaluation harness, and inert portability contracts are implemented experimentally and the source repository is public under Apache-2.0. Graduation, workflow/pack activation, and a stable release remain gated by the exit criteria below.
 
 ## 1. Product outcome
 

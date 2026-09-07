@@ -33,4 +33,4 @@ Freeze holdout fixtures in a commit before first execution. Preserve the first r
 
 ## Licensing gate
 
-No license has been selected yet. Until the owner adds one explicitly, the repository is source-visible but not licensed for reuse or redistribution. Contributions must not assume a future license.
+By contributing, you agree that your contributions will be licensed under the Apache License 2.0.
