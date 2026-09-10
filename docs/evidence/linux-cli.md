@@ -11,7 +11,7 @@ From the repository root:
 podman run --rm --userns=keep-id \
   -e GOTELEMETRY=off -e GOCACHE=/tmp/go-cache \
   -v "$PWD:/src:ro,z" -w /src golang:1.23-alpine \
-  sh evidence/run-linux-cli-matrix.sh
+  sh scripts/check-linux-cli.sh
 ```
 
 Expected terminal marker: `LINUX_CLI_MATRIX_PASS`.

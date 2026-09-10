@@ -69,5 +69,4 @@ No observation authorizes publishing, deployment, or a release.
 
 Before resuming the formal benchmark, obtain owner approval for the corpus and
 budget, establish adjudicated ground truth, and run the repeated baseline/Jerry
-protocol and thresholds described in [EVALUATION.md](../EVALUATION.md) and
-[PLAN.md](../PLAN.md). Do not retrofit an invented baseline onto these records.
+protocol and [published evaluation thresholds](../evaluation.md#graduation-requirements). Do not retrofit an invented baseline onto these records.

@@ -6,7 +6,7 @@ Environment: rootless `golang:1.23-alpine` project container, repository mounted
 
 ## Outcome
 
-The current ten-assignment `team` workflow completed with ten distinct reported Codex thread IDs and persisted a candidate-, contract-, schema-, prompt-, transcript-, report-, role-, and assignment-bound receipt for every pass. The aggregate result was:
+The ten-assignment `team` workflow at that candidate completed with ten distinct reported Codex thread IDs and persisted a candidate-, contract-, schema-, prompt-, transcript-, report-, role-, and assignment-bound receipt for every pass. The aggregate result was:
 
 - assurance: `MANAGED_SEPARATE_PASSES`
 - worker observation: `OBSERVED_DISTINCT_SUBPROCESSES`
@@ -18,7 +18,7 @@ The current ten-assignment `team` workflow completed with ten distinct reported 
 
 Every assignment independently encountered the same environment limitation when attempting repository commands: nested Codex bubblewrap could not mount `devpts` inside the rootless project container (`bwrap: Can't mount devpts on /newroot/dev/pts: Permission denied`). Workers therefore returned `BLOCKED` domains with no invented checked evidence. The independent verifier reproduced the failure and did not accept earlier reports as conclusions. No worker edited the read-only candidate, accessed production, or attempted deployment, publication, tagging, or release.
 
-This is a successful fail-closed remediation observation, not a candidate-quality assessment and not trusted independence evidence. The project execution policy forbids moving the Go runtime/test workflow onto the control host merely to bypass nested sandboxing. A model-backed repository inspection therefore remains blocked until a container-compatible trusted runtime adapter exists.
+This is a successful fail-closed remediation observation, not a candidate-quality assessment and not trusted independence evidence. That environment's execution policy required project commands to remain in containers. The observation therefore leaves model-backed repository inspection unverified in that environment; it does not justify weakening the execution policy.
 
 ## Integration defect found during the rerun
 

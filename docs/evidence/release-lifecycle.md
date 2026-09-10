@@ -10,10 +10,9 @@ From the repository root:
 
 ```sh
 podman run --rm --userns=keep-id \
-  -e HOME=/tmp/jsdlc-fixture-home \
   -e GOTELEMETRY=off -e GOCACHE=/tmp/go-cache \
   -v "$PWD:/src:ro,z" -w /src golang:1.23-alpine \
-  sh evidence/run-fake-release-lifecycle.sh
+  sh scripts/check-release-lifecycle.sh
 ```
 
 Expected terminal marker: `FAKE_RELEASE_LIFECYCLE_PASS`.
@@ -34,4 +33,3 @@ Expected terminal marker: `FAKE_RELEASE_LIFECYCLE_PASS`.
 The fixture asserts the exact outcome sequence and fails if any stage returns
 `READY`. The fake adapter provides deterministic protocol exercise only; it is
 not evidence of model quality, trusted identity, isolation, or release safety.
-

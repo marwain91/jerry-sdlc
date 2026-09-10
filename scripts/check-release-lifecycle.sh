@@ -5,7 +5,6 @@ set -eu
 # adapter binaries, workflow state, and authorization inputs below t.TempDir.
 repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 go_bin=${GO_BIN:-/usr/local/go/bin/go}
-export HOME=${HOME:-/tmp/jsdlc-fixture-home}
 export GOTELEMETRY=off
 export GOCACHE=${GOCACHE:-/tmp/go-cache}
 
@@ -19,4 +18,3 @@ if printf '%s\n' "$output" | grep -q 'READY'; then
   test -z "$unexpected"
 fi
 printf '%s\n' FAKE_RELEASE_LIFECYCLE_PASS
-
