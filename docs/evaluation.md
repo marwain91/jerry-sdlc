@@ -88,6 +88,29 @@ go run ./cmd/jsdlc eval-triggers --fixture evals/holdout-9-trigger-suite.json --
 
 The command evaluates the deterministic `jsdlc classify` router only. It does not measure implicit Codex skill selection.
 
+## Development workflow exercises
+
+[Delivery behavior scenarios](../evals/delivery-behavior-scenarios.json) exercise
+original-path diagnosis, visible results, retained behavior, authorization continuity,
+task closure, consumer/environment coverage, proportionate checks, and candidate
+preservation. They are synthetic development cases with explicit review rubrics,
+not private transcripts or input to `eval-workflows` or `eval-quality`.
+
+For a decision smoke check, give a separate pass the candidate's role/workflow
+instructions and only each case's `id` and `prompt`. Ask for the next actions and
+permitted completion claim; do not execute the hypothetical project actions.
+Keep `mustInclude` and `mustNotInclude` for the adjudicating pass. Score each
+criterion against a cited response passage, retaining omissions, contradictions,
+and uncertainty. No response or an interrupted case is untested, not passed.
+Record candidate/contract identity, cases, available model identity, responses,
+adjudication, and costs where available outside the frozen repository.
+
+This tests stated decisions only. It does not establish that the agent performs
+the checks, preserves files, obeys a hold in a real tool environment, or improves
+real-task outcomes. A real execution evaluation needs isolated task environments
+and observed actions. These visible development cases are not fresh holdouts;
+tuned responses cannot establish graduation or replace the published benchmark.
+
 ## Missing graduation evidence
 
 - 20–50 historical baseline-versus-Jerry task runs and withheld defect fixtures

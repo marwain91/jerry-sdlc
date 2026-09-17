@@ -1,6 +1,6 @@
 ---
 name: jsdlc-orchestrate
-description: Coordinate risk-aware software planning, implementation, QA, code review, release readiness, and incident work. Use when a user asks to plan, build, implement, fix, test, review, harden, document, prepare a release, verify a deployment, or investigate a software incident. For small factual questions or read-only explanations with no delivery work, do not invoke.
+description: Coordinate product design, UX, implementation, QA, code review, release readiness, and incident work. Use for software planning and delivery, interface or user-flow design and critique, fixes, testing, reviews, and release or incident work. For small factual questions or read-only explanations with no delivery or design assessment, do not invoke.
 ---
 
 # Jerry SDLC orchestrator
@@ -12,6 +12,7 @@ Select the smallest workflow that provides credible evidence. Activation needs n
 1. Inspect repository instructions and changed scope. All commands must run in the repository-authorized environment, including containers when required.
 2. The bundled CLI is `../../scripts/jsdlc` relative to this skill directory. Prefix every subcommand below and in references with that path; it is not assumed to be on PATH. Run `doctor` there. Its independence probe is diagnostic only.
 3. Read [delivery-workflows.md](references/delivery-workflows.md) for routing, risk, and everyday roles. Prefer the higher risk between deterministic classification and judgment.
+   Assess experience scope separately from engineering risk: `none`, `focused`, or `full`. For user-facing work or design assessment, read [product-design-ux.md](references/product-design-ux.md) before planning or editing. Include the selected design roles in the team; do not wait for the user to request UX explicitly.
 4. For **release readiness only**, read [release-readiness.md](references/release-readiness.md) and its control contract. Use its formal release team and `verify`.
 5. For **everyday work**, follow the delivery guide's candidate-freeze, `delivery-*` evidence, and completion procedure. Do not run the formal release `team` or `verify` as an everyday completion step.
 
@@ -32,6 +33,8 @@ When CLI inventory is available, capture `codex plugin list --json` in a private
 For a reported competitor, build `schemas/collision-input.schema.json` evidence and run `resolve-collision`. Use `RUNTIME_OBSERVED` for registry-confirmed inventory and `CALLER_DECLARED` for user/runtime declarations. Follow explicit selection, resume only the matching active run, and stop unresolved collisions at `OWNER_GATE`. Resolution launches nothing.
 
 ## Completion
+
+For planning-only requests, deliver the plan/design brief and its open decisions without implementation or a `delivery-*` completion claim. Read-only design reviews follow the review scope and may report findings without making corrections.
 
 Use only the selected workflow's verifier. Report observed engineering results before assurance limits, naming concrete missing coverage or failures. If independent attestation is the only gap, say: “Engineering checks passed; high-assurance independent attestation is unavailable.” Do not suggest rollback or a manual READY override for that reason.
 

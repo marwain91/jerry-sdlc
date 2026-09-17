@@ -27,6 +27,26 @@ var deliveryWorkflowRoles = map[string][]string{
 	"incident":       {"incident-commander", "debugger", "qa-executor", "verifier"},
 }
 
+// Experience is independent of delivery risk. An omitted value retains the
+// original backend contract, including the readability of existing run state.
+func resolveDeliveryRoles(workflow, experience string) ([]string, error) {
+	base, ok := deliveryWorkflowRoles[workflow]
+	if !ok {
+		return nil, fmt.Errorf("unsupported everyday workflow %q", workflow)
+	}
+	if !contains([]string{"", "none", "focused", "full"}, experience) {
+		return nil, errors.New("experience must be none, focused, or full")
+	}
+	selected := append([]string(nil), base...)
+	if experience == "full" {
+		selected = append(selected, "product-designer")
+	}
+	if experience == "focused" || experience == "full" {
+		selected = append(selected, "ux-reviewer")
+	}
+	return selected, nil
+}
+
 var deliveryCompletionMeanings = map[string]string{
 	"feature":        "The everyday feature workflow contract is satisfied for this frozen repository candidate.",
 	"bug-fix":        "The everyday bug-fix workflow contract is satisfied for this frozen repository candidate.",
@@ -41,15 +61,17 @@ type deliveryCatalog struct {
 	Workflows     map[string]deliveryContract `json:"workflows"`
 }
 type deliveryContract struct {
-	Roles                  []string `json:"roles"`
-	CompletionMeaning      string   `json:"completionMeaning"`
-	ReleaseReadinessEffect string   `json:"releaseReadinessEffect"`
+	Roles                  []string            `json:"roles"`
+	ExperienceRoles        map[string][]string `json:"experienceRoles"`
+	CompletionMeaning      string              `json:"completionMeaning"`
+	ReleaseReadinessEffect string              `json:"releaseReadinessEffect"`
 }
 type deliveryRun struct {
 	SchemaVersion  int      `json:"schemaVersion"`
 	ID             string   `json:"id"`
 	Workflow       string   `json:"workflow"`
 	Risk           string   `json:"risk"`
+	Experience     string   `json:"experience,omitempty"`
 	State          string   `json:"state"`
 	Repository     string   `json:"repository"`
 	Candidate      string   `json:"candidate"`
@@ -96,10 +118,18 @@ func deliveryStart(args []string) (result, error) {
 	candidate := fs.String("candidate", "", "frozen candidate label")
 	workflow := fs.String("workflow", "", "everyday workflow")
 	risk := fs.String("risk", "NORMAL", "LOW, NORMAL, or HIGH")
+	experience := fs.String("experience", "none", "none, focused, or full product/UX involvement")
 	if err := fs.Parse(args); err != nil {
 		return nil, err
 	}
 	validRisk := contains([]string{"LOW", "NORMAL"}, *risk) || *workflow == "incident" && *risk == "HIGH"
+	if *experience == "" {
+		return nil, errors.New("explicit --experience cannot be empty")
+	}
+	selectedRoles, err := resolveDeliveryRoles(*workflow, *experience)
+	if err != nil {
+		return nil, err
+	}
 	if fs.NArg() != 0 || strings.TrimSpace(*candidate) != *candidate || len(*candidate) < 1 || len(*candidate) > 256 || !validDeliveryWorkflow(*workflow) || !validRisk {
 		return nil, errors.New("valid --candidate, --workflow, and --risk are required; positional arguments are forbidden")
 	}
@@ -111,17 +141,20 @@ func deliveryStart(args []string) (result, error) {
 	if err != nil {
 		return nil, err
 	}
-	catalog, contractDigest, err := loadDeliveryCatalog(*workflow)
+	_, contractDigest, err := loadDeliveryCatalog(*workflow, *experience)
 	if err != nil {
 		return nil, err
 	}
-	roles := catalog.Workflows[*workflow].Roles
+	roles := selectedRoles
 	id, err := newRunID("delivery-" + key)
 	if err != nil {
 		return nil, err
 	}
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	run := deliveryRun{SchemaVersion: 1, ID: id, Workflow: *workflow, Risk: *risk, State: "ACTIVE", Repository: abs, Candidate: *candidate, ContentDigest: contentDigest, ContractDigest: contractDigest, RequiredRoles: append([]string(nil), roles...), CreatedAt: now, UpdatedAt: now}
+	if *experience != "none" {
+		run.Experience = *experience
+	}
 	dir := filepath.Join(root, key, "delivery")
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return nil, err
@@ -483,9 +516,9 @@ func deliveryVerify(args []string) (result, error) {
 				return deliveryResult(run, result{"outcome": "BLOCKED", "reason": err.Error()}), nil
 			}
 		}
-		if contains([]string{"qa-executor", "verifier"}, role) && record.Report.Disposition == "CLEAN" {
+		if contains([]string{"qa-executor", "verifier", "ux-reviewer"}, role) && record.Report.Disposition == "CLEAN" {
 			if len(record.Report.CheckIDs) == 0 {
-				return deliveryResult(run, result{"outcome": "BLOCKED", "reason": "clean QA and verifier reports require successful delivery check evidence"}), nil
+				return deliveryResult(run, result{"outcome": "BLOCKED", "reason": "clean QA, verifier, and UX reviewer reports require successful delivery check evidence"}), nil
 			}
 			if role == "qa-executor" {
 				for _, id := range record.Report.CheckIDs {
@@ -575,7 +608,7 @@ func deliveryCancel(args []string) (result, error) {
 	return deliveryResult(run, result{"outcome": "CANCELLED"}), nil
 }
 
-func loadDeliveryCatalog(workflow string) (deliveryCatalog, string, error) {
+func loadDeliveryCatalog(workflow string, experience string) (deliveryCatalog, string, error) {
 	path := filepath.Join(os.Getenv("JSDLC_PLUGIN_ROOT"), "workflows", "everyday-delivery.json")
 	b, err := readBoundedRegularFile(path, 128*1024)
 	if err != nil {
@@ -593,13 +626,19 @@ func loadDeliveryCatalog(workflow string) (deliveryCatalog, string, error) {
 		if !ok || !equalStrings(c.Roles, roles) || c.CompletionMeaning != deliveryCompletionMeanings[name] || c.ReleaseReadinessEffect != "NONE" {
 			return deliveryCatalog{}, "", fmt.Errorf("everyday workflow %q does not match runtime policy", name)
 		}
+		if len(c.ExperienceRoles) != 2 || !equalStrings(c.ExperienceRoles["focused"], []string{"ux-reviewer"}) || !equalStrings(c.ExperienceRoles["full"], []string{"product-designer", "ux-reviewer"}) {
+			return deliveryCatalog{}, "", fmt.Errorf("everyday workflow %q experience policy does not match runtime policy", name)
+		}
 	}
-	roles, ok := deliveryWorkflowRoles[workflow]
-	if !ok {
-		return deliveryCatalog{}, "", errors.New("unsupported everyday workflow for contract snapshot")
+	roles, err := resolveDeliveryRoles(workflow, experience)
+	if err != nil {
+		return deliveryCatalog{}, "", err
 	}
 	h := sha256.New()
 	_, _ = h.Write(b)
+	if experience != "" && experience != "none" {
+		_, _ = io.WriteString(h, "experience:"+experience+"\x00")
+	}
 	schemaBytes, err := readBoundedRegularFile(filepath.Join(os.Getenv("JSDLC_PLUGIN_ROOT"), "schemas", "delivery-report-input.schema.json"), 128*1024)
 	if err != nil {
 		return deliveryCatalog{}, "", err
@@ -627,7 +666,11 @@ func readDeliveryRun(root, key string) (deliveryRun, string, error) {
 		return deliveryRun{}, path, err
 	}
 	validRisk := contains([]string{"LOW", "NORMAL"}, run.Risk) || run.Workflow == "incident" && run.Risk == "HIGH"
-	if run.SchemaVersion != 1 || !validDeliveryWorkflow(run.Workflow) || !validRisk || !contains([]string{"ACTIVE", "COMPLETE", "ISSUES", "INCOMPLETE", "BLOCKED", "CANCELLED"}, run.State) || !validMigrationID(run.ID) || !filepath.IsAbs(run.Repository) || filepath.Clean(run.Repository) != run.Repository || strings.TrimSpace(run.Candidate) != run.Candidate || len(run.Candidate) < 1 || len(run.Candidate) > 256 || !validSHA256(run.ContentDigest) || !validSHA256(run.ContractDigest) || run.EvidenceDigest != "" && !validSHA256(run.EvidenceDigest) || !equalStrings(run.RequiredRoles, deliveryWorkflowRoles[run.Workflow]) || parseRFC3339(run.CreatedAt) != nil || parseRFC3339(run.UpdatedAt) != nil {
+	roles, roleErr := resolveDeliveryRoles(run.Workflow, run.Experience)
+	if roleErr != nil || !equalStrings(run.RequiredRoles, roles) {
+		return deliveryRun{}, path, errors.New("persisted everyday experience roles are invalid")
+	}
+	if run.SchemaVersion != 1 || !validDeliveryWorkflow(run.Workflow) || !validRisk || !contains([]string{"ACTIVE", "COMPLETE", "ISSUES", "INCOMPLETE", "BLOCKED", "CANCELLED"}, run.State) || !validMigrationID(run.ID) || !filepath.IsAbs(run.Repository) || filepath.Clean(run.Repository) != run.Repository || strings.TrimSpace(run.Candidate) != run.Candidate || len(run.Candidate) < 1 || len(run.Candidate) > 256 || !validSHA256(run.ContentDigest) || !validSHA256(run.ContractDigest) || run.EvidenceDigest != "" && !validSHA256(run.EvidenceDigest) || parseRFC3339(run.CreatedAt) != nil || parseRFC3339(run.UpdatedAt) != nil {
 		return deliveryRun{}, path, errors.New("persisted everyday delivery state is invalid")
 	}
 	return run, path, nil
@@ -644,7 +687,7 @@ func validateDeliveryBinding(run deliveryRun, repo string) error {
 	if digest != run.ContentDigest {
 		return errors.New("frozen everyday delivery candidate content changed")
 	}
-	_, contractDigest, err := loadDeliveryCatalog(run.Workflow)
+	_, contractDigest, err := loadDeliveryCatalog(run.Workflow, run.Experience)
 	if err != nil {
 		return err
 	}

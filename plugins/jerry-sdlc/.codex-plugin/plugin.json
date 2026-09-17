@@ -1,15 +1,15 @@
 {
   "name": "jerry-sdlc",
-  "version": "0.1.0+codex.20260907143725",
-  "description": "Risk-aware, evidence-driven multi-agent software delivery workflows for Codex.",
+  "version": "0.1.0+codex.20260908085045",
+  "description": "Product design, UX, and risk-aware, evidence-driven software delivery workflows for Codex.",
   "author": {
     "name": "Jerry SDLC contributors"
   },
   "skills": "./skills/",
   "interface": {
     "displayName": "Jerry SDLC",
-    "shortDescription": "Multi-agent planning, QA, review, and release readiness.",
-    "longDescription": "Automatically selects risk-aware SDLC workflows and coordinates narrow planning, QA, specialist review, correction, and verification roles with truthful assurance labels.",
+    "shortDescription": "Product design, UX, planning, QA, and release readiness.",
+    "longDescription": "Selects risk-aware SDLC workflows and proportionate product design and UX passes for human-facing changes, with candidate-bound planning, QA, review, and verification evidence and truthful assurance labels.",
     "developerName": "Jerry SDLC contributors",
     "category": "Productivity",
     "capabilities": [],

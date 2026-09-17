@@ -255,18 +255,65 @@ func classify(args []string) (result, error) {
 	}
 	triggers := []string{}
 	seenTriggers := map[string]bool{}
-	for _, pair := range [][2]string{{"auth", "security"}, {"authentication", "security"}, {"authorization", "security"}, {"migration", "data-migration"}, {".sql", "data-migration"}, {"api", "api-compatibility"}, {"ui", "ux-accessibility"}} {
+	for _, pair := range [][2]string{{"auth", "security"}, {"authentication", "security"}, {"authorization", "security"}, {"migration", "data-migration"}, {".sql", "data-migration"}, {"api", "api-compatibility"}} {
 		if triggerPresent(text, pair[0]) && !seenTriggers[pair[1]] {
 			triggers = append(triggers, pair[1])
 			seenTriggers[pair[1]] = true
 			risk = "HIGH"
 		}
 	}
-	return result{"workflow": workflow, "risk": risk, "triggers": triggers, "semanticReviewRequired": true}, nil
+	experience := "none"
+	for _, term := range []string{"ui", "ux", "interface", "usability", "user interface", "user experience", "user-facing", "accessibility", "a11y", "screen reader", "keyboard navigation", "responsive", "onboarding", "checkout", "dashboard", "navigation", "empty state", "error message", "microcopy", "design system", "frontend", "front-end", "button", "modal", "form", "screen", "wizard", "menu", "cli", "command-line", "help text", "interactive prompt", "confirmation prompt", "transactional email", "notification copy", "report layout", ".tsx", ".jsx", ".vue", ".svelte", ".css", ".scss", ".html", "components/", "pages/", "views/", "screens/"} {
+		if experienceTriggerPresent(text, term) {
+			experience = "focused"
+			if workflow == "feature" && !strings.HasPrefix(strings.ToLower(strings.TrimSpace(*req)), "fix ") {
+				experience = "full"
+			}
+			triggers = append(triggers, "ux-accessibility")
+			break
+		}
+	}
+	if experience == "none" && designReviewIntent(text) {
+		experience = "focused"
+		triggers = append(triggers, "ux-accessibility")
+	}
+	return result{"workflow": workflow, "risk": risk, "experience": experience, "triggers": triggers, "semanticReviewRequired": true}, nil
+}
+
+func experienceTriggerPresent(text, term string) bool {
+	if strings.HasSuffix(term, "/") {
+		for offset := 0; offset < len(text); {
+			index := strings.Index(text[offset:], term)
+			if index < 0 {
+				return false
+			}
+			index += offset
+			if index == 0 || !isTriggerWordByte(text[index-1]) {
+				return true
+			}
+			offset = index + len(term)
+		}
+		return false
+	}
+	if strings.HasPrefix(term, ".") {
+		for offset := 0; offset < len(text); {
+			index := strings.Index(text[offset:], term)
+			if index < 0 {
+				return false
+			}
+			after := offset + index + len(term)
+			if after == len(text) || !isTriggerWordByte(text[after]) {
+				return true
+			}
+			offset = after
+		}
+		return false
+	}
+	return triggerPresent(text, term)
 }
 
 func classifyDeliveryWorkflow(text string) string {
-	if prReviewIntent(text) {
+	if prReviewIntent(text) || designReviewIntent(text) {
 		return "pr-review"
 	}
 	if hasAny(text, "investigate this bug", "diagnose the bug", "diagnose this", "root cause", "why is this failing", "why does this fail", "find why", "investigate why", "investigate the failure", "investigate the crash", "investigate the error", "investigate the regression", "investigate the memory leak") {
@@ -279,6 +326,35 @@ func classifyDeliveryWorkflow(text string) string {
 		return "trivial-change"
 	}
 	return "feature"
+}
+
+func designReviewIntent(text string) bool {
+	text = strings.TrimSpace(text)
+	review := false
+	for _, prefix := range []string{"review ", "critique ", "assess ", "evaluate ", "give feedback on ", "give me feedback on "} {
+		if strings.HasPrefix(text, prefix) {
+			review = true
+			break
+		}
+	}
+	if !review {
+		return false
+	}
+	// A request to implement the feedback remains delivery work. A pure
+	// critique defaults to read-only even without an explicit no-edits clause.
+	for _, join := range []string{"and ", "then ", "; ", ". "} {
+		for _, action := range []string{"implement ", "fix ", "change ", "update ", "build ", "redesign ", "apply "} {
+			if strings.Contains(text, join+action) {
+				return false
+			}
+		}
+	}
+	for _, surface := range []string{"interface", "design", "ux", "ui", "cli", "screen", "flow", "onboarding", "checkout", "usability", "accessibility", "form", "navigation", "copy", "dashboard"} {
+		if triggerPresent(text, surface) {
+			return true
+		}
+	}
+	return false
 }
 
 func prReviewIntent(text string) bool {
@@ -384,23 +460,27 @@ func releaseIntentClause(text string) bool {
 func roles(args []string) (result, error) {
 	fs := flag.NewFlagSet("roles", flag.ContinueOnError)
 	wf := fs.String("workflow", "release-readiness", "workflow name")
+	experience := fs.String("experience", "none", "none, focused, or full product/UX involvement")
 	if err := fs.Parse(args); err != nil {
 		return nil, err
 	}
-	workflowRoles := map[string][]string{
-		"release-readiness": {"orchestrator", "qa-architect", "qa-executor", "specialist-reviewer", "independent-verifier"},
-		"feature":           {"delivery-planner", "implementer", "qa-executor", "code-reviewer", "verifier"},
-		"bug-fix":           {"debugger", "implementer", "qa-executor", "code-reviewer", "verifier"},
-		"bug-diagnosis":     {"debugger", "code-reviewer"},
-		"pr-review":         {"code-reviewer", "qa-executor", "verifier"},
-		"trivial-change":    {"implementer", "verifier"},
-		"incident":          {"incident-commander", "debugger", "qa-executor", "verifier"},
+	if fs.NArg() != 0 {
+		return nil, errors.New("roles does not accept positional arguments")
 	}
-	selected, ok := workflowRoles[*wf]
-	if !ok {
-		return nil, fmt.Errorf("unsupported workflow %q", *wf)
+	if *experience == "" {
+		return nil, errors.New("explicit --experience cannot be empty")
 	}
-	return result{"workflow": *wf, "roles": selected}, nil
+	if *wf == "release-readiness" {
+		if *experience != "none" {
+			return nil, errors.New("experience applies only to everyday delivery workflows")
+		}
+		return result{"workflow": *wf, "roles": releaseWorkflowRoles}, nil
+	}
+	selected, err := resolveDeliveryRoles(*wf, *experience)
+	if err != nil {
+		return nil, err
+	}
+	return result{"workflow": *wf, "roles": selected, "experience": *experience}, nil
 }
 
 type runState struct {

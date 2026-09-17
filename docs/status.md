@@ -14,7 +14,16 @@ Jerry SDLC is an **experimental public project**. Available implementation and p
 
 Default use requires no project initialization. The proposed `.jsdlc.yaml` project policy is not implemented. Domain packs and Claude/generic runtime integrations remain inactive. See [compatibility](compatibility.md) for the support matrix.
 
+Product design and UX now have experimental everyday role contracts and explicit `none`/`focused`/`full` experience routing. Selected design roles participate in candidate-bound completion; full scope includes a pre-implementation design brief, and clean UX review requires successful check evidence plus observed experience coverage under the skill contract. Scope remains caller-declared and observations locally unattested. These changes do not activate the gated release UX pack or establish real-user usability, implicit activation frequency, or Phase-3 graduation.
+
 ## Evidence index
+
+Everyday instructions now explicitly cover original-path diagnosis, retained behavior,
+authorization continuity, environment discovery, task closure, and bounded retries.
+[Development decision scenarios](evaluation.md#development-workflow-exercises)
+provide review rubrics for these behaviors; they do not establish execution quality
+or measured improvement on real tasks. The private task-observation template links
+proposed changes to later outcomes without enabling automatic collection.
 
 These are bounded, dated observations or reproducible fixtures, not blanket support or assurance claims.
 

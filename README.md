@@ -1,6 +1,6 @@
 # Jerry SDLC
 
-Jerry SDLC is a Codex plugin that coordinates planning, implementation, debugging, testing, and review. Describe the outcome you want; Jerry selects a workflow and a proportionate team of specialist roles.
+Jerry SDLC is a Codex plugin that coordinates product design, UX, planning, implementation, debugging, testing, and review. Describe the outcome you want; Jerry selects a workflow and a proportionate team of specialist roles.
 
 **Experimental:** everyday delivery is available for evaluation. Release readiness has unmet assurance and evaluation requirements and must not be used as a production release authority. See [project status](docs/status.md) and [security boundaries](SECURITY.md).
 
@@ -57,6 +57,12 @@ flowchart TD
 ```
 
 This is the typical implementation flow. Investigation and review requests keep their read-only scope. See the [workflow and role reference](plugins/jerry-sdlc/skills/jsdlc-orchestrate/references/delivery-workflows.md) for exact teams and exit conditions.
+
+## Product design and UX
+
+Human-facing work receives an explicit experience assessment, separate from engineering risk. `focused` adds UX Reviewer for bounded interface, copy, or accessibility changes; `full` also adds Product Designer before implementation for new or substantially changed journeys. The designer defines the task, journey, relevant states, and observable acceptance criteria. The reviewer examines the actual rendered or interactive candidate. Internal-only work keeps the existing engineering team. See [product design and UX](plugins/jerry-sdlc/skills/jsdlc-orchestrate/references/product-design-ux.md).
+
+Use `roles --workflow feature --experience full` and carry the same experience selection into `delivery-start`. Selected design roles are required for persisted completion, and clean UX review requires successful candidate-bound check evidence. Scope selection remains caller-declared: the CLI default `none` preserves compatibility and cannot determine that a task has no human-facing impact. It also cannot prove that a recorded observation is truthful or that users find a product useful. Updated contracts make existing runs stale; inspect and cancel a matching active run before starting fresh. Formal release packs remain gated.
 
 ## Understand the result
 

@@ -1,4 +1,4 @@
 interface:
   display_name: "Jerry SDLC"
-  short_description: "Risk-aware multi-agent software delivery"
-  default_prompt: "Assess this project with the appropriate Jerry SDLC workflow."
+  short_description: "Product design, UX, and evidence-based software delivery"
+  default_prompt: "Use $jsdlc-orchestrate to plan and deliver this change with appropriate product design, UX, and engineering checks."

@@ -40,6 +40,9 @@ Model tokens / source (or not measured):
 Human review time / source (or not measured):
 Later regression or escaped defect / follow-up date (or not yet observed):
 One useful workflow improvement:
+Existing rule covering it / observed gap:
+Proposed change / generalized regression scenario:
+Implementation reference / follow-up observation (or not yet observed):
 ```
 
 For elapsed time, state whether pauses and human wait time are included. Record
@@ -53,6 +56,15 @@ recorded bug fixes in a chosen week), including failures and abandoned work. Rec
 the rule and omissions with any summary. Preserve the original observation when
 adding corrections or later regressions; lack of a reported defect is not evidence
 that none escaped.
+
+Use the record to connect an observation to a change and then to its later outcome.
+Check whether the rule already exists before adding another instruction: a missed
+rule may need a discriminating evaluation case instead. For a small iteration,
+choose a prospective sample (for example, the next ten voluntarily recorded bug
+fixes), retain failures and abandoned tasks, and record original-path coverage,
+corrections after completion claims, reopened tasks, and avoidable repeated work.
+Use counts with denominators and unknowns; do not turn selective observations into
+a quality or cost improvement claim. No automatic collection is enabled.
 
 ## What these records can establish
 
