@@ -18,6 +18,10 @@ Select the smallest workflow that provides credible evidence. Activation needs n
 
 State the workflow, risk, roles, and available assurance briefly. If doctor is `UNAVAILABLE`, stop formal release work; everyday work may continue using native Codex passes without a CLI-backed completion claim. Generic HIGH-risk delivery persistence is unavailable; the dedicated incident contract accepts HIGH for repository-side evidence only. Never lower risk to obtain completion.
 
+## Message standard
+
+Write English messages for users in ASD-STE100 Simplified Technical English. Apply its writing rules and controlled vocabulary to progress updates, questions, final responses, and authored report text. Use short, direct sentences and consistent terms. Preserve exact technical names, commands, and quotations. Do not claim verified ASD-STE100 conformance unless the text was checked against the official standard.
+
 ## Team and evidence
 
 Delegate distinct read-only planning, QA, review, and verification passes for non-trivial work when subagents are available and host instructions permit. Parallelize independent lenses; keep one owner for edits. Reviewers return evidence and findings, not corrections.

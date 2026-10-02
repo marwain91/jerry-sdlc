@@ -12,6 +12,8 @@ Engineering correctness and experience quality are separate questions. Select ex
 
 Human-facing surfaces include mobile/web/desktop UI, operator tools, CLI prompts and help, generated reports, and transactional messages. Backend changes can require UX work when they alter exposed errors, timing, progress, or recovery. A pure API implementation without a changed human-facing contract can stay `none`.
 
+Use ASD-STE100 Simplified Technical English for new or changed English messages in these surfaces. Include labels, instructions, status text, and errors in the copy review. Preserve exact product terms and required technical identifiers. Check that each message tells the user what happened and, when needed, what action to take. Do not claim verified ASD-STE100 conformance without a check against the official standard.
+
 Select proportionately: a button alignment fix needs `focused`, not a discovery project. A changed action label that alters expectations is not a mechanical typo. Explicit user requests for design or UX review activate the corresponding pass even if no code changes. For review-only requests use `pr-review`; do not infer permission to implement. For planning-only work, provide the brief and criteria and stop at the authorized planning outcome; do not claim implemented delivery completion.
 
 UI presence alone does not imply HIGH engineering risk. Payments, authorization, destructive actions, and other actual risks keep their normal escalation. During incidents, immediate authorized mitigation takes priority; assess affected experience in the bounded verification/follow-up without delaying urgent recovery for a redesign.
