@@ -2,6 +2,10 @@
 
 Release readiness assesses an immutable candidate; it does not authorize or execute a release.
 
+Probe shared execution prerequisites before launching the formal team. Do not send every assignment into an already-observed environment failure. This early probe does not waive any required review or final check.
+
+For formal work, capture available CLI plugin inventory in a private temporary file and run `inspect-codex-plugins --file <inventory.json>`. Clean up afterward. Exact registered IDs identify competitors; unclassified inventory does not prove absence of conflict. For a reported competitor, use `schemas/collision-input.schema.json` and `resolve-collision`; registry-confirmed observations use RUNTIME_OBSERVED, caller declarations use CALLER_DECLARED. Follow explicit selection, resume only the matching run, and stop unresolved collisions at OWNER_GATE. Resolution launches nothing. These commands use the bundled prefix from SKILL.md.
+
 Read [control-contract.md](control-contract.md) before this workflow. Commands below use the bundled `../../scripts/jsdlc` relative to the skill directory and must run in the execution environment permitted by repository instructions.
 
 Derive a stable candidate label (exact commit SHA for a clean checkout; an explicit working-tree label otherwise). Inspect `status --repo <repo> --candidate <candidate>` first. Resume only a matching non-terminal run. If no state exists, use `start --repo <repo> --candidate <candidate> --workflow release-readiness --assurance <doctor-outcome>`. For a terminal run, `start` archives it automatically. Never replace a mismatched active run.

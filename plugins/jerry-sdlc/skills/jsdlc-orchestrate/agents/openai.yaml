@@ -1,4 +1,4 @@
 interface:
   display_name: "Jerry SDLC"
-  short_description: "Product design, UX, and evidence-based software delivery"
-  default_prompt: "Use $jsdlc-orchestrate to plan and deliver this change with appropriate product design, UX, and engineering checks."
+  short_description: "Lightweight delivery with bounded review and useful checks"
+  default_prompt: "Use $jsdlc-orchestrate to deliver this change with the smallest sufficient workflow, UX assessment, and engineering checks."

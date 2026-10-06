@@ -1,84 +1,76 @@
 # Jerry SDLC
 
-Jerry SDLC is a Codex plugin that coordinates product design, UX, planning, implementation, debugging, testing, and review. Describe the outcome you want; Jerry selects a workflow and a proportionate team of specialist roles.
+Jerry SDLC is a Codex plugin for proportionate software delivery. Describe the outcome; Jerry selects a bounded workflow with useful checks and review.
 
-**Experimental:** everyday delivery is available for evaluation. Release readiness has unmet assurance and evaluation requirements and must not be used as a production release authority. See [project status](docs/status.md) and [security boundaries](SECURITY.md).
+**Experimental:** quality and cost improvement have not been established. Formal release readiness has unmet assurance requirements and must not be used as production release authority. See [status](docs/status.md) and [security](SECURITY.md).
 
 ## Get started
 
-Use a Codex CLI version with plugin support. Linux x86-64 has experimental execution evidence; macOS binaries are included but native validation is pending. See [compatibility](docs/compatibility.md).
+Use a Codex version with plugin support. Linux x86-64 has experimental execution evidence; native macOS validation is pending.
 
-1. Register this repository as a marketplace:
+1. Register the marketplace:
 
    ```sh
    codex plugin marketplace add https://github.com/marwain91/jerry-sdlc.git
    ```
 
-2. Open Codex, use `/plugins`, and install **Jerry SDLC** from the **Personal** marketplace. `personal` is the catalog name shipped by this repository. If your organization restricts marketplace sources, its policy applies.
-3. Start a new conversation in your project and ask Jerry to do a task:
+2. Install **Jerry SDLC** from the **Personal** marketplace using `/plugins`.
+3. Start a new conversation in your project:
 
    ```text
    Use Jerry SDLC to fix this bug and verify the regression.
    ```
 
-   To select the bundled skill explicitly:
+Explicit skill selection is `$jsdlc-orchestrate`. The plugin bundles its CLI; Go is needed only for development. No project initialization or generated project files are required. Repository instructions and canonical CI remain authoritative. See the official [plugin setup guide](https://developers.openai.com/plugins/build/plugins#add-a-marketplace-from-the-cli).
 
-   ```text
-   $jsdlc-orchestrate review the current changes for correctness and missing tests.
-   ```
+## Lightweight by default
 
-The plugin bundles its CLI; Go is needed only for development. Default use requires no `jsdlc init`, generated project files, or PATH changes. Existing repository instructions and CI remain authoritative.
-
-Marketplace registration follows the [official plugin setup guide](https://developers.openai.com/plugins/build/plugins#add-a-marketplace-from-the-cli). Installation surfaces are described in [OpenAI's plugin documentation](https://learn.chatgpt.com/docs/plugins#use-plugins-from-a-supported-surface).
-
-## Choose a task
-
-| Request | Workflow |
+| Request | Default workflow |
 |---|---|
-| “Implement this feature” | Plan → implement → test → review → verify |
-| “Fix this bug” | Diagnose → implement → regression checks → review → verify |
-| “Investigate why this fails” | Diagnose and report the supported cause |
-| “Review this PR” | Read-only findings with locations and evidence |
-| “Fix this typo” | Make the edit and verify it proportionately |
-| “Investigate this outage” | Coordinate impact, diagnosis, and authorized mitigation checks |
-| “Assess release readiness” | Formal QA strategy, specialist reviews, and final verification |
+| Feature or bug fix | One owner plans/diagnoses, implements, and runs meaningful checks; one bounded reviewer. |
+| Typo or mechanical edit | One owner and a relevant check; no delegation. |
+| Diagnosis or PR review | Read-only evidence/findings within the requested scope. |
+| Incident | Applicable diagnosis and authorized mitigation, with observed recovery checks. |
+| Explicit release-readiness assessment | Separate formal contract and full assurance requirements. |
 
-The Orchestrator coordinates each workflow. Planning and debugging establish what to change; the Implementer owns edits; QA and reviewers gather evidence; the Verifier checks the final result. Higher-risk changes receive additional specialist attention.
+One initial review and one targeted correction review are the default per slice. Further rounds need a named material blocker. Extra specialists address a specific risk or missing coverage. The owner can cover planning and QA; one reviewer can cover code and focused UX. New user journeys still need a brief and actual interaction checks. Optional polish becomes follow-up work.
 
 ```mermaid
-flowchart TD
-    A[Request] --> B[Plan or diagnose]
-    B --> C[Implement]
-    C --> D[Freeze candidate]
-    D --> E[QA and code review]
-    E --> F[Verify]
-    F -->|Corrections needed| C
-    F -->|Criteria met| G[Delivery complete]
+flowchart LR
+    A[Bounded outcome] --> B[Implement and check]
+    B --> C[One review]
+    C -->|Material correction| D[Fix and targeted recheck]
+    D --> E[Observed outcome]
+    C -->|Criteria met| E
 ```
 
-This is the typical implementation flow. Investigation and review requests keep their read-only scope. See the [workflow and role reference](plugins/jerry-sdlc/skills/jsdlc-orchestrate/references/delivery-workflows.md) for exact teams and exit conditions.
+Read [everyday delivery](plugins/jerry-sdlc/skills/jsdlc-orchestrate/references/delivery-workflows.md), [experience guidance](plugins/jerry-sdlc/skills/jsdlc-orchestrate/references/product-design-ux.md), and [cost controls](plugins/jerry-sdlc/skills/jsdlc-orchestrate/references/efficiency.md) when applicable. Ordinary work does not require doctor, formal verdicts, or JSON role reports.
 
-## Product design and UX
+## Optional CLI evidence and cost tools
 
-Human-facing work receives an explicit experience assessment, separate from engineering risk. `focused` adds UX Reviewer for bounded interface, copy, or accessibility changes; `full` also adds Product Designer before implementation for new or substantially changed journeys. The designer defines the task, journey, relevant states, and observable acceptance criteria. The reviewer examines the actual rendered or interactive candidate. Internal-only work keeps the existing engineering team. See [product design and UX](plugins/jerry-sdlc/skills/jsdlc-orchestrate/references/product-design-ux.md).
+- `roles --workflow feature` returns lightweight roles; `--profile full` retains the larger contract.
+- `delivery-start` defaults to lightweight. Optional declared candidate scope and dependency-bound check reuse avoid invalidating unrelated work. Fresh candidates still need fresh reviewer conclusions.
+- `preflight` probes a shared prerequisite once. `wait-check` polls an exact existing job within a bounded timeout.
+- `slice-start/record/status` records private review rounds, active/wait time, worker-inclusive cached/uncached/output tokens, adjudicated findings, escaped defects, and reopened work.
+- `eval-comparison` compares baseline, lightweight, and full on supplied matched results. Its exploratory limits default to 1.5× baseline active time and uncached-input-plus-output tokens. It does not execute model trials or establish graduation.
 
-Use `roles --workflow feature --experience full` and carry the same experience selection into `delivery-start`. Selected design roles are required for persisted completion, and clean UX review requires successful candidate-bound check evidence. Scope selection remains caller-declared: the CLI default `none` preserves compatibility and cannot determine that a task has no human-facing impact. It also cannot prove that a recorded observation is truthful or that users find a product useful. Updated contracts make existing runs stale; inspect and cancel a matching active run before starting fresh. Formal release packs remain gated.
+CLI examples use the bundled `plugins/jerry-sdlc/scripts/jsdlc` prefix and the project's permitted execution environment. See [recorded delivery](plugins/jerry-sdlc/skills/jsdlc-orchestrate/references/recorded-delivery.md). A ledger enforces recorded review admission only; without a runtime adapter it cannot guarantee a model token cap. Unknown measurements remain unknown.
 
-## Understand the result
+## Understand results
 
-Everyday workflows report `COMPLETE`, `ISSUES`, `INCOMPLETE`, or `BLOCKED` for the exact repository content reviewed. Changing that content requires fresh evidence. Delivery completion does not affect release readiness or prove production recovery.
+Ordinary handoffs report observed engineering outcomes and unmet criteria. Optional records return COMPLETE, ISSUES, INCOMPLETE, or BLOCKED for their exact candidate and declared scope. Scope/runtime/dependency completeness is caller-declared; records are LOCAL_UNATTESTED. Older records without a profile retain full semantics.
 
-Release readiness is a separate assessment. Local evidence cannot establish trusted worker independence, and a readiness verdict never grants permission to publish, tag, deploy, or release.
+Everyday results have no release-readiness effect. Local workers do not establish trusted independence. No result authorizes publication, tagging, deployment, release, spending, or secret access. Incident repository evidence does not prove production recovery.
 
-## Documentation and development
+## Documentation
 
 | Guide | Contents |
 |---|---|
-| [Architecture](docs/architecture.md) | Repository layout, workflow contracts, state, and evidence |
-| [Project status](docs/status.md) | Implemented capabilities, evidence, and remaining work |
-| [Compatibility](docs/compatibility.md) | Platforms, adapters, and plugin coexistence |
-| [Evaluation](docs/evaluation.md) | Reproduction, original results, and quality thresholds |
-| [Contributing](CONTRIBUTING.md) | Container-based development and contribution requirements |
-| [Security](SECURITY.md) | Trust boundaries and vulnerability reporting |
+| [Architecture](docs/architecture.md) | Contracts, profiles, state, and evidence |
+| [Status](docs/status.md) | Implemented capabilities and missing evidence |
+| [Compatibility](docs/compatibility.md) | Platforms, adapters, and coexistence |
+| [Evaluation](docs/evaluation.md) | Exploratory comparison and preserved graduation requirements |
+| [Contributing](CONTRIBUTING.md) | Container-based development and reproducible packaging |
+| [Security](SECURITY.md) | Trust boundaries |
 
-Licensed under [Apache License 2.0](LICENSE).
+Licensed under Apache License 2.0.

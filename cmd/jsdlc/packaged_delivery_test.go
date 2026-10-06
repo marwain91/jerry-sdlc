@@ -71,7 +71,7 @@ func TestPackagedEverydayLifecycle(t *testing.T) {
 				args := append([]string{name}, identity...)
 				return call(false, append(args, extra...)...)
 			}
-			command("delivery-start", "--workflow", workflow, "--risk", risk)
+			command("delivery-start", "--profile", "full", "--workflow", workflow, "--risk", risk)
 			expect(command("delivery-verify"), "outcome", "INCOMPLETE")
 			expect(command("delivery-status"), "stale", false)
 			// Actual command evidence. Two executions let QA and verifier cite
@@ -79,7 +79,7 @@ func TestPackagedEverydayLifecycle(t *testing.T) {
 			for _, id := range []string{"qa", "verification"} {
 				expect(command("delivery-check", "--id", id, "--authorized", "--", "/bin/sh", "-c", "test -s candidate.txt"), "reportedPass", true)
 			}
-			roles := call(false, "roles", "--workflow", workflow)["roles"].([]any)
+			roles := call(false, "roles", "--profile", "full", "--workflow", workflow)["roles"].([]any)
 			for _, roleValue := range roles {
 				role := roleValue.(string)
 				ids := []string{}
@@ -126,7 +126,7 @@ func TestPackagedEverydayLifecycle(t *testing.T) {
 			expect(command("delivery-verify"), "outcome", "BLOCKED")
 			// Terminal run is archived; new evidence must bind the new candidate.
 			identity = []string{"--repo", repo, "--candidate", "fixture-2"}
-			command("delivery-start", "--workflow", workflow, "--risk", risk)
+			command("delivery-start", "--profile", "full", "--workflow", workflow, "--risk", risk)
 			expect(command("delivery-check", "--id", "failure", "--authorized", "--", "/bin/false"), "reportedPass", false)
 			expect(command("delivery-verify"), "outcome", "BLOCKED")
 			command("delivery-cancel")

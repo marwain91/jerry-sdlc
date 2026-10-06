@@ -11,16 +11,16 @@ func TestExperienceClassification(t *testing.T) {
 	for _, tc := range []struct{ request, files, experience, risk string }{
 		{"Build an onboarding flow", "", "full", "NORMAL"},
 		{"Fix keyboard navigation", "", "focused", "NORMAL"},
-		{"Update layout", "src/app.tsx", "full", "NORMAL"},
+		{"Update layout", "src/app.tsx", "focused", "NORMAL"},
 		{"Fix authentication form", "", "focused", "HIGH"},
 		{"Refactor queue worker", "worker.go", "none", "NORMAL"},
 		{"Build squirrel database", "", "none", "NORMAL"},
 		{"Refactor queue worker", "src/notcomponents/worker.go", "none", "NORMAL"},
 		{"Refactor queue worker", "src/worker.tsxcache", "none", "NORMAL"},
-		{"Update component", "src/components/Control.js", "full", "NORMAL"},
-		{"Add CLI help text", "", "full", "NORMAL"},
+		{"Update component", "src/components/Control.js", "focused", "NORMAL"},
+		{"Add CLI help text", "", "focused", "NORMAL"},
 		{"Fix confirmation prompt", "", "focused", "NORMAL"},
-		{"Create a transactional email", "", "full", "NORMAL"},
+		{"Create a transactional email", "", "focused", "NORMAL"},
 		{"Build a new screen", "", "full", "NORMAL"},
 		{"Refactor client transport", "client.go", "none", "NORMAL"},
 	} {
@@ -75,12 +75,12 @@ func TestExperienceRolesAndEvidence(t *testing.T) {
 			}
 			t.Setenv("JSDLC_PLUGIN_ROOT", filepath.Join(wd, "..", "..", "plugins", "jerry-sdlc"))
 			repo := t.TempDir()
-			started, err := deliveryStart([]string{"--repo", repo, "--candidate", "c", "--workflow", "bug-diagnosis", "--experience", experience})
+			started, err := deliveryStart([]string{"--profile", "full", "--repo", repo, "--candidate", "c", "--workflow", "bug-diagnosis", "--experience", experience})
 			if err != nil {
 				t.Fatal(err)
 			}
 			run := started["run"].(deliveryRun)
-			selected, err := roles([]string{"--workflow", "bug-diagnosis", "--experience", experience})
+			selected, err := roles([]string{"--workflow", "bug-diagnosis", "--experience", experience, "--profile", "full"})
 			if err != nil || !equalStrings(run.RequiredRoles, selected["roles"].([]string)) {
 				t.Fatalf("roles/start mismatch: %#v %v", selected, err)
 			}
@@ -135,7 +135,7 @@ func TestExperienceRolesAndEvidence(t *testing.T) {
 		if _, err := roles([]string{"--workflow", "feature", "--experience", value}); err == nil {
 			t.Errorf("invalid experience accepted: %s", value)
 		}
-		if _, err := deliveryStart([]string{"--candidate", "c", "--workflow", "feature", "--experience", value}); err == nil {
+		if _, err := deliveryStart([]string{"--profile", "full", "--candidate", "c", "--workflow", "feature", "--experience", value}); err == nil {
 			t.Errorf("invalid start experience accepted: %s", value)
 		}
 	}
@@ -152,7 +152,7 @@ func TestExperienceContractBinding(t *testing.T) {
 	}
 	t.Setenv("JSDLC_PLUGIN_ROOT", filepath.Join(wd, "..", "..", "plugins", "jerry-sdlc"))
 	repo := t.TempDir()
-	started, err := deliveryStart([]string{"--repo", repo, "--candidate", "c", "--workflow", "feature", "--experience", "full"})
+	started, err := deliveryStart([]string{"--profile", "full", "--repo", repo, "--candidate", "c", "--workflow", "feature", "--experience", "full"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -201,7 +201,7 @@ func TestCleanUXReportRequiresCheck(t *testing.T) {
 	}
 	t.Setenv("JSDLC_PLUGIN_ROOT", filepath.Join(wd, "..", "..", "plugins", "jerry-sdlc"))
 	repo := t.TempDir()
-	started, err := deliveryStart([]string{"--repo", repo, "--candidate", "c", "--workflow", "bug-diagnosis", "--experience", "focused"})
+	started, err := deliveryStart([]string{"--profile", "full", "--repo", repo, "--candidate", "c", "--workflow", "bug-diagnosis", "--experience", "focused"})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -17,7 +17,7 @@ func TestDeliveryVerificationIncludesUncitedChecks(t *testing.T) {
 			}
 			t.Setenv("JSDLC_PLUGIN_ROOT", filepath.Join(wd, "..", "..", "plugins", "jerry-sdlc"))
 			repo := t.TempDir()
-			started, err := deliveryStart([]string{"--repo", repo, "--candidate", "c", "--workflow", "bug-diagnosis"})
+			started, err := deliveryStart([]string{"--profile", "full", "--repo", repo, "--candidate", "c", "--workflow", "bug-diagnosis"})
 			if err != nil {
 				t.Fatal(err)
 			}

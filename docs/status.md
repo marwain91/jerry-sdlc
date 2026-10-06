@@ -10,11 +10,12 @@ Jerry SDLC is an **experimental public project**. Available implementation and p
 | Everyday delivery | Six workflows with role reports, command evidence, frozen-candidate verification, duplicate/drift rejection, and separate release state; packaged Linux lifecycle tests | Real model-backed review-quality evidence and trusted execution evidence; generic HIGH-risk delivery persistence remains unavailable except for the incident repository-evidence contract |
 | Release readiness | Ten review assignments, local checked records, persisted reports, adjudication, bounded correction authorization, two-cycle cap, and deterministic verdict reproduction | Enforced correction containment, trusted authorization history, sandboxed/attested policy-defined checks, live defect fixtures, and independent assurance before `READY` |
 | Evaluation | Workflow routing regression suite, original failed trigger holdouts, quality evaluator, and synthetic pass/fail harness fixtures | Historical tasks, repeated real model comparisons, implicit skill-selection measurements, and published quality/cost results |
+| Efficiency | Lightweight default instructions and optional profiles, scoped candidates, dependency-bound deterministic check reuse, bounded preflight/polling, private slice budgets, and exploratory three-arm cost/outcome comparison | Real comparative outcome/cost results; trusted runtime budget enforcement and dependency completeness remain unavailable |
 | Portability and ecosystem | Three packaged binary targets, adapter/pack protocol validation, collision handling, and sanitized Linux inventory observations | Native macOS validation, supported-surface activation evidence, a verified real competing orchestrator, executable non-Codex adapters, and evaluated pack activation |
 
 Default use requires no project initialization. The proposed `.jsdlc.yaml` project policy is not implemented. Domain packs and Claude/generic runtime integrations remain inactive. See [compatibility](compatibility.md) for the support matrix.
 
-Product design and UX now have experimental everyday role contracts and explicit `none`/`focused`/`full` experience routing. Selected design roles participate in candidate-bound completion; full scope includes a pre-implementation design brief, and clean UX review requires successful check evidence plus observed experience coverage under the skill contract. Scope remains caller-declared and observations locally unattested. These changes do not activate the gated release UX pack or establish real-user usability, implicit activation frequency, or Phase-3 graduation.
+Product design and UX retain explicit none/focused/full experience assessment, a brief for new journeys, and actual interaction evidence. Lightweight delivery combines those responsibilities without mandatory extra agents; full records retain the larger design role contract. Additional lightweight roles need a named risk or gap. Scope remains caller-declared and observations locally unattested. These changes do not activate release UX packs or establish real-user usability, implicit activation frequency, or graduation.
 
 ## Evidence index
 
@@ -31,6 +32,7 @@ These are bounded, dated observations or reproducible fixtures, not blanket supp
 |---|---|
 | [Linux CLI matrix](evidence/linux-cli.md) | Discovery, checksum wrapper, external state, resume, collision refusal, and migration fixtures; no native macOS or independent isolation claim |
 | [Packaged everyday lifecycle](evidence/everyday-lifecycle.md) | All six workflow lifecycles and real command interruption/recovery; role reports are synthetic |
+| [Efficiency control verification](evidence/efficiency-controls.md) | Lightweight/reuse/budget/waiting regressions and synthetic comparison gates; no real quality or cost uplift claim |
 | [Release lifecycle fixture](evidence/release-lifecycle.md) | Known finding → authorized correction → fresh review; fake adapter must never yield `READY` |
 | [Live remediation observation](evidence/live-remediation.md) | Ten assignments returned truthful `INCONCLUSIVE` under a nested-container sandbox limitation |
 | [Plugin coexistence observation](evidence/plugin-coexistence.md) | Sanitized inventory ingestion with unrelated plugins; no real competing orchestrator was exercised |

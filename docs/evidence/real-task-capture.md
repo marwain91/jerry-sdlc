@@ -9,7 +9,8 @@ or automatic collection. The formal repeated benchmark remains deferred.
 Copy the template to an approved private location outside the consuming repository
 and its frozen candidate. Do not commit raw task records to this public repository.
 Recording is optional and must follow the project's data-retention rules. Nothing
-here enables telemetry, uploads, or a new CLI command.
+here enables telemetry or uploads. The optional private slice ledger records
+sanitized deltas; see [efficiency controls](../../plugins/jerry-sdlc/skills/jsdlc-orchestrate/references/efficiency.md).
 
 Use neutral task IDs. Omit customer/project names, private repository URLs, local
 paths, hostnames/IPs, credentials, personal data, proprietary code, and raw prompts,
@@ -36,7 +37,9 @@ Corrections / recheck results:
 Engineering outcome / unmet criteria:
 CLI outcome (exact value, or not run) / assurance limitations:
 Elapsed time / source (or not measured):
-Model tokens / source (or not measured):
+Model input / cached input / output tokens, worker coverage / source (or not measured):
+Active execution time / wait time / measurement definition:
+Review rounds / slice budget / named blocker extension:
 Human review time / source (or not measured):
 Later regression or escaped defect / follow-up date (or not yet observed):
 One useful workflow improvement:
@@ -74,8 +77,9 @@ uncontrolled observations, not a baseline-versus-Jerry comparison. Do not claim
 quality uplift, representative defect recall, false-positive rates, budget ratios,
 or graduation from anecdotes or selectively recorded successes.
 
-This template is not input to `delivery-record` or `eval-quality`, and does not
-replace candidate-bound CLI evidence. Everyday `COMPLETE` has no release-readiness
+This prose template is not input to `delivery-record`, `eval-quality`, or
+`eval-comparison`. Structured ledger events have their own schema. Uncontrolled
+observations cannot replace matched trials. Everyday `COMPLETE` has no release-readiness
 effect; separate agents do not by themselves establish attested independence.
 No observation authorizes publishing, deployment, or a release.
 

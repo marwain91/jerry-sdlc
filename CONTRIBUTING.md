@@ -25,6 +25,8 @@ The checkout is read-only in these examples. Use a writable project container fo
 
 Keep canonical policy in `plugins/jerry-sdlc/workflows`, role contracts in `plugins/jerry-sdlc/roles`, and interchange definitions in schemas. Adapters translate mechanics; they must not duplicate or weaken canonical policy.
 
+Everyday work defaults to lightweight coordination and optional persistence. Preserve legacy full-profile state semantics and formal release boundaries. Efficiency features need behavioral evidence for stale dependencies, incomplete measurements, bounded waiting, and negative outcomes. Synthetic comparisons cannot establish real quality uplift.
+
 ## Pull requests
 
 - Explain the user-visible outcome and trust-boundary impact.

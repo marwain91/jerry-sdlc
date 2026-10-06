@@ -6,6 +6,24 @@ Evaluation CLI exit codes: `0` means thresholds passed, `2` means a valid evalua
 
 The formal repeated model benchmark is deferred. Everyday workflows may iterate experimentally, but no quality-uplift or graduation claim follows from that status. Controlled evaluation remains required before a stable release claim.
 
+## Lightweight comparison pilot
+
+`eval-comparison` compares **baseline**, **lightweight**, and **full** on supplied matched observations. It does not run models, collect telemetry, adjudicate findings, or prove net benefit. The older two-arm evaluator and graduation requirements remain unchanged.
+
+Select a small prospective corpus using a fixed rule, retaining unsuccessful and abandoned work. Freeze starting candidates, acceptance criteria, task/environment conditions, allowed tools, model settings, and known-defect ground truth. Vary only the workflow. Use equal fixed trials per task/arm, retain evidence privately, and adjudicate findings and later failures before aggregation. Never invent a historical baseline from Jerry sessions.
+
+The [schema](../evals/comparison-suite.schema.json) accepts 1–50 tasks and 1–10 fixed trials per arm. Every trial requires matching condition digests, all-worker input/cached/output tokens, active/wait/human time, findings, escaped defects, reopened work, and explicit safety/fabrication/regression counters. Missing measurements reject input instead of becoming zero. Use a consistent follow-up window for defects and reopening. Active time is elapsed execution excluding waits and human pauses; parallel workers do not multiply wall time. Include workers and compaction in tokens; counters do not establish monetary charges or quota usage.
+
+```sh
+plugins/jerry-sdlc/scripts/jsdlc eval-comparison --fixture <private-adjudicated-suite.json>
+```
+
+Run inside the authorized container. Output reports all arms, severity-weighted recall, precision, active/wait/human medians, gross/cached/accounted tokens, and follow-up outcomes. Provisional exploratory defaults limit lightweight median active time and uncached-input-plus-output tokens to **1.5× baseline**. Gates also require no recall loss against baseline or full, precision ≥85%, no increase in escaped defects/reopened work, and zero recorded unsafe events/fabrications/correction regressions across all arms. Ratio limits are configurable, not validated optimal values or replacement graduation gates. Empty ground truth cannot establish quality improvement.
+
+Exit codes are 0 for exploratory gates passed, 2 for valid negative results, and 1 for invalid input/execution error. SYNTHETIC remains visibly synthetic; ADJUDICATED provenance is caller-declared. Small pilots do not establish statistical generalization. All results have `graduationEffect: NONE` and cannot authorize release.
+
+[synthetic-comparison.json](../evals/synthetic-comparison.json) contains invented harness values. Tests exercise matched trials, cost separation, incomplete measurements, and negative outcomes. These establish harness behavior only; actual three-arm results have not been collected.
+
 For optional, private observations during normal work, use the [lightweight real-task template](evidence/real-task-capture.md). It adds no model runs or telemetry and is not a substitute for the formal evaluation dataset.
 
 ## Graduation requirements

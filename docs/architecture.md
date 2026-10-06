@@ -30,7 +30,7 @@ Role and skill Markdown is part of the product: the CLI reads role contracts and
 
 The Orchestrator selects the workflow, assesses risk, prepares handoffs, and coordinates corrections. Delivery Planner or Debugger establishes acceptance criteria or the supported failure cause. Implementer owns edits. QA Executor records observed checks; Code Reviewer and Verifier inspect the frozen candidate read-only. Incident Commander adds impact, timeline, and mitigation coordination.
 
-The [everyday workflow reference](../plugins/jerry-sdlc/skills/jsdlc-orchestrate/references/delivery-workflows.md) defines the exact teams. Non-trivial roles may use separate workers, but separate passes do not establish trusted independence.
+The [everyday workflow reference](../plugins/jerry-sdlc/skills/jsdlc-orchestrate/references/delivery-workflows.md) defaults to combined responsibilities: one owner plus one bounded reviewer for ordinary behavior changes, and one owner for mechanical edits. Specialist passes need a named risk or coverage gap. Ordinary work does not require CLI persistence. Separate passes do not establish trusted independence.
 
 Formal [release readiness](../plugins/jerry-sdlc/skills/jsdlc-orchestrate/references/release-readiness.md) adds QA Architect, QA Executor, seven individually assigned Specialist Reviewer lenses, and Independent Verifier. The lenses cover security, supply chain, API compatibility, data migration, reliability, observability, and documentation. The Orchestrator coordinates the ten review assignments; the workflow assesses readiness and does not execute a release.
 
@@ -49,13 +49,19 @@ Default state is outside the consuming repository, keyed by its canonical path:
 - Linux: `${XDG_STATE_HOME:-$HOME/.local/state}/jsdlc/`
 - macOS: `~/Library/Application Support/jsdlc/`
 
-Everyday delivery and release readiness have separate state and evidence namespaces. Reports bind the run, candidate content, roles, contracts, and recorded checks. After candidate or contract drift, evidence must be recreated; it cannot transfer to a changed version.
+Everyday delivery and release readiness have separate state and evidence namespaces. Optional everyday records select lightweight or full profiles; omitted profile fields in older state retain full semantics. Effective roles, experience, and additional-role reasons bind the contract. Full preserves the larger report/check contract; lightweight permits shared adequate check evidence and combined UX responsibilities.
+
+Reports bind the exact candidate and selected roles. Whole-repository candidates remain the default; lightweight candidates can declare dependency paths. Directory membership, file contents, and modes are hashed; escaping paths and symlinks are rejected. Scoped completion is explicitly caller-declared and cannot establish whole-repository or release coverage.
+
+Changed candidates require fresh role reports. A deterministic check can be reused in a fresh lightweight record only through an original immutable receipt, dependency sidecar, command identity, declared immutable runtime identity, and provenance digest. Original and target records remain bound. Changed or missing dependencies/evidence reject reuse. External-state and incomplete-dependency checks require fresh execution. This everyday mechanism does not alter formal release checks.
 
 Everyday checks include uncited records: a failed check or unresolved interrupted-check reservation prevents completion. A successful retry does not dismiss an earlier failure. CLI role records are append-only, and finalization checks the evidence collection against a local anchor. The same OS owner can rewrite both evidence and anchor, so these records remain locally owned and unattested.
 
 Release state schema 2 binds repository content at start. Explicit upgrade and rollback commands support legacy fixtures with digest-bound backups and drift checks. State writes use temporary files, synchronization, atomic rename, and locking. Process-interruption tests exist; actual storage power-loss durability is unproven.
 
 Formal release corrections require authorization bound to accepted findings and exact paths. Scope is audited after editing; it is not sandbox-enforced. A correction creates a fresh candidate/run and requires fresh checks and the complete review team. The lineage is capped at two correction cycles.
+
+Private slice ledgers record unique delta events for reviews, tokens, active/wait/human time, findings, escaped defects, and reopened tasks. Unknowns remain explicit. Review admission observes recorded limits, including one named blocker extension; it does not control model generation. Bounded preflight and polling run explicitly authorized commands without changing external job identity. The exploratory three-arm evaluator consumes matched adjudicated input; it does not run models or replace graduation evidence.
 
 ## Trust boundary
 
