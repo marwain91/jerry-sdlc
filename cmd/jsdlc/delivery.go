@@ -62,25 +62,31 @@ type deliveryCatalog struct {
 }
 type deliveryContract struct {
 	Roles                  []string            `json:"roles"`
+	LightweightRoles       []string            `json:"lightweightRoles"`
 	ExperienceRoles        map[string][]string `json:"experienceRoles"`
 	CompletionMeaning      string              `json:"completionMeaning"`
 	ReleaseReadinessEffect string              `json:"releaseReadinessEffect"`
 }
 type deliveryRun struct {
-	SchemaVersion  int      `json:"schemaVersion"`
-	ID             string   `json:"id"`
-	Workflow       string   `json:"workflow"`
-	Risk           string   `json:"risk"`
-	Experience     string   `json:"experience,omitempty"`
-	State          string   `json:"state"`
-	Repository     string   `json:"repository"`
-	Candidate      string   `json:"candidate"`
-	ContentDigest  string   `json:"contentDigest"`
-	ContractDigest string   `json:"contractDigest"`
-	RequiredRoles  []string `json:"requiredRoles"`
-	EvidenceDigest string   `json:"evidenceDigest,omitempty"`
-	CreatedAt      string   `json:"createdAt"`
-	UpdatedAt      string   `json:"updatedAt"`
+	SchemaVersion    int      `json:"schemaVersion"`
+	ID               string   `json:"id"`
+	Workflow         string   `json:"workflow"`
+	Risk             string   `json:"risk"`
+	Experience       string   `json:"experience,omitempty"`
+	Profile          string   `json:"profile,omitempty"`
+	AdditionalRoles  []string `json:"additionalRoles,omitempty"`
+	RoleReason       string   `json:"roleReason,omitempty"`
+	Inputs           []string `json:"inputs,omitempty"`
+	DependencyChecks []string `json:"dependencyChecks,omitempty"`
+	State            string   `json:"state"`
+	Repository       string   `json:"repository"`
+	Candidate        string   `json:"candidate"`
+	ContentDigest    string   `json:"contentDigest"`
+	ContractDigest   string   `json:"contractDigest"`
+	RequiredRoles    []string `json:"requiredRoles"`
+	EvidenceDigest   string   `json:"evidenceDigest,omitempty"`
+	CreatedAt        string   `json:"createdAt"`
+	UpdatedAt        string   `json:"updatedAt"`
 }
 type deliveryFinding struct {
 	ID             string `json:"id"`
@@ -119,6 +125,10 @@ func deliveryStart(args []string) (result, error) {
 	workflow := fs.String("workflow", "", "everyday workflow")
 	risk := fs.String("risk", "NORMAL", "LOW, NORMAL, or HIGH")
 	experience := fs.String("experience", "none", "none, focused, or full product/UX involvement")
+	profile := fs.String("profile", "lightweight", "lightweight or full evidence profile")
+	extra := fs.String("add-roles", "", "additional lightweight roles, comma separated")
+	reason := fs.String("role-reason", "", "specific risk or coverage gap for additional roles")
+	inputsFile := fs.String("inputs", "", "optional JSON array of candidate dependency paths")
 	if err := fs.Parse(args); err != nil {
 		return nil, err
 	}
@@ -126,7 +136,11 @@ func deliveryStart(args []string) (result, error) {
 	if *experience == "" {
 		return nil, errors.New("explicit --experience cannot be empty")
 	}
-	selectedRoles, err := resolveDeliveryRoles(*workflow, *experience)
+	if *profile == "" {
+		return nil, errors.New("explicit --profile cannot be empty")
+	}
+	additional := splitDeliveryRoles(*extra)
+	selectedRoles, err := resolveDeliveryProfileRoles(*workflow, *experience, *profile, additional, *reason)
 	if err != nil {
 		return nil, err
 	}
@@ -137,11 +151,18 @@ func deliveryStart(args []string) (result, error) {
 	if err != nil {
 		return nil, err
 	}
-	contentDigest, err := digestRepository(abs)
+	inputs, err := readDeliveryInputs(*inputsFile)
 	if err != nil {
 		return nil, err
 	}
-	_, contractDigest, err := loadDeliveryCatalog(*workflow, *experience)
+	if *profile == "full" && len(inputs) > 0 {
+		return nil, errors.New("full profile requires a whole-repository candidate")
+	}
+	contentDigest, err := digestDeliveryInputs(abs, inputs)
+	if err != nil {
+		return nil, err
+	}
+	contractDigest, err := deliveryProfileDigest(*workflow, *experience, *profile, additional, *reason)
 	if err != nil {
 		return nil, err
 	}
@@ -152,6 +173,7 @@ func deliveryStart(args []string) (result, error) {
 	}
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	run := deliveryRun{SchemaVersion: 1, ID: id, Workflow: *workflow, Risk: *risk, State: "ACTIVE", Repository: abs, Candidate: *candidate, ContentDigest: contentDigest, ContractDigest: contractDigest, RequiredRoles: append([]string(nil), roles...), CreatedAt: now, UpdatedAt: now}
+	run.Profile, run.AdditionalRoles, run.RoleReason, run.Inputs = *profile, additional, *reason, inputs
 	if *experience != "none" {
 		run.Experience = *experience
 	}
@@ -196,6 +218,8 @@ func deliveryCheck(args []string) (result, error) {
 	domainsText := fs.String("domains", "functional", "comma-separated evidence domains")
 	timeout := fs.Duration("timeout", 10*time.Minute, "command timeout, at most 30m")
 	authorized := fs.Bool("authorized", false, "confirm the exact fully privileged local command was authorized")
+	inputsFile := fs.String("inputs", "", "JSON array of complete deterministic check dependencies for reuse")
+	environment := fs.String("environment", "", "immutable runtime identity required with --inputs")
 	if err := fs.Parse(args); err != nil {
 		return nil, err
 	}
@@ -220,6 +244,10 @@ func deliveryCheck(args []string) (result, error) {
 		return nil, errors.New("check input does not match an active everyday delivery run")
 	}
 	if err := validateDeliveryBinding(run, abs); err != nil {
+		return nil, err
+	}
+	dependencies, err := prepareDeliveryDependencies(abs, *inputsFile, *environment, command)
+	if err != nil {
 		return nil, err
 	}
 	evidencePath := filepath.Join(root, key, "delivery", "runs", run.ID, "checks", *id+".json")
@@ -274,7 +302,7 @@ func deliveryCheck(args []string) (result, error) {
 			return nil, runErr
 		}
 	}
-	after, err := digestRepository(abs)
+	after, err := digestDeliveryInputs(abs, run.Inputs)
 	if err != nil {
 		return nil, err
 	}
@@ -291,6 +319,20 @@ func deliveryCheck(args []string) (result, error) {
 	}
 	if current.ID != run.ID || current.State != "ACTIVE" || current.ContentDigest != run.ContentDigest {
 		return nil, errors.New("active everyday delivery run changed while the check was executing")
+	}
+	if dependencies != nil {
+		dependencies.RunID, dependencies.CheckID = run.ID, *id
+		currentDigest, digestErr := digestDeliveryInputs(abs, dependencies.Inputs)
+		if digestErr != nil || currentDigest != dependencies.InputDigest {
+			evidence.RepositoryChanged = true
+		}
+		if err := writeDeliveryJSON(deliveryDependenciesPath(root, key, run.ID, *id), dependencies); err != nil {
+			return nil, err
+		}
+		current.DependencyChecks = append(current.DependencyChecks, *id)
+		if err := writeDeliveryJSON(statePath, current); err != nil {
+			return nil, err
+		}
 	}
 	if err := persistCheckEvidence(evidencePath, evidence); err != nil {
 		return nil, err
@@ -386,7 +428,7 @@ func deliveryStatus(args []string) (result, error) {
 	if run.Repository != abs {
 		return nil, errors.New("repository identity mismatch")
 	}
-	current, digestErr := digestRepository(abs)
+	current, digestErr := digestDeliveryInputs(abs, run.Inputs)
 	stale := candidate != "" && candidate != run.Candidate || digestErr != nil || current != run.ContentDigest
 	return deliveryResult(run, result{"path": path, "stale": stale}), nil
 }
@@ -516,7 +558,8 @@ func deliveryVerify(args []string) (result, error) {
 				return deliveryResult(run, result{"outcome": "BLOCKED", "reason": err.Error()}), nil
 			}
 		}
-		if contains([]string{"qa-executor", "verifier", "ux-reviewer"}, role) && record.Report.Disposition == "CLEAN" {
+		requiresCheck := contains([]string{"qa-executor", "verifier", "ux-reviewer"}, role) || run.Profile == "lightweight" && contains([]string{"feature", "bug-fix", "trivial-change", "incident"}, run.Workflow) && role == run.RequiredRoles[0]
+		if requiresCheck && record.Report.Disposition == "CLEAN" {
 			if len(record.Report.CheckIDs) == 0 {
 				return deliveryResult(run, result{"outcome": "BLOCKED", "reason": "clean QA, verifier, and UX reviewer reports require successful delivery check evidence"}), nil
 			}
@@ -525,7 +568,7 @@ func deliveryVerify(args []string) (result, error) {
 					qaChecks[id] = true
 				}
 			}
-			if role == "verifier" && len(qaChecks) > 0 {
+			if role == "verifier" && len(qaChecks) > 0 && run.Profile != "lightweight" {
 				distinct := false
 				for _, id := range record.Report.CheckIDs {
 					if !qaChecks[id] {
@@ -623,7 +666,7 @@ func loadDeliveryCatalog(workflow string, experience string) (deliveryCatalog, s
 	}
 	for name, roles := range deliveryWorkflowRoles {
 		c, ok := catalog.Workflows[name]
-		if !ok || !equalStrings(c.Roles, roles) || c.CompletionMeaning != deliveryCompletionMeanings[name] || c.ReleaseReadinessEffect != "NONE" {
+		if !ok || !equalStrings(c.Roles, roles) || !equalStrings(c.LightweightRoles, lightweightDeliveryRoles[name]) || c.CompletionMeaning != deliveryCompletionMeanings[name] || c.ReleaseReadinessEffect != "NONE" {
 			return deliveryCatalog{}, "", fmt.Errorf("everyday workflow %q does not match runtime policy", name)
 		}
 		if len(c.ExperienceRoles) != 2 || !equalStrings(c.ExperienceRoles["focused"], []string{"ux-reviewer"}) || !equalStrings(c.ExperienceRoles["full"], []string{"product-designer", "ux-reviewer"}) {
@@ -666,12 +709,28 @@ func readDeliveryRun(root, key string) (deliveryRun, string, error) {
 		return deliveryRun{}, path, err
 	}
 	validRisk := contains([]string{"LOW", "NORMAL"}, run.Risk) || run.Workflow == "incident" && run.Risk == "HIGH"
-	roles, roleErr := resolveDeliveryRoles(run.Workflow, run.Experience)
+	roles, roleErr := resolveDeliveryProfileRoles(run.Workflow, run.Experience, run.Profile, run.AdditionalRoles, run.RoleReason)
 	if roleErr != nil || !equalStrings(run.RequiredRoles, roles) {
 		return deliveryRun{}, path, errors.New("persisted everyday experience roles are invalid")
 	}
 	if run.SchemaVersion != 1 || !validDeliveryWorkflow(run.Workflow) || !validRisk || !contains([]string{"ACTIVE", "COMPLETE", "ISSUES", "INCOMPLETE", "BLOCKED", "CANCELLED"}, run.State) || !validMigrationID(run.ID) || !filepath.IsAbs(run.Repository) || filepath.Clean(run.Repository) != run.Repository || strings.TrimSpace(run.Candidate) != run.Candidate || len(run.Candidate) < 1 || len(run.Candidate) > 256 || !validSHA256(run.ContentDigest) || !validSHA256(run.ContractDigest) || run.EvidenceDigest != "" && !validSHA256(run.EvidenceDigest) || parseRFC3339(run.CreatedAt) != nil || parseRFC3339(run.UpdatedAt) != nil {
 		return deliveryRun{}, path, errors.New("persisted everyday delivery state is invalid")
+	}
+	if err := validateDeliveryInputs(run.Inputs); err != nil {
+		return deliveryRun{}, path, err
+	}
+	seenChecks := map[string]bool{}
+	if len(run.DependencyChecks) > 256 {
+		return deliveryRun{}, path, errors.New("too many dependency checks")
+	}
+	for _, id := range run.DependencyChecks {
+		if !validEvidenceID(id) || seenChecks[id] {
+			return deliveryRun{}, path, errors.New("invalid dependency check IDs")
+		}
+		seenChecks[id] = true
+	}
+	if run.Profile != "lightweight" && len(run.Inputs) > 0 {
+		return deliveryRun{}, path, errors.New("only lightweight candidates support declared input scope")
 	}
 	return run, path, nil
 }
@@ -680,14 +739,14 @@ func validateDeliveryBinding(run deliveryRun, repo string) error {
 	if run.Repository != repo {
 		return errors.New("repository identity mismatch")
 	}
-	digest, err := digestRepository(repo)
+	digest, err := digestDeliveryInputs(repo, run.Inputs)
 	if err != nil {
 		return err
 	}
 	if digest != run.ContentDigest {
 		return errors.New("frozen everyday delivery candidate content changed")
 	}
-	_, contractDigest, err := loadDeliveryCatalog(run.Workflow, run.Experience)
+	contractDigest, err := deliveryProfileDigest(run.Workflow, run.Experience, run.Profile, run.AdditionalRoles, run.RoleReason)
 	if err != nil {
 		return err
 	}
@@ -734,6 +793,9 @@ func validateAllDeliveryChecks(root, key string, run deliveryRun) ([]string, err
 	dir := filepath.Join(root, key, "delivery", "runs", run.ID, "checks")
 	entries, err := os.ReadDir(dir)
 	if os.IsNotExist(err) {
+		if len(run.DependencyChecks) > 0 {
+			return nil, errors.New("dependency-bound checks are missing")
+		}
 		return []string{}, nil
 	}
 	if err != nil {
@@ -741,6 +803,11 @@ func validateAllDeliveryChecks(root, key string, run deliveryRun) ([]string, err
 	}
 	if len(entries) > 256 {
 		return nil, errors.New("too many delivery check records")
+	}
+	for _, id := range run.DependencyChecks {
+		if _, err := os.Lstat(filepath.Join(dir, id+".json")); err != nil {
+			return nil, errors.New("dependency-bound check is missing")
+		}
 	}
 	digests := make([]string, 0, len(entries))
 	for _, entry := range entries {
@@ -778,7 +845,15 @@ func validateDeliveryCheck(root, key string, run deliveryRun, id string) (string
 		return "", fmt.Errorf("cited delivery check %q is failed, stale, or mismatched", id)
 	}
 	h := sha256.Sum256(b)
-	return hex.EncodeToString(h[:]), nil
+	dependencyDigest, err := validateDeliveryDependencies(root, key, run, evidence)
+	if err != nil {
+		return "", err
+	}
+	if dependencyDigest == "" {
+		return hex.EncodeToString(h[:]), nil
+	}
+	combined := sha256.Sum256([]byte(hex.EncodeToString(h[:]) + ":" + dependencyDigest))
+	return hex.EncodeToString(combined[:]), nil
 }
 
 func validateDeliveryRecord(record deliveryRoleRecord, run deliveryRun, role string) error {
@@ -825,6 +900,9 @@ func decodeDeliveryJSON(b []byte, target any, label string) error {
 	return nil
 }
 func writeDeliveryJSON(path string, value any) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+		return err
+	}
 	b, err := json.MarshalIndent(value, "", "  ")
 	if err != nil {
 		return err
@@ -833,6 +911,11 @@ func writeDeliveryJSON(path string, value any) error {
 }
 func deliveryResult(run deliveryRun, extra result) result {
 	out := result{"run": run, "scope": "EVERYDAY_DELIVERY", "assurance": "LOCAL_UNATTESTED", "releaseReadinessEffect": "NONE"}
+	if len(run.Inputs) > 0 {
+		out["candidateScope"] = "CALLER_DECLARED_INPUTS"
+	} else {
+		out["candidateScope"] = "WHOLE_REPOSITORY"
+	}
 	for key, value := range extra {
 		out[key] = value
 	}

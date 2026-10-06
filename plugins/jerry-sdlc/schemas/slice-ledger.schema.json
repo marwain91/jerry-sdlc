@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Private slice cost ledger",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "id",
+    "maxReviews",
+    "maxActiveSeconds",
+    "maxUncachedInputPlusOutputTokens",
+    "createdAt",
+    "events"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9_-]{1,80}$"
+    },
+    "maxReviews": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 10
+    },
+    "maxActiveSeconds": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 604800
+    },
+    "maxUncachedInputPlusOutputTokens": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 1000000000
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "events": {
+      "type": "array",
+      "maxItems": 1000,
+      "items": {
+        "$ref": "slice-event.schema.json"
+      }
+    }
+  },
+  "additionalProperties": false
+}

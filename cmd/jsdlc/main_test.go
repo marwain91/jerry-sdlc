@@ -472,7 +472,7 @@ func TestRolesMatchEverydayWorkflowTeams(t *testing.T) {
 		"trivial-change": "implementer,verifier",
 		"incident":       "incident-commander,debugger,qa-executor,verifier",
 	} {
-		got, err := roles([]string{"--workflow", workflow})
+		got, err := roles([]string{"--workflow", workflow, "--profile", "full"})
 		if err != nil {
 			t.Fatalf("roles %s: %v", workflow, err)
 		}
@@ -1603,7 +1603,7 @@ func TestEverydayDeliveryContractsCompleteWithoutReleaseEffect(t *testing.T) {
 			if workflow == "incident" {
 				risk = "HIGH"
 			}
-			started, err := deliveryStart([]string{"--repo", repo, "--candidate", "candidate-1", "--workflow", workflow, "--risk", risk})
+			started, err := deliveryStart([]string{"--profile", "full", "--repo", repo, "--candidate", "candidate-1", "--workflow", workflow, "--risk", risk})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -1665,7 +1665,7 @@ func TestEverydayDeliveryFailsClosed(t *testing.T) {
 	if err := os.WriteFile(file, []byte("before"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := deliveryStart([]string{"--repo", repo, "--candidate", "candidate-1", "--workflow", "trivial-change", "--risk", "LOW"}); err != nil {
+	if _, err := deliveryStart([]string{"--profile", "full", "--repo", repo, "--candidate", "candidate-1", "--workflow", "trivial-change", "--risk", "LOW"}); err != nil {
 		t.Fatal(err)
 	}
 	reportPath := filepath.Join(t.TempDir(), "report.json")
@@ -1704,7 +1704,7 @@ func TestEverydayAndReleaseRunsCanCoexist(t *testing.T) {
 	if _, err := start([]string{"--repo", repo, "--candidate", "candidate-1", "--workflow", "release-readiness"}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := deliveryStart([]string{"--repo", repo, "--candidate", "candidate-1", "--workflow", "bug-diagnosis", "--risk", "NORMAL"}); err != nil {
+	if _, err := deliveryStart([]string{"--profile", "full", "--repo", repo, "--candidate", "candidate-1", "--workflow", "bug-diagnosis", "--risk", "NORMAL"}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := status([]string{"--repo", repo, "--candidate", "candidate-1"}); err != nil {
@@ -1726,7 +1726,7 @@ func TestEverydayDeliveryIncompleteRunCanContinueAndFinalEvidenceIsFrozen(t *tes
 	if err := os.WriteFile(filepath.Join(repo, "candidate.txt"), []byte("candidate"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := deliveryStart([]string{"--repo", repo, "--candidate", "candidate-1", "--workflow", "trivial-change", "--risk", "LOW"}); err != nil {
+	if _, err := deliveryStart([]string{"--profile", "full", "--repo", repo, "--candidate", "candidate-1", "--workflow", "trivial-change", "--risk", "LOW"}); err != nil {
 		t.Fatal(err)
 	}
 	early, err := deliveryVerify([]string{"--repo", repo, "--candidate", "candidate-1"})
@@ -1786,7 +1786,7 @@ func TestEverydayHighRiskCannotClaimCompletionWithoutSpecialists(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Setenv("JSDLC_PLUGIN_ROOT", filepath.Clean(filepath.Join(workingDir, "..", "..", "plugins", "jerry-sdlc")))
-	if _, err := deliveryStart([]string{"--repo", t.TempDir(), "--candidate", "candidate-1", "--workflow", "feature", "--risk", "HIGH"}); err == nil {
+	if _, err := deliveryStart([]string{"--profile", "full", "--repo", t.TempDir(), "--candidate", "candidate-1", "--workflow", "feature", "--risk", "HIGH"}); err == nil {
 		t.Fatal("HIGH-risk workflow was accepted without specialist persistence")
 	}
 }
@@ -1802,7 +1802,7 @@ func TestClassifiedIncidentCanStartPersistedDelivery(t *testing.T) {
 	if err != nil || classified["workflow"] != "incident" || classified["risk"] != "HIGH" {
 		t.Fatalf("unexpected classification: %#v %v", classified, err)
 	}
-	if _, err := deliveryStart([]string{"--repo", t.TempDir(), "--candidate", "incident-1", "--workflow", classified["workflow"].(string), "--risk", classified["risk"].(string)}); err != nil {
+	if _, err := deliveryStart([]string{"--profile", "full", "--repo", t.TempDir(), "--candidate", "incident-1", "--workflow", classified["workflow"].(string), "--risk", classified["risk"].(string)}); err != nil {
 		t.Fatalf("classified incident could not start persisted delivery: %v", err)
 	}
 }
@@ -1816,7 +1816,7 @@ func TestEverydayPersistedRunIDTraversalFailsClosed(t *testing.T) {
 	}
 	t.Setenv("JSDLC_PLUGIN_ROOT", filepath.Clean(filepath.Join(workingDir, "..", "..", "plugins", "jerry-sdlc")))
 	repo := t.TempDir()
-	started, err := deliveryStart([]string{"--repo", repo, "--candidate", "candidate-1", "--workflow", "bug-diagnosis", "--risk", "NORMAL"})
+	started, err := deliveryStart([]string{"--profile", "full", "--repo", repo, "--candidate", "candidate-1", "--workflow", "bug-diagnosis", "--risk", "NORMAL"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1829,7 +1829,7 @@ func TestEverydayPersistedRunIDTraversalFailsClosed(t *testing.T) {
 	if _, err := deliveryStatus([]string{"--repo", repo, "--candidate", "candidate-1"}); err == nil {
 		t.Fatal("traversal delivery run ID was accepted")
 	}
-	if _, err := deliveryStart([]string{"--repo", repo, "--candidate", "candidate-2", "--workflow", "bug-diagnosis", "--risk", "NORMAL"}); err == nil {
+	if _, err := deliveryStart([]string{"--profile", "full", "--repo", repo, "--candidate", "candidate-2", "--workflow", "bug-diagnosis", "--risk", "NORMAL"}); err == nil {
 		t.Fatal("start archived a traversal delivery run ID")
 	}
 	if _, err := os.Stat(filepath.Join(filepath.Dir(filepath.Dir(path)), "escape.json")); !os.IsNotExist(err) {
@@ -1846,7 +1846,7 @@ func TestEverydayInterruptedCheckReservationCanBeRecovered(t *testing.T) {
 	}
 	t.Setenv("JSDLC_PLUGIN_ROOT", filepath.Clean(filepath.Join(workingDir, "..", "..", "plugins", "jerry-sdlc")))
 	repo := t.TempDir()
-	started, err := deliveryStart([]string{"--repo", repo, "--candidate", "candidate-1", "--workflow", "trivial-change", "--risk", "LOW"})
+	started, err := deliveryStart([]string{"--profile", "full", "--repo", repo, "--candidate", "candidate-1", "--workflow", "trivial-change", "--risk", "LOW"})
 	if err != nil {
 		t.Fatal(err)
 	}

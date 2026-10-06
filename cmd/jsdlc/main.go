@@ -26,7 +26,7 @@ type result map[string]any
 
 func main() {
 	if len(os.Args) < 2 {
-		fail(errors.New("usage: jsdlc <adapters|validate-adapter|packs|inspect-codex-plugins|resolve-collision|validate-workflow|doctor|classify|eval-triggers|eval-workflows|eval-quality|roles|delivery-start|delivery-status|delivery-check|delivery-recover-check|delivery-record|delivery-verify|delivery-cancel|start|status|transition|upgrade-state|rollback-state|check|recover-check|worker|team|adjudicate|authorize-correction|finish-correction|verify>"))
+		fail(errors.New("usage: jsdlc <classify|roles|preflight|wait-check|slice-start|slice-record|slice-status|delivery-start|delivery-status|delivery-check|delivery-reuse-check|delivery-recover-check|delivery-record|delivery-verify|delivery-cancel|eval-comparison|eval-quality|eval-triggers|eval-workflows|doctor|adapters|validate-adapter|packs|inspect-codex-plugins|resolve-collision|validate-workflow|start|status|transition|upgrade-state|rollback-state|check|recover-check|worker|team|adjudicate|authorize-correction|finish-correction|verify>"))
 	}
 	var out result
 	var err error
@@ -61,6 +61,14 @@ func main() {
 		out, err = deliveryStatus(os.Args[2:])
 	case "delivery-check":
 		out, err = deliveryCheck(os.Args[2:])
+	case "delivery-reuse-check":
+		out, err = deliveryReuseCheck(os.Args[2:])
+	case "preflight", "wait-check":
+		out, err = deliveryProbe(os.Args[1], os.Args[2:])
+	case "slice-start", "slice-record", "slice-status":
+		out, err = sliceBudget(os.Args[1], os.Args[2:])
+	case "eval-comparison":
+		out, err = evalComparison(os.Args[2:])
 	case "delivery-recover-check":
 		out, err = deliveryRecoverCheck(os.Args[2:])
 	case "delivery-record":
@@ -108,8 +116,16 @@ func main() {
 	}
 	// Preserve the evaluation report on stdout while making threshold failures
 	// observable to CI and shell callers. Other commands retain their semantics.
-	if contains([]string{"eval-triggers", "eval-workflows", "eval-quality"}, os.Args[1]) && out["passed"] != true {
+	if contains([]string{"eval-triggers", "eval-workflows", "eval-quality", "eval-comparison"}, os.Args[1]) && out["passed"] != true {
 		os.Exit(2)
+	}
+	if contains([]string{"preflight", "wait-check"}, os.Args[1]) {
+		if out["outcome"] == "FAILED" {
+			os.Exit(2)
+		}
+		if out["outcome"] == "TIMED_OUT" {
+			os.Exit(3)
+		}
 	}
 }
 
@@ -266,7 +282,7 @@ func classify(args []string) (result, error) {
 	for _, term := range []string{"ui", "ux", "interface", "usability", "user interface", "user experience", "user-facing", "accessibility", "a11y", "screen reader", "keyboard navigation", "responsive", "onboarding", "checkout", "dashboard", "navigation", "empty state", "error message", "microcopy", "design system", "frontend", "front-end", "button", "modal", "form", "screen", "wizard", "menu", "cli", "command-line", "help text", "interactive prompt", "confirmation prompt", "transactional email", "notification copy", "report layout", ".tsx", ".jsx", ".vue", ".svelte", ".css", ".scss", ".html", "components/", "pages/", "views/", "screens/"} {
 		if experienceTriggerPresent(text, term) {
 			experience = "focused"
-			if workflow == "feature" && !strings.HasPrefix(strings.ToLower(strings.TrimSpace(*req)), "fix ") {
+			if workflow == "feature" && !strings.HasPrefix(strings.ToLower(strings.TrimSpace(*req)), "fix ") && hasAny(strings.ToLower(*req), "new screen", "new product", "onboarding flow", "checkout flow", "redesign", "new journey", "new navigation", "new app", "new application") {
 				experience = "full"
 			}
 			triggers = append(triggers, "ux-accessibility")
@@ -277,7 +293,11 @@ func classify(args []string) (result, error) {
 		experience = "focused"
 		triggers = append(triggers, "ux-accessibility")
 	}
-	return result{"workflow": workflow, "risk": risk, "experience": experience, "triggers": triggers, "semanticReviewRequired": true}, nil
+	profile, persistence := "lightweight", "OPTIONAL"
+	if workflow == "release-readiness" {
+		profile, persistence = "full", "REQUIRED"
+	}
+	return result{"workflow": workflow, "risk": risk, "experience": experience, "triggers": triggers, "semanticReviewRequired": true, "profile": profile, "persistence": persistence}, nil
 }
 
 func experienceTriggerPresent(text, term string) bool {
@@ -461,6 +481,9 @@ func roles(args []string) (result, error) {
 	fs := flag.NewFlagSet("roles", flag.ContinueOnError)
 	wf := fs.String("workflow", "release-readiness", "workflow name")
 	experience := fs.String("experience", "none", "none, focused, or full product/UX involvement")
+	profile := fs.String("profile", "lightweight", "lightweight or full everyday profile")
+	extra := fs.String("add-roles", "", "additional lightweight roles, comma separated")
+	reason := fs.String("role-reason", "", "specific risk or coverage gap")
 	if err := fs.Parse(args); err != nil {
 		return nil, err
 	}
@@ -471,16 +494,19 @@ func roles(args []string) (result, error) {
 		return nil, errors.New("explicit --experience cannot be empty")
 	}
 	if *wf == "release-readiness" {
-		if *experience != "none" {
+		if *experience != "none" || *extra != "" || *reason != "" || *profile != "lightweight" {
 			return nil, errors.New("experience applies only to everyday delivery workflows")
 		}
 		return result{"workflow": *wf, "roles": releaseWorkflowRoles}, nil
 	}
-	selected, err := resolveDeliveryRoles(*wf, *experience)
+	if *profile == "" {
+		return nil, errors.New("explicit --profile cannot be empty")
+	}
+	selected, err := resolveDeliveryProfileRoles(*wf, *experience, *profile, splitDeliveryRoles(*extra), *reason)
 	if err != nil {
 		return nil, err
 	}
-	return result{"workflow": *wf, "roles": selected, "experience": *experience}, nil
+	return result{"workflow": *wf, "roles": selected, "experience": *experience, "profile": *profile, "persistence": "OPTIONAL"}, nil
 }
 
 type runState struct {

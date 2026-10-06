@@ -1,0 +1,136 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Private slice observation event",
+  "type": "object",
+  "required": [
+    "id",
+    "kind",
+    "evidence"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9_-]{1,80}$"
+    },
+    "kind": {
+      "enum": [
+        "review",
+        "measurement",
+        "finding",
+        "checkpoint"
+      ]
+    },
+    "evidence": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096
+    },
+    "materialBlocker": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096
+    },
+    "usage": {
+      "type": "object",
+      "required": [
+        "inputTokens",
+        "cachedInputTokens",
+        "outputTokens"
+      ],
+      "properties": {
+        "inputTokens": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000000000000
+        },
+        "cachedInputTokens": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000000000000
+        },
+        "outputTokens": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000000000000
+        }
+      },
+      "additionalProperties": false
+    },
+    "tokenCoverage": {
+      "enum": [
+        "ALL_WORKERS",
+        "PARTIAL"
+      ]
+    },
+    "findingOutcome": {
+      "enum": [
+        "CONFIRMED",
+        "REJECTED",
+        "UNRESOLVED"
+      ]
+    },
+    "severity": {
+      "enum": [
+        "CRITICAL",
+        "HIGH",
+        "MEDIUM",
+        "LOW"
+      ]
+    },
+    "activeSeconds": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 1000000000
+    },
+    "waitSeconds": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 1000000000
+    },
+    "humanSeconds": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 1000000000
+    },
+    "escapedDefects": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 1000000000
+    },
+    "reopenedTasks": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 1000000000
+    }
+  },
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "finding"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "findingOutcome",
+          "severity"
+        ]
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "usage"
+        ]
+      },
+      "then": {
+        "required": [
+          "tokenCoverage"
+        ]
+      }
+    }
+  ]
+}

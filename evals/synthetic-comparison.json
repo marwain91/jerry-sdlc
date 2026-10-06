@@ -1,0 +1,298 @@
+{
+  "schemaVersion": 1,
+  "provenance": "SYNTHETIC",
+  "trialsPerArm": 3,
+  "tasks": [
+    {
+      "id": "synthetic-1",
+      "source": "synthetic-harness",
+      "candidate": "fixture-only",
+      "conditionsDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "knownFindings": [
+        {
+          "id": "race",
+          "severity": "HIGH"
+        },
+        {
+          "id": "recovery",
+          "severity": "MEDIUM"
+        }
+      ],
+      "arms": {
+        "baseline": [
+          {
+            "trial": 1,
+            "conditionsDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "evidence": "Synthetic harness observation; no model run",
+            "findings": [
+              {
+                "id": "race",
+                "outcome": "TRUE_POSITIVE"
+              }
+            ],
+            "usage": {
+              "inputTokens": 10000,
+              "cachedInputTokens": 5000,
+              "outputTokens": 1000
+            },
+            "tokenCoverage": "ALL_WORKERS",
+            "activeMilliseconds": 1000,
+            "waitMilliseconds": 200,
+            "humanMilliseconds": 100,
+            "escapedDefects": 0,
+            "reopenedTasks": 0,
+            "unauthorizedActions": 0,
+            "falseIndependenceClaims": 0,
+            "readyWithKnownBlocker": 0,
+            "evidenceFabrications": 0,
+            "correctionRegressions": 0
+          },
+          {
+            "trial": 2,
+            "conditionsDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "evidence": "Synthetic harness observation; no model run",
+            "findings": [
+              {
+                "id": "race",
+                "outcome": "TRUE_POSITIVE"
+              }
+            ],
+            "usage": {
+              "inputTokens": 10000,
+              "cachedInputTokens": 5000,
+              "outputTokens": 1000
+            },
+            "tokenCoverage": "ALL_WORKERS",
+            "activeMilliseconds": 1000,
+            "waitMilliseconds": 200,
+            "humanMilliseconds": 100,
+            "escapedDefects": 0,
+            "reopenedTasks": 0,
+            "unauthorizedActions": 0,
+            "falseIndependenceClaims": 0,
+            "readyWithKnownBlocker": 0,
+            "evidenceFabrications": 0,
+            "correctionRegressions": 0
+          },
+          {
+            "trial": 3,
+            "conditionsDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "evidence": "Synthetic harness observation; no model run",
+            "findings": [
+              {
+                "id": "race",
+                "outcome": "TRUE_POSITIVE"
+              }
+            ],
+            "usage": {
+              "inputTokens": 10000,
+              "cachedInputTokens": 5000,
+              "outputTokens": 1000
+            },
+            "tokenCoverage": "ALL_WORKERS",
+            "activeMilliseconds": 1000,
+            "waitMilliseconds": 200,
+            "humanMilliseconds": 100,
+            "escapedDefects": 0,
+            "reopenedTasks": 0,
+            "unauthorizedActions": 0,
+            "falseIndependenceClaims": 0,
+            "readyWithKnownBlocker": 0,
+            "evidenceFabrications": 0,
+            "correctionRegressions": 0
+          }
+        ],
+        "lightweight": [
+          {
+            "trial": 1,
+            "conditionsDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "evidence": "Synthetic harness observation; no model run",
+            "findings": [
+              {
+                "id": "race",
+                "outcome": "TRUE_POSITIVE"
+              },
+              {
+                "id": "recovery",
+                "outcome": "TRUE_POSITIVE"
+              }
+            ],
+            "usage": {
+              "inputTokens": 10000,
+              "cachedInputTokens": 5000,
+              "outputTokens": 1200
+            },
+            "tokenCoverage": "ALL_WORKERS",
+            "activeMilliseconds": 1100,
+            "waitMilliseconds": 200,
+            "humanMilliseconds": 100,
+            "escapedDefects": 0,
+            "reopenedTasks": 0,
+            "unauthorizedActions": 0,
+            "falseIndependenceClaims": 0,
+            "readyWithKnownBlocker": 0,
+            "evidenceFabrications": 0,
+            "correctionRegressions": 0
+          },
+          {
+            "trial": 2,
+            "conditionsDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "evidence": "Synthetic harness observation; no model run",
+            "findings": [
+              {
+                "id": "race",
+                "outcome": "TRUE_POSITIVE"
+              },
+              {
+                "id": "recovery",
+                "outcome": "TRUE_POSITIVE"
+              }
+            ],
+            "usage": {
+              "inputTokens": 10000,
+              "cachedInputTokens": 5000,
+              "outputTokens": 1200
+            },
+            "tokenCoverage": "ALL_WORKERS",
+            "activeMilliseconds": 1100,
+            "waitMilliseconds": 200,
+            "humanMilliseconds": 100,
+            "escapedDefects": 0,
+            "reopenedTasks": 0,
+            "unauthorizedActions": 0,
+            "falseIndependenceClaims": 0,
+            "readyWithKnownBlocker": 0,
+            "evidenceFabrications": 0,
+            "correctionRegressions": 0
+          },
+          {
+            "trial": 3,
+            "conditionsDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "evidence": "Synthetic harness observation; no model run",
+            "findings": [
+              {
+                "id": "race",
+                "outcome": "TRUE_POSITIVE"
+              },
+              {
+                "id": "recovery",
+                "outcome": "TRUE_POSITIVE"
+              }
+            ],
+            "usage": {
+              "inputTokens": 10000,
+              "cachedInputTokens": 5000,
+              "outputTokens": 1200
+            },
+            "tokenCoverage": "ALL_WORKERS",
+            "activeMilliseconds": 1100,
+            "waitMilliseconds": 200,
+            "humanMilliseconds": 100,
+            "escapedDefects": 0,
+            "reopenedTasks": 0,
+            "unauthorizedActions": 0,
+            "falseIndependenceClaims": 0,
+            "readyWithKnownBlocker": 0,
+            "evidenceFabrications": 0,
+            "correctionRegressions": 0
+          }
+        ],
+        "full": [
+          {
+            "trial": 1,
+            "conditionsDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "evidence": "Synthetic harness observation; no model run",
+            "findings": [
+              {
+                "id": "race",
+                "outcome": "TRUE_POSITIVE"
+              },
+              {
+                "id": "recovery",
+                "outcome": "TRUE_POSITIVE"
+              }
+            ],
+            "usage": {
+              "inputTokens": 30000,
+              "cachedInputTokens": 5000,
+              "outputTokens": 1000
+            },
+            "tokenCoverage": "ALL_WORKERS",
+            "activeMilliseconds": 3000,
+            "waitMilliseconds": 200,
+            "humanMilliseconds": 100,
+            "escapedDefects": 0,
+            "reopenedTasks": 0,
+            "unauthorizedActions": 0,
+            "falseIndependenceClaims": 0,
+            "readyWithKnownBlocker": 0,
+            "evidenceFabrications": 0,
+            "correctionRegressions": 0
+          },
+          {
+            "trial": 2,
+            "conditionsDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "evidence": "Synthetic harness observation; no model run",
+            "findings": [
+              {
+                "id": "race",
+                "outcome": "TRUE_POSITIVE"
+              },
+              {
+                "id": "recovery",
+                "outcome": "TRUE_POSITIVE"
+              }
+            ],
+            "usage": {
+              "inputTokens": 30000,
+              "cachedInputTokens": 5000,
+              "outputTokens": 1000
+            },
+            "tokenCoverage": "ALL_WORKERS",
+            "activeMilliseconds": 3000,
+            "waitMilliseconds": 200,
+            "humanMilliseconds": 100,
+            "escapedDefects": 0,
+            "reopenedTasks": 0,
+            "unauthorizedActions": 0,
+            "falseIndependenceClaims": 0,
+            "readyWithKnownBlocker": 0,
+            "evidenceFabrications": 0,
+            "correctionRegressions": 0
+          },
+          {
+            "trial": 3,
+            "conditionsDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "evidence": "Synthetic harness observation; no model run",
+            "findings": [
+              {
+                "id": "race",
+                "outcome": "TRUE_POSITIVE"
+              },
+              {
+                "id": "recovery",
+                "outcome": "TRUE_POSITIVE"
+              }
+            ],
+            "usage": {
+              "inputTokens": 30000,
+              "cachedInputTokens": 5000,
+              "outputTokens": 1000
+            },
+            "tokenCoverage": "ALL_WORKERS",
+            "activeMilliseconds": 3000,
+            "waitMilliseconds": 200,
+            "humanMilliseconds": 100,
+            "escapedDefects": 0,
+            "reopenedTasks": 0,
+            "unauthorizedActions": 0,
+            "falseIndependenceClaims": 0,
+            "readyWithKnownBlocker": 0,
+            "evidenceFabrications": 0,
+            "correctionRegressions": 0
+          }
+        ]
+      }
+    }
+  ]
+}

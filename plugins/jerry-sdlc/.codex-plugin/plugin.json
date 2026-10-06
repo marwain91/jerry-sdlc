@@ -1,18 +1,18 @@
 {
   "name": "jerry-sdlc",
-  "version": "0.1.0+codex.20260917115810",
-  "description": "Product design, UX, and risk-aware, evidence-driven software delivery workflows for Codex.",
+  "version": "0.1.0+codex.20261006120000",
+  "description": "Lightweight software delivery with bounded review, measured costs, and explicit release readiness.",
   "author": {
     "name": "Jerry SDLC contributors"
   },
   "skills": "./skills/",
   "interface": {
     "displayName": "Jerry SDLC",
-    "shortDescription": "Product design, UX, planning, QA, and release readiness.",
-    "longDescription": "Selects risk-aware SDLC workflows and proportionate product design and UX passes for human-facing changes, with candidate-bound planning, QA, review, and verification evidence and truthful assurance labels.",
+    "shortDescription": "Lightweight delivery, UX checks, and explicit release readiness.",
+    "longDescription": "Defaults to one implementation owner and one reviewer, adds specialists for specific risks, bounds correction rounds, and records costs when available. Optional dependency-bound checks support reuse; formal release readiness retains its evidence contract.",
     "developerName": "Jerry SDLC contributors",
     "category": "Productivity",
     "capabilities": [],
-    "defaultPrompt": "Use Jerry SDLC to assess this project's release readiness."
+    "defaultPrompt": "Use Jerry SDLC to deliver this change with the smallest sufficient workflow and checks."
   }
 }
