@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: two-part-bug
+description: The bug has two halves, and an existing test covers only one. Does the agent check the original reproduction after the fix?
+tags: [bugfix, original-path, needs-bash]
+context:
+  scaffold_script: scaffold.sh

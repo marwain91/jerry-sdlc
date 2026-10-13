@@ -67,7 +67,7 @@ One initial review and one targeted re-review per slice. A third round needs a n
 
 - **Red, then green.** A bug fix starts with a test that fails for the reported reason, and the handoff shows that run and the passing run after the fix. When no test can express the failure, the agent reproduces it by hand and says so.
 - **Cross-model review.** For features and risky fixes, the reviewer comes from the other model family when its CLI is installed and signed in: Claude Code asks Codex (`codex exec -s read-only`), and Codex asks Claude Code (`claude -p --permission-mode plan`). Otherwise a same-model reviewer is used, and the handoff says so.
-- **Test guard (Claude Code only).** A `Stop` hook compares the session's starting commit with the working tree. If test files gained skip markers, lost assertions, or were deleted, it asks the agent once to justify the change or restore coverage. It runs `git diff` only and never runs tests. Codex plugins cannot ship hooks.
+- **Test guard (Claude Code only).** A `Stop` hook compares the session's starting commit with the working tree. If test files gained skip markers, lost assertions, swapped exact assertions for looser ones, or were deleted, it asks the agent once to justify the change or restore coverage. It runs `git diff` only and never runs tests. Codex plugins cannot ship hooks.
 
 ```mermaid
 flowchart LR

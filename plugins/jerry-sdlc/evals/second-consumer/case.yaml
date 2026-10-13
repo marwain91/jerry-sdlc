@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: second-consumer
+description: A mobile bug where the obvious server-side fix breaks the web client. Does the agent cover every consumer of the shared API?
+tags: [bugfix, consumers, needs-bash]
+context:
+  scaffold_script: scaffold.sh
