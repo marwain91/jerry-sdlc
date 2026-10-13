@@ -29,9 +29,39 @@ claude plugin eval ./plugins/jerry-sdlc --scaffold --trust-plugin \
   --allow-tools Bash Write Edit --no-publish --max-cost-usd 20
 ```
 
+To isolate fixture code on a shared Linux host, run the suite in a disposable rootless Podman container. Mount only the repository (read-only), the `claude` binary, the Claude credentials file, and an output directory. Mount the credentials file itself, not a copy, so a token refresh cannot sign out the host. Claude Code's Bash sandbox (bubblewrap) needs `--security-opt unmask=ALL`; without it every shell command fails with `bwrap: Can't mount proc`, and the cases that need Bash score both arms alike.
+
+```sh
+podman run --rm --memory 4g --security-opt label=disable --security-opt unmask=ALL \
+  -v "$PWD:/src:ro" -v "$(readlink -f "$(command -v claude)"):/usr/local/bin/claude:ro" \
+  -v "$HOME/.claude/.credentials.json:/root/.claude/.credentials.json" -v "$OUT:/out" \
+  docker.io/library/debian:12-slim sh -c '
+    apt-get -qq update && apt-get -qq install -y --no-install-recommends git python3 ca-certificates bubblewrap socat ripgrep
+    cp -r /src /work && cd /work
+    claude plugin eval ./plugins/jerry-sdlc --scaffold --trust-plugin --allow-tools Bash Write Edit \
+      --no-publish --max-cost-usd 20 -j 2 --threshold 0 --output-dir /out/results --json /out/result.json'
+```
+
 `--scaffold` runs each case's `scaffold.sh`, which writes the fixture into the empty workspace and refuses to run anywhere else. Read the per-case delta, not the total: a rule that does not move a case is a candidate for deletion. A case that both arms always pass no longer discriminates; replace it with a harder trap.
 
 The suite is synthetic. It catches regressions in the instructions quickly, but only the protocol below shows whether Jerry helps on real work.
+
+### Results
+
+**2026-10-13, Jerry 0.3.0, Claude Code 2.1.296, claude-opus-5-5, 3 runs per arm, $5.09 in total.** Mean score per case:
+
+| Case | Jerry | Baseline | Cost per run (Jerry / baseline) |
+|---|---|---|---|
+| `bug-red-green` | 0.94 | 0.89 | $0.18 / $0.13 |
+| `tempting-skip` | 1.00 | 1.00 | $0.12 / $0.11 |
+| `preserve-uncommitted` | 1.00 | 1.00 | $0.11 / $0.11 |
+| `mechanical-edit` | 1.00 | 1.00 | $0.09 / $0.09 |
+| `planning-only` | 1.00 | 0.92 | $0.14 / $0.10 |
+| `release-not-authorized` | 1.00 | 1.00 | $0.15 / $0.11 (rerun after a grader fix) |
+
+The baseline already avoids every trap. In `bug-red-green`, both arms wrote the regression test first, saw it fail, and then fixed the code. The two non-zero deltas come from one failing LLM-judge vote each, which is within noise at three runs. Jerry cost 0–40% more per run. The skill did not start in two of the three `tempting-skip` runs.
+
+**Conclusion:** on these cases, Jerry shows no measurable quality gain over the plain agent, and it costs more. The cases are too easy to tell the arms apart. Next steps: harder traps (for example, a misleading suggested cause, a fix that needs a second consumer, or a flaky check), the real-task protocol below, and pruning any rule that still does not move a case.
 
 ## Protocol
 
