@@ -1,12 +1,10 @@
 # Jerry SDLC
 
-Jerry SDLC is a Codex plugin for proportionate software delivery. Describe the outcome; Jerry selects a bounded workflow with useful checks and review.
+Jerry SDLC is a Codex plugin for proportionate software delivery. Describe the outcome; Jerry picks the smallest workflow that delivers it with credible evidence.
 
-**Experimental:** quality and cost improvement have not been established. Formal release readiness has unmet assurance requirements and must not be used as production release authority. See [status](docs/status.md) and [security](SECURITY.md).
+**Experimental.** It has not yet been shown to beat plain Codex on quality or cost. See [evaluation](docs/evaluation.md).
 
 ## Get started
-
-Use a Codex version with plugin support. Linux x86-64 has experimental execution evidence; native macOS validation is pending.
 
 1. Register the marketplace:
 
@@ -21,19 +19,19 @@ Use a Codex version with plugin support. Linux x86-64 has experimental execution
    Use Jerry SDLC to fix this bug and verify the regression.
    ```
 
-Explicit skill selection is `$jsdlc-orchestrate`. The plugin bundles its CLI; Go is needed only for development. No project initialization or generated project files are required. Repository instructions and canonical CI remain authoritative. See the official [plugin setup guide](https://developers.openai.com/plugins/build/plugins#add-a-marketplace-from-the-cli).
+Explicit skill selection is `$jsdlc-orchestrate`. The plugin is instructions only: no binaries, no project initialization, no generated files. Repository instructions and CI stay authoritative.
 
-## Lightweight by default
+## What it does
 
-| Request | Default workflow |
+| Request | Workflow |
 |---|---|
-| Feature or bug fix | One owner plans/diagnoses, implements, and runs meaningful checks; one bounded reviewer. |
-| Typo or mechanical edit | One owner and a relevant check; no delegation. |
-| Diagnosis or PR review | Read-only evidence/findings within the requested scope. |
-| Incident | Applicable diagnosis and authorized mitigation, with observed recovery checks. |
-| Explicit release-readiness assessment | Separate formal contract and full assurance requirements. |
+| Typo or mechanical edit | Edit and one relevant check. |
+| Bug fix or feature | One owner implements and checks; one bounded review. |
+| Diagnosis or PR review | Read-only evidence or findings. |
+| Incident | Authorized reversible mitigation, verified in production. |
+| Release-readiness assessment | Read-only risk review; never executes a release. |
 
-One initial review and one targeted correction review are the default per slice. Further rounds need a named material blocker. Extra specialists address a specific risk or missing coverage. The owner can cover planning and QA; one reviewer can cover code and focused UX. New user journeys still need a brief and actual interaction checks. Optional polish becomes follow-up work.
+One initial review and one targeted re-review per slice. A third round needs a named blocker. Specialists are added for a named risk only. Polish becomes follow-up work. Fixes must be checked on the original failure path, and interface changes must be exercised for real.
 
 ```mermaid
 flowchart LR
@@ -44,33 +42,27 @@ flowchart LR
     C -->|Criteria met| E
 ```
 
-Read [everyday delivery](plugins/jerry-sdlc/skills/jsdlc-orchestrate/references/delivery-workflows.md), [experience guidance](plugins/jerry-sdlc/skills/jsdlc-orchestrate/references/product-design-ux.md), and [cost controls](plugins/jerry-sdlc/skills/jsdlc-orchestrate/references/efficiency.md) when applicable. Ordinary work does not require doctor, formal verdicts, or JSON role reports.
+## Layout
 
-## Optional CLI evidence and cost tools
+```text
+plugins/jerry-sdlc/
+  .codex-plugin/plugin.json          plugin manifest
+  skills/jsdlc-orchestrate/
+    SKILL.md                         routing and core rules (always loaded)
+    references/workflows.md          per-workflow detail
+    references/ux.md                 product design and UX checks
+    references/handoffs.md           what to send delegated reviewers
+.agents/plugins/marketplace.json     marketplace catalog
+scripts/check.sh                     structural checks run by CI
+docs/evaluation.md                   how to test whether Jerry helps
+```
 
-- `roles --workflow feature` returns lightweight roles; `--profile full` retains the larger contract.
-- `delivery-start` defaults to lightweight. Optional declared candidate scope and dependency-bound check reuse avoid invalidating unrelated work. Fresh candidates still need fresh reviewer conclusions.
-- `preflight` probes a shared prerequisite once. `wait-check` polls an exact existing job within a bounded timeout.
-- `slice-start/record/status` records private review rounds, active/wait time, worker-inclusive cached/uncached/output tokens, adjudicated findings, escaped defects, and reopened work.
-- `eval-comparison` compares baseline, lightweight, and full on supplied matched results. Its exploratory limits default to 1.5× baseline active time and uncached-input-plus-output tokens. It does not execute model trials or establish graduation.
-
-CLI examples use the bundled `plugins/jerry-sdlc/scripts/jsdlc` prefix and the project's permitted execution environment. See [recorded delivery](plugins/jerry-sdlc/skills/jsdlc-orchestrate/references/recorded-delivery.md). A ledger enforces recorded review admission only; without a runtime adapter it cannot guarantee a model token cap. Unknown measurements remain unknown.
-
-## Understand results
-
-Ordinary handoffs report observed engineering outcomes and unmet criteria. Optional records return COMPLETE, ISSUES, INCOMPLETE, or BLOCKED for their exact candidate and declared scope. Scope/runtime/dependency completeness is caller-declared; records are LOCAL_UNATTESTED. Older records without a profile retain full semantics.
-
-Everyday results have no release-readiness effect. Local workers do not establish trusted independence. No result authorizes publication, tagging, deployment, release, spending, or secret access. Incident repository evidence does not prove production recovery.
-
-## Documentation
+Versions up to 0.1.x also shipped a Go CLI for evidence records, formal release verdicts, and cost ledgers. It was removed in 0.2.0; see Git history for it.
 
 | Guide | Contents |
 |---|---|
-| [Architecture](docs/architecture.md) | Contracts, profiles, state, and evidence |
-| [Status](docs/status.md) | Implemented capabilities and missing evidence |
-| [Compatibility](docs/compatibility.md) | Platforms, adapters, and coexistence |
-| [Evaluation](docs/evaluation.md) | Exploratory comparison and preserved graduation requirements |
-| [Contributing](CONTRIBUTING.md) | Container-based development and reproducible packaging |
-| [Security](SECURITY.md) | Trust boundaries |
+| [Evaluation](docs/evaluation.md) | Baseline-versus-Jerry comparison protocol |
+| [Contributing](CONTRIBUTING.md) | Editing the instructions |
+| [Security](SECURITY.md) | Trust boundaries and reporting |
 
 Licensed under Apache License 2.0.

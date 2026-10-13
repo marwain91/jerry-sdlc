@@ -1,15 +1,15 @@
 {
   "name": "jerry-sdlc",
-  "version": "0.1.0+codex.20261006120000",
-  "description": "Lightweight software delivery with bounded review, measured costs, and explicit release readiness.",
+  "version": "0.2.0+codex.20261013120000",
+  "description": "Proportionate software delivery: one owner, one bounded review, real checks.",
   "author": {
     "name": "Jerry SDLC contributors"
   },
   "skills": "./skills/",
   "interface": {
     "displayName": "Jerry SDLC",
-    "shortDescription": "Lightweight delivery, UX checks, and explicit release readiness.",
-    "longDescription": "Defaults to one implementation owner and one reviewer, adds specialists for specific risks, bounds correction rounds, and records costs when available. Optional dependency-bound checks support reuse; formal release readiness retains its evidence contract.",
+    "shortDescription": "Proportionate delivery with bounded review and real checks.",
+    "longDescription": "Routes each request to the smallest sufficient workflow: one implementation owner, one bounded reviewer, specialists only for named risks, and checks that exercise the real failure path and interface. Pure instructions; no binaries or project setup.",
     "developerName": "Jerry SDLC contributors",
     "category": "Productivity",
     "capabilities": [],
