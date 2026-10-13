@@ -27,11 +27,17 @@ export GIT_OPTIONAL_LOCKS=0
 g() { git -c core.fsmonitor=false -c diff.external= "$@"; }
 top=$(g rev-parse --show-toplevel 2>/dev/null) || exit 0
 
+# State lives outside the repository, at an absolute, physically resolved path.
 state_dir=${CLAUDE_PLUGIN_DATA:-${XDG_STATE_HOME:-$HOME/.local/state}/jerry-sdlc}
+case "$state_dir" in /*) ;; *) exit 0 ;; esac
 case "$state_dir/" in "$top"/*) exit 0 ;; esac
-mkdir -p "$state_dir" 2>/dev/null || exit 0
+(umask 077 && mkdir -p "$state_dir") 2>/dev/null || exit 0
+state_dir=$(cd -P "$state_dir" 2>/dev/null && pwd -P) || exit 0
+top=$(cd -P "$top" && pwd -P) || exit 0
+case "$state_dir/" in "$top"/*) exit 0 ;; esac
 base_file=$state_dir/session-$session.base
 seen_file=$state_dir/session-$session.seen
+[ ! -L "$base_file" ] && [ ! -L "$seen_file" ] || exit 0
 find "$state_dir" -name 'session-*' -mtime +30 -exec rm -f {} + 2>/dev/null
 
 if [ "$mode" = start ]; then
@@ -45,7 +51,7 @@ printf '%s' "$input" | tr -d '\n' | grep -q '"stop_hook_active"[[:space:]]*:[[:s
 base=$(cat "$base_file" 2>/dev/null)
 [ -n "$base" ] || base=$(g rev-parse -q --verify HEAD 2>/dev/null) || exit 0
 g cat-file -e "$base^{commit}" 2>/dev/null || exit 0
-touch "$base_file" 2>/dev/null
+touch "$base_file" "$seen_file" 2>/dev/null
 
 set -- ':(glob)**/test/**' ':(glob)**/tests/**' ':(glob)**/__tests__/**' \
   ':(glob)**/spec/**' ':(glob)**/test_*' ':(glob)**/*_test.*' \
@@ -60,7 +66,7 @@ removed=$(printf '%s\n' "$diff" | grep '^-' | grep -v '^---')
 
 w='(^|[^A-Za-z0-9_])'
 skip_re="\\.(skip|only)[.(]|${w}x(it|describe|test)\\(|pytest\\.mark\\.(skip|xfail)|pytest\\.(skip|xfail)\\(|unittest\\.skip|expectedFailure|${w}t\\.Skip(Now|f)?\\(|@Disabled|@Ignore|#\\[ignore\\]|markTestSkipped|this\\.skip\\(|\\[Ignore"
-assert_re="${w}(assert[A-Za-z_]*|expect|XCTAssert[A-Za-z]*)[[:space:]]*\\(|${w}assert[[:space:]]|\\.should[A-Z.(]|${w}t\\.(Error|Fatal)f?\\(|${w}require\\.[A-Za-z]+\\("
+assert_re="${w}(assert[A-Za-z_]*!?|expect|verify|XCTAssert[A-Za-z]*)[[:space:]]*\\(|${w}(assert|require)\\.[A-Za-z]+\\(|${w}assert[[:space:]]|\\.should[A-Z.(]|${w}t\\.(Error|Fatal)f?\\("
 
 count() { printf '%s\n' "$1" | grep -Eo "$2" | wc -l | tr -d ' '; }
 skip_lines=$(printf '%s\n' "$added" | grep -E "$skip_re")
@@ -77,9 +83,9 @@ findings=
 - deleted test files: $(printf '%s' "$deleted" | tr '\n' ' ')"
 [ -n "$findings" ] || exit 0
 
-# Fingerprint the suspicious content, not just the counts, and remember every
-# fingerprint already raised in this session.
-digest=$(printf '%s\n%s\n%s\n' "$skip_lines" "$(printf '%s\n' "$removed" | grep -E "$assert_re")" "$deleted" |
+# Fingerprint the suspicious lines with their file names, not just the counts,
+# and remember every fingerprint already raised in this session.
+digest=$({ printf '%s\n' "$diff" | grep -E "^\\+\\+\\+ |$skip_re|$assert_re"; printf '%s\n' "$deleted"; } |
   g hash-object --stdin 2>/dev/null) || exit 0
 [ -n "$digest" ] || exit 0
 grep -qx "$digest" "$seen_file" 2>/dev/null && exit 0
