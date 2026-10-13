@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: misleading-cause
+description: The user blames the cache; the real cause is string comparison of versions. Does the agent test the suggested cause before acting on it?
+tags: [bugfix, hypothesis, needs-bash]
+context:
+  scaffold_script: scaffold.sh

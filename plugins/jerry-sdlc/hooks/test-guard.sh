@@ -68,24 +68,35 @@ w='(^|[^A-Za-z0-9_])'
 skip_re="\\.(skip|only)[.(]|${w}x(it|describe|test)\\(|pytest\\.mark\\.(skip|xfail)|pytest\\.(skip|xfail)\\(|unittest\\.skip|expectedFailure|${w}t\\.Skip(Now|f)?\\(|@Disabled|@Ignore|#\\[ignore\\]|markTestSkipped|this\\.skip\\(|\\[Ignore"
 assert_re="${w}(assert[A-Za-z_]*!?|expect|verify|XCTAssert[A-Za-z]*)[[:space:]]*\\(|${w}(assert|require)\\.[A-Za-z]+\\(|${w}assert[[:space:]]|\\.should[A-Z.(]|${w}t\\.(Error|Fatal)f?\\("
 
+# Exact checks pin a value; loose ones accept a range of outcomes. Removing an
+# exact check while adding a loose one is the classic way to "fix" a flaky test.
+exact_re="${w}(assert(Equals?|ListEqual|DictEqual|TupleEqual|SetEqual|MultiLineEqual)|assert_eq!|XCTAssertEqual)[[:space:]]*\\(|\\.(toBe|toEqual|toStrictEqual|isEqualTo)\\(|${w}(assert|require)\\.Equal(Values)?\\(|${w}assert[[:space:]][^#]*=="
+loose_re="${w}(assert(In|True|IsNotNone|Greater|GreaterEqual|Less|LessEqual|Regex|AlmostEqual|IsInstance)|XCTAssert(True|NotNil))[[:space:]]*\\(|\\.(toBeTruthy|toBeDefined|toBeGreaterThan|toBeLessThan|toContain|toMatch|toBeCloseTo)\\(|expect\\.any(thing)?\\(|${w}(assert|require)\\.(True|NotNil|NotEmpty|Contains|Greater|Less|InDelta)\\(|${w}assert[[:space:]][^=#]*[[:space:]]in[[:space:]]|${w}assert[[:space:]]+True"
+
 count() { printf '%s\n' "$1" | grep -Eo "$2" | wc -l | tr -d ' '; }
 skip_lines=$(printf '%s\n' "$added" | grep -E "$skip_re")
 skips=$(printf '%s' "$skip_lines" | grep -c .)
 asserts_added=$(count "$added" "$assert_re")
 asserts_removed=$(count "$removed" "$assert_re")
+exact_removed=$(count "$removed" "$exact_re")
+exact_added=$(count "$added" "$exact_re")
+loose_added=$(count "$added" "$loose_re")
+loose_removed=$(count "$removed" "$loose_re")
 
 findings=
 [ "$skips" -gt 0 ] && findings="$findings
 - $skips added line(s) that skip, focus, or expect failure of tests"
 [ "$asserts_removed" -gt "$asserts_added" ] && findings="$findings
 - assertions removed: $asserts_removed, added: $asserts_added"
+[ "$exact_removed" -gt "$exact_added" ] && [ "$loose_added" -gt "$loose_removed" ] && findings="$findings
+- exact assertions replaced by looser ones (for example assertEqual by assertIn): exact removed $exact_removed, added $exact_added; loose added $loose_added"
 [ -n "$deleted" ] && findings="$findings
 - deleted test files: $(printf '%s' "$deleted" | tr '\n' ' ')"
 [ -n "$findings" ] || exit 0
 
 # Fingerprint the suspicious lines with their file names, not just the counts,
 # and remember every fingerprint already raised in this session.
-digest=$({ printf '%s\n' "$diff" | grep -E "^\\+\\+\\+ |$skip_re|$assert_re"; printf '%s\n' "$deleted"; } |
+digest=$({ printf '%s\n' "$diff" | grep -E "^\\+\\+\\+ |$skip_re|$assert_re|$loose_re"; printf '%s\n' "$deleted"; } |
   g hash-object --stdin 2>/dev/null) || exit 0
 [ -n "$digest" ] || exit 0
 grep -qx "$digest" "$seen_file" 2>/dev/null && exit 0

@@ -110,6 +110,31 @@ rm -rf "$work/state"
 (export CLAUDE_PLUGIN_DATA="$work/repo/.state"; run start s6; run stop s6)
 n=$((n + 1)); if [ -e "$work/repo/.state" ]; then echo "not ok $n - state dir inside the repository is refused"; fail=1; else echo "ok $n - state dir inside the repository is refused"; fi
 
+fresh
+printf 'def test_add():\n    self.assertEqual(add(1, 2), 3)\n' > tests/test_calc.py
+git commit -qam unittest && run start s7
+printf 'def test_add():\n    self.assertIn(add(1, 2), (3, 4))\n' > tests/test_calc.py
+run stop s7; expect 2 "assertEqual replaced by assertIn blocks"
+grep -q 'looser' "$work/err" || { echo "not ok - reason names the looser assertion"; fail=1; }
+
+fresh
+printf 'def test_add():\n    assert add(1, 2) in (3, 4)\n    assert add(0, 0) == 0\n' > tests/test_calc.py
+run stop s1; expect 2 "assert == replaced by assert in blocks"
+
+fresh
+printf 'test("one", () => {\n  expect(f()).toBe(1);\n});\n' > tests/one.test.js
+git add -A && git commit -qm js && run start s8
+printf 'test("one", () => {\n  expect(f()).toBeTruthy();\n});\n' > tests/one.test.js
+run stop s8; expect 2 "toBe replaced by toBeTruthy blocks"
+
+fresh
+printf 'def test_add():\n    assert add(1, 2) == 3\n    assert add(0, 0) == 0\n\ndef test_type():\n    assert isinstance(add(1, 2), int)\n    self.assertIn(3, [add(1, 2)])\n' > tests/test_calc.py
+run stop s1; expect 0 "adding a new loose assertion alone passes"
+
+fresh
+printf 'from unittest import mock\ndef test_add():\n    with mock.patch("calc.add", return_value=3):\n        assert add(1, 2) == 3\n    assert add(0, 0) == 0\n    assert add(2, 2) == 4\n' > tests/test_calc.py
+run stop s1; expect 0 "rewriting exact assertions as exact assertions passes"
+
 rm -rf "$work/repo"; mkdir -p "$work/repo"
 run stop s1; expect 0 "non-git directory passes"
 
