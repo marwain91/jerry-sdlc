@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: bug-red-green
+description: A bug fix with a passing neighboring test. Does the agent prove the failure with a test that fails before the fix?
+tags: [bugfix, needs-bash]
+context:
+  scaffold_script: scaffold.sh

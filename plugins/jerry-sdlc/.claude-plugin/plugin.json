@@ -1,7 +1,7 @@
 {
   "name": "jerry-sdlc",
   "displayName": "Jerry SDLC",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "Proportionate software delivery: one owner, one bounded review, specialists only for named risks, and checks that exercise the real failure path and interface.",
   "author": {
     "name": "Jerry SDLC contributors"

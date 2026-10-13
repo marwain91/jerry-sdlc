@@ -7,8 +7,9 @@ Roles are responsibilities, not agents. One owner can plan, implement, test, and
 1. Establish the failure on the reported path: entry point, starting state, action sequence, expected and actual result. Include navigation, reload, timing, or persistence when they matter. If you cannot reproduce it, say which part stays unverified.
 2. Treat any suggested cause, including the user's, as a hypothesis until evidence supports it.
 3. Inspect the layer where the failure shows. Correct network data or successful storage does not prove correct rendering or client state.
-4. Fix, then check the original path and the behavior that must stay the same. Cover affected consumers (for example web and mobile clients of a shared API) or name the ones left untested.
-5. If the fix does not work, compare the remaining symptom with the original and pick a check that tells competing causes apart before you try again.
+4. When you write the regression test first, confirm it fails for the reported reason, not for a setup error or a typo. A test that passes before the fix proves nothing.
+5. Fix, then rerun that test (or repeat the manual reproduction) and check the original path and the behavior that must stay the same. Cover affected consumers (for example web and mobile clients of a shared API) or name the ones left untested.
+6. If the fix does not work, compare the remaining symptom with the original and pick a check that tells competing causes apart before you try again.
 
 ## Feature
 

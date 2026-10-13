@@ -7,3 +7,6 @@
 .DS_Store
 *.swp
 *~
+
+# claude plugin eval output
+plugins/jerry-sdlc/evals/results/

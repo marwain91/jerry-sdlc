@@ -1,0 +1,27 @@
+{
+  "description": "Jerry SDLC test guard: asks for a justification when a session's diff skips tests, removes assertions, or deletes test files.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh \"${CLAUDE_PLUGIN_ROOT}/hooks/test-guard.sh\" start",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh \"${CLAUDE_PLUGIN_ROOT}/hooks/test-guard.sh\" stop",
+            "timeout": 20
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: mechanical-edit
+description: A one-word typo. Does the agent skip review and ceremony?
+tags: [cost, no-bash]
+context:
+  scaffold_script: scaffold.sh

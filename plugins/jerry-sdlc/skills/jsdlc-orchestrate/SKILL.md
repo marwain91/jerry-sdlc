@@ -26,12 +26,14 @@ Read [references/workflows.md](references/workflows.md) for anything beyond a me
 - Inspect existing uncommitted work first. Preserve unrelated changes; never clean them away for a tidy diff. Use a separate worktree when work overlaps.
 - Run targeted checks while editing and the project's required checks on the final diff.
 - Never weaken an assertion, skip a test, or discard a failure to get a pass.
+- For a fix, prove the failure first. When a test can express it, write that test, run it, and confirm it fails for the reported reason. Then fix, and run it again to see it pass. Report both runs. When no test can express it, reproduce it by hand and say so.
 - A fix is done when the original symptom is gone on the original path and retained behavior still works. A neighboring passing test does not count.
 
 ## Review
 
 - One initial review and, if needed, one targeted re-review of the correction. A third round needs a named material blocker.
 - The reviewer gets the diff, the acceptance note, the observed check results, and one bounded question. Reviewers stay read-only.
+- For features and risky fixes, prefer a reviewer from a different model family when its CLI is installed and signed in. A same-model reviewer shares your blind spots. See [references/handoffs.md](references/handoffs.md) for the commands.
 - Add a specialist only for a named risk: auth, secrets, payments, destructive data changes, migrations, public API compatibility, concurrency, production infrastructure. One risk does not justify every specialist.
 - Optional polish becomes follow-up work. It does not reopen finished delivery.
 

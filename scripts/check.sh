@@ -30,5 +30,24 @@ for f in $(find . -name '*.md' -not -path './.git/*'); do
   done
 done
 
+# Every eval case has a prompt, at least one grader, and its scaffold script.
+for case in plugins/jerry-sdlc/evals/*/; do
+  [ -f "$case/prompt.md" ] || err "$case: missing prompt.md"
+  ls "$case"graders/*.md >/dev/null 2>&1 || err "$case: no graders"
+  scaffold=$(sed -n 's/^  scaffold_script: //p' "$case/case.yaml" 2>/dev/null)
+  [ -z "$scaffold" ] || [ -f "$case$scaffold" ] || err "$case: missing $scaffold"
+done
+
+for f in $(find . -name '*.sh' -not -path './.git/*'); do
+  sh -n "$f" || err "shell syntax: $f"
+done
+
+if command -v git >/dev/null 2>&1; then
+  sh scripts/test-hook.sh >/dev/null || { sh scripts/test-hook.sh | grep '^not ok' >&2; err "hook tests failed"; }
+else
+  echo "SKIP: hook tests need git" >&2
+  [ -z "${CI:-}" ] || err "hook tests must run in CI"
+fi
+
 [ "$fail" -eq 0 ] && echo "all checks passed"
 exit "$fail"
