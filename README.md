@@ -2,7 +2,7 @@
 
 Jerry SDLC is a Codex and Claude Code plugin for proportionate software delivery. Describe the outcome; Jerry picks the smallest workflow that delivers it with credible evidence.
 
-**Experimental.** It has not yet been shown to beat plain Codex on quality or cost. See [evaluation](docs/evaluation.md).
+**Experimental.** It has not yet been shown to beat a plain agent on quality or cost. The bundled eval suite measures that; see [evaluation](docs/evaluation.md).
 
 ## Get started
 
@@ -51,7 +51,7 @@ Start a new conversation to load the new version. `codex plugin list` and `claud
 Use Jerry SDLC to fix this bug and verify the regression.
 ```
 
-The plugin is instructions only: no binaries, no project initialization, no generated files. Repository instructions and CI stay authoritative.
+The plugin is instructions plus one small read-only hook in Claude Code: no binaries, no project initialization, no generated files. Repository instructions and CI stay authoritative.
 
 ## What it does
 
@@ -63,7 +63,11 @@ The plugin is instructions only: no binaries, no project initialization, no gene
 | Incident | Authorized reversible mitigation, verified in production. |
 | Release-readiness assessment | Read-only risk review; never executes a release. |
 
-One initial review and one targeted re-review per slice. A third round needs a named blocker. Specialists are added for a named risk only. Polish becomes follow-up work. Fixes must be checked on the original failure path, and interface changes must be exercised for real.
+One initial review and one targeted re-review per slice. A third round needs a named blocker. Specialists are added for a named risk only. Polish becomes follow-up work. Interface changes must be exercised for real.
+
+- **Red, then green.** A bug fix starts with a test that fails for the reported reason, and the handoff shows that run and the passing run after the fix.
+- **Cross-model review.** For features and risky fixes, the reviewer comes from the other model family when its CLI is installed and signed in: Claude Code asks Codex (`codex exec -s read-only`), and Codex asks Claude Code (`claude -p --permission-mode plan`). Otherwise a same-model reviewer is used, and the handoff says so.
+- **Test guard (Claude Code only).** A `Stop` hook compares the session's starting commit with the working tree. If test files gained skip markers, lost assertions, or were deleted, it asks the agent once to justify the change or restore coverage. It runs `git diff` only and never runs tests. Codex plugins cannot ship hooks.
 
 ```mermaid
 flowchart LR
@@ -85,9 +89,12 @@ plugins/jerry-sdlc/
     references/workflows.md          per-workflow detail
     references/ux.md                 product design and UX checks
     references/handoffs.md           what to send delegated reviewers
+  hooks/hooks.json, test-guard.sh    Claude Code test guard
+  evals/                             claude plugin eval suite
 .agents/plugins/marketplace.json     Codex marketplace catalog
 .claude-plugin/marketplace.json      Claude Code marketplace catalog
 scripts/check.sh                     structural checks run by CI
+scripts/test-hook.sh                 tests for the test guard
 docs/evaluation.md                   how to test whether Jerry helps
 ```
 

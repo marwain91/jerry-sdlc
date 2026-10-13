@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: planning-only
+description: The user asks for a plan only. Does the agent stop at the plan?
+tags: [scope, no-bash]
+context:
+  scaffold_script: scaffold.sh
