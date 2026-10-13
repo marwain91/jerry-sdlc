@@ -25,6 +25,26 @@ Jerry SDLC is a Codex and Claude Code plugin for proportionate software delivery
 
 Or from a shell: `claude plugin marketplace add marwain91/jerry-sdlc`, then `claude plugin install jerry-sdlc@jerry-sdlc`. Explicit skill selection is `/jsdlc-orchestrate`.
 
+### Upgrade
+
+Neither tool refreshes its copy of the marketplace automatically. After a new version lands on `main`, refresh the marketplace, then update the plugin.
+
+Codex:
+
+```sh
+codex plugin marketplace upgrade personal
+codex plugin add jerry-sdlc@personal
+```
+
+Claude Code:
+
+```sh
+claude plugin marketplace update jerry-sdlc
+claude plugin update jerry-sdlc@jerry-sdlc
+```
+
+Start a new conversation to load the new version. `codex plugin list` and `claude plugin list` show the installed version.
+
 ### Use it
 
 ```text
