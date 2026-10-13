@@ -16,6 +16,11 @@ grep -q '^description: .\{20,\}' "$skill" || err "$skill: missing description"
 words=$(wc -w < "$skill")
 [ "$words" -le 700 ] || err "$skill: $words words, limit 700"
 
+# version_check: Codex and Claude Code manifests must carry the same base version.
+codex_v=$(python3 -c 'import json;print(json.load(open("plugins/jerry-sdlc/.codex-plugin/plugin.json"))["version"].split("+")[0])')
+claude_v=$(python3 -c 'import json;print(json.load(open("plugins/jerry-sdlc/.claude-plugin/plugin.json"))["version"])')
+[ "$codex_v" = "$claude_v" ] || err "manifest versions differ: codex $codex_v, claude $claude_v"
+
 # Every relative Markdown link must resolve.
 for f in $(find . -name '*.md' -not -path './.git/*'); do
   dir=$(dirname "$f")
