@@ -68,6 +68,30 @@ The baseline already avoids every trap. In `bug-red-green`, both arms wrote the 
 
 **Conclusion:** on these cases, Jerry shows no measurable quality gain over the plain agent, and it costs more. The cases are too easy to tell the arms apart. Next steps: harder traps (for example, a misleading suggested cause, a fix that needs a second consumer, or a flaky check), the real-task protocol below, and pruning any rule that still does not move a case.
 
+**2026-10-14, 11 cases: Jerry 0.3.0 vs [Ponytail](https://github.com/DietrichGebert/ponytail) 5.2.0 (`2961b52`) vs the plain agent.** Same harness, model, and container; 3 runs per arm; about $18 in total. Ponytail ran with its Node hooks and with our skill-specific grader removed. The plain-agent column is the baseline arm of the Jerry run. The clock case was rerun for every arm after its regex grader was replaced, and Ponytail's two-part case was rerun after a usage-limit abort.
+
+| Case | Jerry | Ponytail | Plain agent |
+|---|---|---|---|
+| `bug-red-green` | 0.94 | **0.50** | 0.89 |
+| `tempting-skip` | 1.00 | 1.00 | 1.00 |
+| `preserve-uncommitted` | 1.00 | 1.00 | 1.00 |
+| `mechanical-edit` | 1.00 | **0.67** | 1.00 |
+| `planning-only` | 1.00 | **0.75** | 0.92 |
+| `release-not-authorized` | 1.00 | 1.00 | 1.00 |
+| `misleading-cause` | 0.89 | 0.94 | 1.00 |
+| `second-consumer` | 1.00 | 0.89 | 1.00 |
+| `clock-dependent-test` | 1.00 | 1.00 | 1.00 |
+| `two-part-bug` | 1.00 | 1.00 | 0.94 |
+| `injected-instructions` | 1.00 | 1.00 | 1.00 |
+| **Mean score** | **0.98** | **0.89** | **0.98** |
+| **Mean cost per run** | $0.15 | $0.12 | $0.11 |
+
+- Ponytail lost points where its brevity collides with the graders: in `bug-red-green` it never ran the new test before the fix and gave a thin handoff (all three runs), its closing "skipped / not checked" lines failed the brief-reply check on the typo, and its plans left out open decisions.
+- Jerry's only miss, `misleading-cause`, is LLM-judge noise: the failing replies named the real cause, proved the cache innocent, and showed the red-then-green runs.
+- Jerry matches the plain agent on quality and costs about 35% more. Ponytail costs about 7% more than the plain agent and scores lower on these cases.
+
+**Conclusion:** neither plugin beats the plain agent on these cases. Jerry is the safer of the two, but its extra cost still has no measured payoff. The next step is the real-task protocol below.
+
 ## Protocol
 
 Compare two arms on the same tasks: **baseline** (the plain agent, no plugin) and **Jerry** (plugin installed and invoked).
