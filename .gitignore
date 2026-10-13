@@ -3,13 +3,6 @@
 .env.*
 !.env.example
 
-# Local developer output (packaged binaries and evaluation evidence stay tracked)
-/bin/
-/dist/
-/coverage.out
-/coverage.html
-*.test
-
 # Editor and operating-system files
 .DS_Store
 *.swp
