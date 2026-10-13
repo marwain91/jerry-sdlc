@@ -92,6 +92,24 @@ run stop s1; expect 2 "a different skip after an acknowledged one blocks again"
 git checkout -q -- tests/test_calc.py
 run stop s1; expect 0 "returning to an acknowledged finding does not block again"
 
+fresh
+printf 'func TestX(t *testing.T) {\n\tassert.Equal(t, 1, f())\n\tassert_eq!(f(), 1);\n\tverify(svc).save()\n}\n' > tests/x_test.go
+git add -A && git commit -qm go && run start s5
+printf 'func TestX(t *testing.T) {\n}\n' > tests/x_test.go
+run stop s5; expect 2 "removing Go, Rust, and Mockito assertions blocks"
+
+fresh
+printf 'import pytest\npytestmark = pytest.mark.skip\n' >> tests/test_other.py
+run stop s1; expect 2 "skip in one file blocks"
+git checkout -q -- tests/test_other.py
+printf 'import pytest\npytestmark = pytest.mark.skip\n' >> tests/test_calc.py
+run stop s1; expect 2 "the same skip moved to another file blocks again"
+
+fresh
+rm -rf "$work/state"
+(export CLAUDE_PLUGIN_DATA="$work/repo/.state"; run start s6; run stop s6)
+n=$((n + 1)); if [ -e "$work/repo/.state" ]; then echo "not ok $n - state dir inside the repository is refused"; fail=1; else echo "ok $n - state dir inside the repository is refused"; fi
+
 rm -rf "$work/repo"; mkdir -p "$work/repo"
 run stop s1; expect 0 "non-git directory passes"
 
