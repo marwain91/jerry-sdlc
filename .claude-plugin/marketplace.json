@@ -1,0 +1,16 @@
+{
+  "name": "jerry-sdlc",
+  "owner": {
+    "name": "Jiri Havlicek"
+  },
+  "description": "Jerry SDLC Claude Code plugins.",
+  "plugins": [
+    {
+      "name": "jerry-sdlc",
+      "source": "./plugins/jerry-sdlc",
+      "description": "Proportionate software delivery: one owner, one bounded review, real checks.",
+      "category": "workflow",
+      "keywords": ["sdlc", "code-review", "ux", "delivery"]
+    }
+  ]
+}

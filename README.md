@@ -1,10 +1,12 @@
 # Jerry SDLC
 
-Jerry SDLC is a Codex plugin for proportionate software delivery. Describe the outcome; Jerry picks the smallest workflow that delivers it with credible evidence.
+Jerry SDLC is a Codex and Claude Code plugin for proportionate software delivery. Describe the outcome; Jerry picks the smallest workflow that delivers it with credible evidence.
 
 **Experimental.** It has not yet been shown to beat plain Codex on quality or cost. See [evaluation](docs/evaluation.md).
 
 ## Get started
+
+### Codex
 
 1. Register the marketplace:
 
@@ -13,13 +15,23 @@ Jerry SDLC is a Codex plugin for proportionate software delivery. Describe the o
    ```
 
 2. Install **Jerry SDLC** from the **Personal** marketplace using `/plugins`.
-3. Start a new conversation in your project:
+3. Start a new conversation in your project. Explicit skill selection is `$jsdlc-orchestrate`.
 
-   ```text
-   Use Jerry SDLC to fix this bug and verify the regression.
-   ```
+### Claude Code
 
-Explicit skill selection is `$jsdlc-orchestrate`. The plugin is instructions only: no binaries, no project initialization, no generated files. Repository instructions and CI stay authoritative.
+```text
+/plugin install jerry-sdlc --marketplace marwain91/jerry-sdlc
+```
+
+Or from a shell: `claude plugin marketplace add marwain91/jerry-sdlc`, then `claude plugin install jerry-sdlc@jerry-sdlc`. Explicit skill selection is `/jsdlc-orchestrate`.
+
+### Use it
+
+```text
+Use Jerry SDLC to fix this bug and verify the regression.
+```
+
+The plugin is instructions only: no binaries, no project initialization, no generated files. Repository instructions and CI stay authoritative.
 
 ## What it does
 
@@ -46,13 +58,15 @@ flowchart LR
 
 ```text
 plugins/jerry-sdlc/
-  .codex-plugin/plugin.json          plugin manifest
+  .codex-plugin/plugin.json          Codex plugin manifest
+  .claude-plugin/plugin.json         Claude Code plugin manifest
   skills/jsdlc-orchestrate/
     SKILL.md                         routing and core rules (always loaded)
     references/workflows.md          per-workflow detail
     references/ux.md                 product design and UX checks
     references/handoffs.md           what to send delegated reviewers
-.agents/plugins/marketplace.json     marketplace catalog
+.agents/plugins/marketplace.json     Codex marketplace catalog
+.claude-plugin/marketplace.json      Claude Code marketplace catalog
 scripts/check.sh                     structural checks run by CI
 docs/evaluation.md                   how to test whether Jerry helps
 ```

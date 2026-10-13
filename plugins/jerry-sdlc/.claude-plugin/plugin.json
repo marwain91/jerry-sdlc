@@ -1,0 +1,13 @@
+{
+  "name": "jerry-sdlc",
+  "displayName": "Jerry SDLC",
+  "version": "0.2.1",
+  "description": "Proportionate software delivery: one owner, one bounded review, specialists only for named risks, and checks that exercise the real failure path and interface.",
+  "author": {
+    "name": "Jerry SDLC contributors"
+  },
+  "homepage": "https://github.com/marwain91/jerry-sdlc",
+  "repository": "https://github.com/marwain91/jerry-sdlc",
+  "license": "Apache-2.0",
+  "keywords": ["sdlc", "code-review", "ux", "delivery"]
+}
