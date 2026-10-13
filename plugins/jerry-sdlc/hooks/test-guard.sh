@@ -21,16 +21,21 @@ session=$(field session_id | tr -cd 'A-Za-z0-9_-')
 [ -n "$session" ] || exit 0
 repo=${CLAUDE_PROJECT_DIR:-$(field cwd)}
 [ -n "$repo" ] && cd "$repo" 2>/dev/null || exit 0
-git rev-parse --is-inside-work-tree >/dev/null 2>&1 || exit 0
 
-state_dir=${CLAUDE_PLUGIN_DATA:-${TMPDIR:-/tmp}/jerry-sdlc}
+# Plain reads only: no textconv, external diff, fsmonitor, or optional index writes.
+export GIT_OPTIONAL_LOCKS=0
+g() { git -c core.fsmonitor=false -c diff.external= "$@"; }
+top=$(g rev-parse --show-toplevel 2>/dev/null) || exit 0
+
+state_dir=${CLAUDE_PLUGIN_DATA:-${XDG_STATE_HOME:-$HOME/.local/state}/jerry-sdlc}
+case "$state_dir/" in "$top"/*) exit 0 ;; esac
 mkdir -p "$state_dir" 2>/dev/null || exit 0
 base_file=$state_dir/session-$session.base
 seen_file=$state_dir/session-$session.seen
-find "$state_dir" -name 'session-*' -mtime +7 -exec rm -f {} + 2>/dev/null
+find "$state_dir" -name 'session-*' -mtime +30 -exec rm -f {} + 2>/dev/null
 
 if [ "$mode" = start ]; then
-  [ -s "$base_file" ] || git rev-parse -q --verify HEAD > "$base_file" 2>/dev/null
+  [ -s "$base_file" ] || g rev-parse -q --verify HEAD > "$base_file" 2>/dev/null
   exit 0
 fi
 
@@ -38,26 +43,30 @@ fi
 printf '%s' "$input" | tr -d '\n' | grep -q '"stop_hook_active"[[:space:]]*:[[:space:]]*true' && exit 0
 
 base=$(cat "$base_file" 2>/dev/null)
-[ -n "$base" ] || base=$(git rev-parse -q --verify HEAD 2>/dev/null) || exit 0
-git cat-file -e "$base^{commit}" 2>/dev/null || exit 0
+[ -n "$base" ] || base=$(g rev-parse -q --verify HEAD 2>/dev/null) || exit 0
+g cat-file -e "$base^{commit}" 2>/dev/null || exit 0
+touch "$base_file" 2>/dev/null
 
 set -- ':(glob)**/test/**' ':(glob)**/tests/**' ':(glob)**/__tests__/**' \
   ':(glob)**/spec/**' ':(glob)**/test_*' ':(glob)**/*_test.*' \
   ':(glob)**/*.test.*' ':(glob)**/*.spec.*' ':(glob)**/*Test.*' ':(glob)**/*Tests.*'
 
-diff=$(git diff --no-color --no-ext-diff -U0 "$base" -- "$@" 2>/dev/null) || exit 0
-deleted=$(git diff --no-ext-diff --name-only --diff-filter=D "$base" -- "$@" 2>/dev/null)
+diff=$(g diff --no-color --no-ext-diff --no-textconv -U0 "$base" -- "$@" 2>/dev/null) || exit 0
+deleted=$(g diff --no-ext-diff --no-textconv --name-only --diff-filter=D "$base" -- "$@" 2>/dev/null)
 [ -n "$diff$deleted" ] || exit 0
 
 added=$(printf '%s\n' "$diff" | grep '^+' | grep -v '^+++')
 removed=$(printf '%s\n' "$diff" | grep '^-' | grep -v '^---')
 
-skip_re='\.skip\(|(^|[^A-Za-z_])x(it|describe|test)\(|\.only\(|@pytest\.mark\.(skip|xfail)|pytest\.(skip|xfail)\(|unittest\.skip|expectedFailure|(^|[^A-Za-z_])t\.Skip(Now|f)?\(|@Disabled|@Ignore|#\[ignore\]|markTestSkipped|this\.skip\(|\[Ignore'
-assert_re='assert|expect\(|\.should|(^|[^A-Za-z_])t\.(Error|Fatal)|require\.|verify\('
+w='(^|[^A-Za-z0-9_])'
+skip_re="\\.(skip|only)[.(]|${w}x(it|describe|test)\\(|pytest\\.mark\\.(skip|xfail)|pytest\\.(skip|xfail)\\(|unittest\\.skip|expectedFailure|${w}t\\.Skip(Now|f)?\\(|@Disabled|@Ignore|#\\[ignore\\]|markTestSkipped|this\\.skip\\(|\\[Ignore"
+assert_re="${w}(assert[A-Za-z_]*|expect|XCTAssert[A-Za-z]*)[[:space:]]*\\(|${w}assert[[:space:]]|\\.should[A-Z.(]|${w}t\\.(Error|Fatal)f?\\(|${w}require\\.[A-Za-z]+\\("
 
-skips=$(printf '%s\n' "$added" | grep -Ec "$skip_re")
-asserts_added=$(printf '%s\n' "$added" | grep -Eic "$assert_re")
-asserts_removed=$(printf '%s\n' "$removed" | grep -Eic "$assert_re")
+count() { printf '%s\n' "$1" | grep -Eo "$2" | wc -l | tr -d ' '; }
+skip_lines=$(printf '%s\n' "$added" | grep -E "$skip_re")
+skips=$(printf '%s' "$skip_lines" | grep -c .)
+asserts_added=$(count "$added" "$assert_re")
+asserts_removed=$(count "$removed" "$assert_re")
 
 findings=
 [ "$skips" -gt 0 ] && findings="$findings
@@ -68,9 +77,13 @@ findings=
 - deleted test files: $(printf '%s' "$deleted" | tr '\n' ' ')"
 [ -n "$findings" ] || exit 0
 
-digest=$(printf '%s' "$findings" | git hash-object --stdin 2>/dev/null)
-[ "$(cat "$seen_file" 2>/dev/null)" = "$digest" ] && exit 0
-printf '%s\n' "$digest" > "$seen_file" 2>/dev/null
+# Fingerprint the suspicious content, not just the counts, and remember every
+# fingerprint already raised in this session.
+digest=$(printf '%s\n%s\n%s\n' "$skip_lines" "$(printf '%s\n' "$removed" | grep -E "$assert_re")" "$deleted" |
+  g hash-object --stdin 2>/dev/null) || exit 0
+[ -n "$digest" ] || exit 0
+grep -qx "$digest" "$seen_file" 2>/dev/null && exit 0
+printf '%s\n' "$digest" >> "$seen_file" 2>/dev/null || exit 0
 
 cat >&2 <<EOF
 Jerry SDLC test guard: since this session started (base ${base%"${base#???????}"}), the diff in test files shows:$findings

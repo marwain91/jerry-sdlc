@@ -68,6 +68,30 @@ git commit -qam "drop assertion"
 run start s1
 run stop s1; expect 2 "resumed session keeps its original base"
 
+fresh
+sed -i.bak 's/def test_add/def test_asserts_add/' tests/test_calc.py && rm -f tests/test_calc.py.bak
+run stop s1; expect 0 "renaming a test that contains 'assert' in its name passes"
+
+fresh
+printf 'def test_add():\n    assert add(1, 2) == 3; assert add(0, 0) == 0\n' > tests/test_calc.py
+git commit -qam "join" && run start s3
+printf 'def test_add():\n    assert add(1, 2) == 3\n' > tests/test_calc.py
+run stop s3; expect 2 "dropping one of two assertions on a line blocks"
+
+fresh
+printf 'test.each([1])("one", (n) => {\n  expect(n).toBe(1);\n});\n' > tests/one.test.js
+git add -A && git commit -qm js && run start s4
+sed -i.bak 's/test.each/test.skip.each/' tests/one.test.js && rm -f tests/one.test.js.bak
+run stop s4; expect 2 "chained test.skip.each blocks"
+
+fresh
+printf 'import pytest\npytestmark = pytest.mark.skip(reason="later")\n' >> tests/test_other.py
+run stop s1; expect 2 "module-level pytestmark skip blocks"
+printf 'import unittest\n@unittest.skip("flaky")\ndef test_add():\n    assert add(1, 2) == 3\n    assert add(0, 0) == 0\n' > tests/test_calc.py
+run stop s1; expect 2 "a different skip after an acknowledged one blocks again"
+git checkout -q -- tests/test_calc.py
+run stop s1; expect 0 "returning to an acknowledged finding does not block again"
+
 rm -rf "$work/repo"; mkdir -p "$work/repo"
 run stop s1; expect 0 "non-git directory passes"
 
