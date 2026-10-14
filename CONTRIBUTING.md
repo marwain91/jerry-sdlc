@@ -1,6 +1,6 @@
 # Contributing to Jerry SDLC
 
-The product is the Markdown under `plugins/jerry-sdlc/skills/`. Codex and Claude Code load the same skill; each has its own manifest. Claude Code also loads the test guard in `plugins/jerry-sdlc/hooks/`. Every sentence there costs model attention on every task, so changes are judged by whether they change agent behavior for the better.
+The product is the Markdown under `plugins/jerry-sdlc/skills/`. Codex and Claude Code load the same skill; each has its own manifest. Both also load the test guard in `plugins/jerry-sdlc/hooks/`; Codex reads the same `hooks/hooks.json` by default, so keep it valid for both (Codex rejects unknown keys there). Every sentence there costs model attention on every task, so changes are judged by whether they change agent behavior for the better.
 
 ## Guidelines
 

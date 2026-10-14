@@ -1,6 +1,6 @@
 {
   "name": "jerry-sdlc",
-  "version": "0.3.1+codex.20261014000000",
+  "version": "0.3.2+codex.20261014120000",
   "description": "Proportionate software delivery: one owner, one bounded review, real checks.",
   "author": {
     "name": "Jerry SDLC contributors"

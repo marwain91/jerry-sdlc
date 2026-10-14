@@ -1,5 +1,5 @@
 #!/bin/sh
-# Jerry SDLC test guard (Claude Code hook).
+# Jerry SDLC test guard (Claude Code and Codex hook).
 #
 #   start  record HEAD as this session's base commit
 #   stop   compare the base with the working tree; if the diff adds skip
