@@ -15,7 +15,8 @@ Jerry SDLC is a Codex and Claude Code plugin for proportionate software delivery
    ```
 
 2. Install **Jerry SDLC** from the **Personal** marketplace using `/plugins`.
-3. Start a new conversation in your project. Explicit skill selection is `$jsdlc-orchestrate`.
+3. Run `/hooks` and trust the two Jerry SDLC hooks (`SessionStart` and `Stop`) to enable the test guard. Codex skips plugin hooks until you trust them, and asks again when an upgrade changes the hook entries in `hooks/hooks.json` (not when only the script changes).
+4. Start a new conversation in your project. Explicit skill selection is `$jsdlc-orchestrate`.
 
 ### Claude Code
 
@@ -51,7 +52,7 @@ Start a new conversation to load the new version. `codex plugin list` and `claud
 Use Jerry SDLC to fix this bug and verify the regression.
 ```
 
-The plugin is instructions plus one small read-only hook in Claude Code: no binaries, no project initialization, no generated repository files. Repository instructions and CI stay authoritative.
+The plugin is instructions plus one small read-only hook: no binaries, no project initialization, no generated repository files. Repository instructions and CI stay authoritative.
 
 ## What it does
 
@@ -67,7 +68,7 @@ One initial review and one targeted re-review per slice. A third round needs a n
 
 - **Red, then green.** A bug fix starts with a test that fails for the reported reason, and the handoff shows that run and the passing run after the fix. When no test can express the failure, the agent reproduces it by hand and says so.
 - **Cross-model review.** For features and risky fixes, the reviewer comes from the other model family when its CLI is installed and signed in: Claude Code asks Codex (`codex exec -s read-only`), and Codex asks Claude Code (`claude -p --permission-mode plan`). Otherwise a same-model reviewer is used, and the handoff says so.
-- **Test guard (Claude Code only).** A `Stop` hook compares the session's starting commit with the working tree. If test files gained skip markers, lost assertions, swapped exact assertions for looser ones, or were deleted, it asks the agent once to justify the change or restore coverage. It runs `git diff` only and never runs tests. Codex also supports plugin hooks (after you trust them in `/hooks`), but the guard is not wired or tested there yet.
+- **Test guard.** A `Stop` hook compares the session's starting commit with the working tree. If test files gained skip markers, lost assertions, swapped exact assertions for looser ones, or were deleted, it asks the agent once to justify the change or restore coverage. It runs `git diff` only and never runs tests. Both tools run the same hook; in Codex, trust it in `/hooks` first.
 
 ```mermaid
 flowchart LR
@@ -89,7 +90,7 @@ plugins/jerry-sdlc/
     references/workflows.md          per-workflow detail
     references/ux.md                 product design and UX checks
     references/handoffs.md           what to send delegated reviewers
-  hooks/hooks.json, test-guard.sh    Claude Code test guard
+  hooks/hooks.json, test-guard.sh    test guard (both tools)
   evals/                             claude plugin eval suite
 .agents/plugins/marketplace.json     Codex marketplace catalog
 .claude-plugin/marketplace.json      Claude Code marketplace catalog
