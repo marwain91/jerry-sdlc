@@ -15,8 +15,7 @@ Jerry SDLC is a Codex and Claude Code plugin for proportionate software delivery
    ```
 
 2. Install **Jerry SDLC** from the **Personal** marketplace using `/plugins`.
-3. Run `/hooks` and trust the two Jerry SDLC hooks (`SessionStart` and `Stop`) to enable the test guard. Codex skips plugin hooks until you trust them, and asks again when an upgrade changes the hook entries in `hooks/hooks.json` (not when only the script changes).
-4. Start a new conversation in your project. Explicit skill selection is `$jsdlc-orchestrate`.
+3. Start a new conversation in your project. Explicit skill selection is `$jsdlc-orchestrate`.
 
 ### Claude Code
 
@@ -52,23 +51,25 @@ Start a new conversation to load the new version. `codex plugin list` and `claud
 Use Jerry SDLC to fix this bug and verify the regression.
 ```
 
-The plugin is instructions plus one small read-only hook: no binaries, no project initialization, no generated repository files. Repository instructions and CI stay authoritative.
+The plugin is instructions only: no hooks, no binaries, no project initialization, no generated repository files. Repository instructions and CI stay authoritative.
 
 ## What it does
 
 | Request | Workflow |
 |---|---|
 | Typo or mechanical edit | Edit and one relevant check. |
-| Bug fix or feature | One owner implements and checks; one bounded review. |
+| Bug fix | Red, then green; one bounded review for risky fixes. |
+| Feature | One owner implements and checks; one bounded review. |
+| Dependencies, CVEs, CI, infrastructure config | Before-and-after evidence, proven on the real target. |
+| Release or deploy the user asked for | The project's own procedure, then the published or live result is verified. |
 | Diagnosis or PR review | Read-only evidence or findings. |
-| Incident | Authorized reversible mitigation, verified in production. |
-| Release-readiness assessment | Read-only risk review; never executes a release. |
 
 One initial review and one targeted re-review per slice. A third round needs a named blocker. Specialists are added for a named risk only. Polish becomes follow-up work. Interface changes must be exercised for real.
 
 - **Red, then green.** A bug fix starts with a test that fails for the reported reason, and the handoff shows that run and the passing run after the fix. When no test can express the failure, the agent reproduces it by hand and says so.
 - **Cross-model review.** For features and risky fixes, the reviewer comes from the other model family when its CLI is installed and signed in: Claude Code asks Codex (`codex exec -s read-only`), and Codex asks Claude Code (`claude -p --permission-mode plan`). Otherwise a same-model reviewer is used, and the handoff says so.
-- **Test guard.** A `Stop` hook compares the session's starting commit with the working tree. If test files gained skip markers, lost assertions, swapped exact assertions for looser ones, or were deleted, it asks the agent once to justify the change or restore coverage. It runs `git diff` only and never runs tests. Both tools run the same hook; in Codex, trust it in `/hooks` first.
+- **Stop when blocked.** When the remaining work needs a person (access, hardware, approval), the agent lists each blocker once and stops instead of re-auditing.
+- **Project procedures win.** A project's own release, deploy, or content skill runs the show; Jerry adds only the evidence bar.
 
 ```mermaid
 flowchart LR
@@ -86,20 +87,17 @@ plugins/jerry-sdlc/
   .codex-plugin/plugin.json          Codex plugin manifest
   .claude-plugin/plugin.json         Claude Code plugin manifest
   skills/jsdlc-orchestrate/
-    SKILL.md                         routing and core rules (always loaded)
-    references/workflows.md          per-workflow detail
+    SKILL.md                         routing, workflows, and core rules
     references/ux.md                 product design and UX checks
     references/handoffs.md           what to send delegated reviewers
-  hooks/hooks.json, test-guard.sh    test guard (both tools)
   evals/                             claude plugin eval suite
 .agents/plugins/marketplace.json     Codex marketplace catalog
 .claude-plugin/marketplace.json      Claude Code marketplace catalog
 scripts/check.sh                     structural checks run by CI
-scripts/test-hook.sh                 tests for the test guard
 docs/evaluation.md                   how to test whether Jerry helps
 ```
 
-Versions up to 0.1.x also shipped a Go CLI for evidence records, formal release verdicts, and cost ledgers. It was removed in 0.2.0; see Git history for it.
+Versions up to 0.1.x also shipped a Go CLI for evidence records, formal release verdicts, and cost ledgers; it was removed in 0.2.0. Versions 0.3.x shipped a test-guard `Stop` hook; it was removed in 0.4.0 after it raised 26 warnings in real use and none was a weakened test (see [evaluation](docs/evaluation.md)). Git history has both.
 
 | Guide | Contents |
 |---|---|
