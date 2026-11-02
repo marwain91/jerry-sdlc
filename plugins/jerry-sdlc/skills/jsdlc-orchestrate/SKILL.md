@@ -1,6 +1,6 @@
 ---
 name: jsdlc-orchestrate
-description: Deliver software changes with proportionate planning, checks, and review. Use for features, bug fixes and diagnosis, PR review, dependency and security updates, CI or infrastructure configuration, releases and deployments, and product or UX work. Skip small factual questions and read-only explanations.
+description: Deliver software changes with proportionate planning, checks, and review. Use for features, bug fixes and diagnosis, PR review, dependency and security updates, CI or infrastructure configuration, releases and deployments, product or UX work, and working through a backlog, TODO list, or issue queue, even "until everything is done". Skip small factual questions and read-only explanations.
 ---
 
 # Jerry SDLC
@@ -63,11 +63,11 @@ Only when the user asked for it in this conversation. Follow the project's relea
 
 ## Long tasks and waiting
 
-- Split large requests into slices with their own acceptance criteria and stopping point.
+- Split large requests into slices with their own acceptance criteria and stopping point. In a backlog, each item is a slice; note why any stays blocked.
 - Probe a shared uncertain prerequisite (toolchain, service, credentials) once before fanning out.
 - After a failure, diagnose before retrying the same command.
 - Wait on CI by exact job ID with a bounded poll. On timeout, report it as pending; do not restart or cancel it.
-- **When blocked on something only a person can do** (access, hardware, approval, a real device or account), list each blocker with the exact action needed, once, and stop. Do not re-audit the same state or start unrelated work to look busy. Repeating a check without new input is a reason to stop.
+- **When blocked on something only a person can do** (access, hardware, approval, a real device or account), list each blocker with the exact action needed, once, and stop. Do not re-audit unchanged state or start unrelated work to look busy.
 
 ## Handoff
 

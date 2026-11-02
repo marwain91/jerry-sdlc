@@ -120,6 +120,8 @@ The baseline already avoids every trap. In `bug-red-green`, both arms wrote the 
 
 **Conclusion:** 0.4.0 is cheaper than 0.3.0 at the same quality, but it still shows no measured gain over the plain agent on synthetic cases. More synthetic traps are unlikely to change that. The next informative step is the real-task protocol below, and possibly a description that also triggers on backlog and TODO-list work.
 
+**0.4.1 follow-up, same day:** the description now names backlog, TODO-list, and issue-queue work. Rerun of `blocked-on-person` only, 3 runs per arm, $0.91: the skill started in 3 of 3 runs (was 0 of 3). Jerry scored 1.00, the baseline 0.87 (one baseline handoff missed a blocker's concrete action). Jerry cost $0.17 per run, the baseline $0.13.
+
 ## Real use
 
 **2026-11-02, Jerry 0.3.2, sessions from 2026-10-15 to 2026-11-02 on the shared dev host.** Counted from Codex and Claude Code transcripts. A session counts only when a tool call read `SKILL.md`; the skill list in every system prompt names the path, so a plain text search overcounts.
