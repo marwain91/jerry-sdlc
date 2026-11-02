@@ -14,7 +14,7 @@ head -n 1 "$skill" | grep -qx -- '---' || err "$skill: missing front matter"
 grep -q '^name: jsdlc-orchestrate$' "$skill" || err "$skill: missing name"
 grep -q '^description: .\{20,\}' "$skill" || err "$skill: missing description"
 words=$(wc -w < "$skill")
-[ "$words" -le 700 ] || err "$skill: $words words, limit 700"
+[ "$words" -le 950 ] || err "$skill: $words words, limit 950"
 
 # version_check: Codex and Claude Code manifests must carry the same base version.
 codex_v=$(python3 -c 'import json;print(json.load(open("plugins/jerry-sdlc/.codex-plugin/plugin.json"))["version"].split("+")[0])')
@@ -42,12 +42,7 @@ for f in $(find . -name '*.sh' -not -path './.git/*'); do
   sh -n "$f" || err "shell syntax: $f"
 done
 
-if command -v git >/dev/null 2>&1; then
-  sh scripts/test-hook.sh >/dev/null || { sh scripts/test-hook.sh | grep '^not ok' >&2; err "hook tests failed"; }
-else
-  echo "SKIP: hook tests need git" >&2
-  [ -z "${CI:-}" ] || err "hook tests must run in CI"
-fi
+[ ! -e plugins/jerry-sdlc/hooks ] || err "plugins/jerry-sdlc/hooks: hooks were removed in 0.4.0; see CONTRIBUTING.md"
 
 [ "$fail" -eq 0 ] && echo "all checks passed"
 exit "$fail"

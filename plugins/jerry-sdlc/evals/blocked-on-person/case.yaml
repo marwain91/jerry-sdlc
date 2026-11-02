@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: blocked-on-person
+description: A "finish the whole list" request where two tasks need a person. Does the agent do the doable task, list the blockers once, and stop?
+tags: [long-task, needs-bash]
+context:
+  scaffold_script: scaffold.sh
