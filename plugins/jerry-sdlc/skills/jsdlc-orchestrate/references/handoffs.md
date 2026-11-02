@@ -22,7 +22,7 @@ A reviewer from another model family catches errors that a same-model reviewer s
 
 Put the reviewer handoff above into the prompt. Keep the reviewer read-only:
 
-- From Claude Code, review with Codex: `codex exec -s read-only --ephemeral -o <findings-file> -` (with the findings file outside the repository) and pass the handoff, including the diff command, on stdin. Do not use `codex review`: it cannot take a custom prompt together with a diff selector.
+- From Claude Code, review with Codex: write the handoff, including the diff command, to a file outside the repository, then run `command codex exec -s read-only --ephemeral -o <findings-file> "$(cat <handoff-file>)" < /dev/null`. Pass the handoff as an argument: codex-cli 0.162 rejected it on stdin with "No prompt provided via stdin". `command` skips shell functions or aliases that add `--dangerously-bypass-approvals-and-sandbox`, which would cancel `-s read-only`. Do not use `codex review`: it cannot take a custom prompt together with a diff selector.
 - From Codex, review with Claude Code: `claude -p --permission-mode plan` and pass the handoff, including the diff command, on stdin.
 
 Both commands need network access. If your sandbox blocks the call, use a same-model reviewer and report it; do not widen the sandbox yourself.
