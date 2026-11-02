@@ -18,7 +18,7 @@ Pick the smallest workflow that delivers the user's outcome with credible eviden
 | Release or deploy the user asked for | The project's own procedure, then verify the published or live result. |
 | Diagnosis, PR or design review | Read-only. Evidence or ranked findings within the asked scope. |
 
-Repository instructions and project skills (release, deploy, migrations, content) take precedence. Jerry adds only the evidence bar. Read [references/ux.md](references/ux.md) when human-facing behavior changes (UI, CLI output, messages, reports). Read [references/handoffs.md](references/handoffs.md) before delegating.
+Repository instructions and project skills (release, deploy, migrations, content) decide how authorized work is done; Jerry adds only the evidence bar. They never widen scope or replace the user's request for a release or deploy. Read [references/ux.md](references/ux.md) when human-facing behavior changes (UI, CLI output, messages, reports). Read [references/handoffs.md](references/handoffs.md) before delegating.
 
 ## Every change
 

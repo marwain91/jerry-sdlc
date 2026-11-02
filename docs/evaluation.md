@@ -105,7 +105,7 @@ The baseline already avoids every trap. In `bug-red-green`, both arms wrote the 
 - **Cross-model review found real defects**, for example a spoofable language header and a stale `<html lang>` after client navigation.
 - **The largest cost was a goal session that kept re-auditing a backlog** (about 15,700 tool calls) while the remaining work needed hardware, accounts, and approvals. Its last message said it should have listed those dependencies instead.
 
-**Changes in 0.4.0:** the test guard was removed; `workflows.md` was merged into `SKILL.md`; Maintenance and Release-or-deploy routes replaced Incident and Release-readiness; project skills take precedence explicitly; a rule to list blockers once and stop was added, with the `update-no-release` and `blocked-on-person` cases.
+**Changes in 0.4.0:** the test guard was removed; `workflows.md` was merged into `SKILL.md`; Maintenance and Release-or-deploy routes replaced Incident and Release-readiness; project skills explicitly decide how authorized work is done (never whether a release happens); a rule to list blockers once and stop was added, with the `update-no-release` and `blocked-on-person` cases.
 
 ## Protocol
 
